@@ -2,7 +2,7 @@
 FROM composer:latest AS php-builder
 WORKDIR /app
 COPY . .
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --ignore-platform-reqs --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Stage 2: Build frontend assets
 FROM node:20-alpine AS assets-builder
