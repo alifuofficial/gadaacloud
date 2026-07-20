@@ -94,19 +94,19 @@ createInertiaApp({
     },
     resolve: (name) => {
         const allPages = {
-            ...import.meta.glob('./pages/**/*.tsx'),
+            ...import.meta.glob('./Pages/**/*.tsx'),
             ...import.meta.glob('../../packages/workdo/*/src/Resources/js/Pages/**/*.tsx')
         };
 
-        // Try pages directory (lowercase p)
-        const lowerPagePath = `./pages/${name}.tsx`;
-        if (allPages[lowerPagePath]) {
-            return allPages[lowerPagePath]();
+        // Try Pages directory (case-sensitive for Linux)
+        const pagePath = `./Pages/${name}.tsx`;
+        if (allPages[pagePath]) {
+            return allPages[pagePath]();
         }
 
         // Try package pages
-        const [packageName, ...pagePath] = name.split('/');
-        const packagePagePath = `../../packages/workdo/${packageName}/src/Resources/js/Pages/${pagePath.join('/')}.tsx`;
+        const [packageName, ...subPagePath] = name.split('/');
+        const packagePagePath = `../../packages/workdo/${packageName}/src/Resources/js/Pages/${subPagePath.join('/')}.tsx`;
         if (allPages[packagePagePath]) {
             return allPages[packagePagePath]();
         }
