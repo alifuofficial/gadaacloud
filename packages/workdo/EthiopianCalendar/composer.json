@@ -1,0 +1,25 @@
+{
+    "name": "workdo/ethiopian-calendar",
+    "description": "Ethiopian Calendar Integration for GadaaCloud",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Workdo\\EthiopianCalendar\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "GadaaCloud Dev Team",
+            "email": "support@gadaacloud.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Workdo\\EthiopianCalendar\\Providers\\EthiopianCalendarServiceProvider"
+            ]
+        }
+    }
+}

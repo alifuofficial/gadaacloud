@@ -1,0 +1,10 @@
+{
+    "name": "GadaacloudStudio",
+    "alias": "GadaaCloud Studio",
+    "description": "Create custom multi-step document approval workflows based on active modules, with a unified Approval Center for staff review.",
+    "priority": 950,
+    "version": "1.0",
+    "monthly_price": 15,
+    "yearly_price": 150,
+    "package_name": "gadaacloud-studio"
+}

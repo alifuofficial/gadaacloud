@@ -1,0 +1,10 @@
+{
+    "name": "EthiopianCalendar",
+    "alias": "Ethiopian Calendar",
+    "description": "Convert and display all system calendars and date fields in the traditional Ethiopian Calendar format for your tenant.",
+    "priority": 910,
+    "version": "1.0",
+    "monthly_price": 5,
+    "yearly_price": 50,
+    "package_name": "ethiopian-calendar"
+}

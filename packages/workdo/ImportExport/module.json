@@ -1,0 +1,10 @@
+{
+    "name": "ImportExport",
+    "alias": "Import & Export Operations",
+    "description": "Manage Letters of Credit (LC), shipment logistics, and landed cost allocations.",
+    "priority": 2995,
+    "version": 1.0,
+    "monthly_price": 10,
+    "yearly_price": 100,
+    "package_name": "importexport"
+}

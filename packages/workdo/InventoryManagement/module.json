@@ -1,0 +1,10 @@
+{
+    "name": "InventoryManagement",
+    "alias": "Inventory Management",
+    "description": "Manage stock adjustments, reorder parameters, safety stock alerts, and audit trail ledger logs.",
+    "priority": 2997,
+    "version": 1.0,
+    "monthly_price": 15,
+    "yearly_price": 150,
+    "package_name": "inventorymanagement"
+}
