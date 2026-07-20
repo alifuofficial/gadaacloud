@@ -69,6 +69,10 @@ COPY --from=php-builder /app/vendor ./vendor
 # Copy built assets from assets-builder stage
 COPY --from=assets-builder /app/public/build ./public/build
 
+# Link LandingPage package images so they are publicly accessible in production
+RUN mkdir -p /var/www/html/public/packages/workdo/LandingPage/src/Resources/assets \
+    && ln -s /var/www/html/packages/workdo/LandingPage/src/Resources/assets/img /var/www/html/public/packages/workdo/LandingPage/src/Resources/assets/img
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache

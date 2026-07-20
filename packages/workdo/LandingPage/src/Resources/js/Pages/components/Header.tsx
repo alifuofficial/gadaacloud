@@ -87,6 +87,11 @@ export default function Header({ settings }: HeaderProps) {
     // Combine navigation items with custom pages
     const allNavigationItems = [...navigationItems, ...customPageItems];
 
+    const hasPricingInNav = allNavigationItems.some(item => 
+        item.text?.toLowerCase() === 'pricing' || 
+        item.href?.includes('pricing')
+    );
+
     const renderNavItems = (isMobile = false) => {
         const isTransparentOrGradient = variant === 'header4' || variant === 'header5';
         const textColor = isTransparentOrGradient ? 'text-white' : 'text-gray-600';
@@ -140,9 +145,9 @@ export default function Header({ settings }: HeaderProps) {
         const enableRegistration = settings?.enable_registration !== false;
         if (isAuthenticated) {
             return (
-                <button 
-                    onClick={() => router.visit(route('dashboard'))}
-                    className={`text-white rounded-md font-medium transition-colors ${
+                <Link 
+                    href={route('dashboard')}
+                    className={`text-white rounded-md font-medium transition-colors text-center inline-flex items-center justify-center ${
                         isMobile ? 'px-4 py-2 text-sm w-full' : 
                         variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
                     }`}
@@ -151,16 +156,16 @@ export default function Header({ settings }: HeaderProps) {
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
                 >
                     {t('Dashboard')}
-                </button>
+                </Link>
             );
         }
         
         if (enableRegistration) {
             return (
                 <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'space-x-2'}`}>
-                    <button 
-                        onClick={() => router.visit(route('login'))}
-                        className={`border rounded-md font-medium transition-colors ${
+                    <Link 
+                        href={route('login')}
+                        className={`border rounded-md font-medium transition-colors text-center inline-flex items-center justify-center ${
                             isMobile ? 'px-4 py-2 text-sm w-full' : 
                             variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
                         }`}
@@ -175,10 +180,10 @@ export default function Header({ settings }: HeaderProps) {
                         }}
                     >
                         {t('Sign In')}
-                    </button>
-                    <button 
-                        onClick={() => router.visit(route('register'))}
-                        className={`text-white rounded-md font-medium transition-colors ${
+                    </Link>
+                    <Link 
+                        href={route('register')}
+                        className={`text-white rounded-md font-medium transition-colors text-center inline-flex items-center justify-center ${
                             isMobile ? 'px-4 py-2 text-sm w-full' : 
                             variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
                         }`}
@@ -187,15 +192,15 @@ export default function Header({ settings }: HeaderProps) {
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
                     >
                         {t('Get Started')}
-                    </button>
+                    </Link>
                 </div>
             );
         }
         
         return (
-            <button 
-                onClick={() => router.visit(route('login'))}
-                className={`text-white rounded-md font-medium transition-colors ${
+            <Link 
+                href={route('login')}
+                className={`text-white rounded-md font-medium transition-colors text-center inline-flex items-center justify-center ${
                     isMobile ? 'px-4 py-2 text-sm w-full' : 
                     variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
                 }`}
@@ -204,7 +209,7 @@ export default function Header({ settings }: HeaderProps) {
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
             >
                 {t('Sign In')}
-            </button>
+            </Link>
         );
     };
 
@@ -240,7 +245,7 @@ export default function Header({ settings }: HeaderProps) {
                     
                     <div className={config.desktop}>
                         {renderNavItems()}
-                        {sectionData?.enable_pricing_link !== false && (
+                        {sectionData?.enable_pricing_link !== false && !hasPricingInNav && (
                             <Link 
                                 href={route("pricing.page")}
                                 className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-lg ${
@@ -279,7 +284,7 @@ export default function Header({ settings }: HeaderProps) {
                     <div className="px-2 pt-2 pb-3 space-y-1">
                         {renderNavItems(true)}
                         <div className="px-3 py-2">
-                            {sectionData?.enable_pricing_link !== false && (
+                            {sectionData?.enable_pricing_link !== false && !hasPricingInNav && (
                                 <Link 
                                     href={route("pricing.page")}
                                     className="block px-3 py-2 text-base font-medium text-gray-600"

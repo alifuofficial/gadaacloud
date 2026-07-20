@@ -120,6 +120,14 @@ class HandleInertiaRequests extends Middleware
 
     private function isInstalled(): bool
     {
-        return File::exists(storage_path('installed'));
+        if (File::exists(storage_path('installed')) || env('APP_INSTALLED') === true || env('APP_INSTALLED') === 'true') {
+            return true;
+        }
+
+        try {
+            return \Illuminate\Support\Facades\Schema::hasTable('users');
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }
