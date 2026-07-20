@@ -15,7 +15,7 @@ COPY --from=php-builder /app/vendor ./vendor
 RUN npm run build
 
 # Stage 3: PHP & Apache Production Environment
-FROM php:8.2-apache
+FROM php:8.2-apache-bullseye
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
