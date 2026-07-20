@@ -23,6 +23,16 @@ class CheckInstallation
 
     private function isInstalled(): bool
     {
-        return File::exists(storage_path('installed'));
+        if (File::exists(storage_path('installed')) || env('APP_INSTALLED') === true || env('APP_INSTALLED') === 'true') {
+            return true;
+        }
+
+        try {
+            // Auto-detect installation: if database is connected and 'users' table exists, the app is installed.
+            // This prevents Docker container restarts from resetting installation state when storage/installed is lost.
+            return \Illuminate\Support\Facades\Schema::hasTable('users');
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }
