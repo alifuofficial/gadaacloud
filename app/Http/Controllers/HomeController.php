@@ -22,7 +22,10 @@ class HomeController extends Controller
 
     private function superAdminDashboard()
     {
-        $orderData = Order::selectRaw('MONTH(created_at) as month, COUNT(*) as count, SUM(price) as payments')
+        $dbDriver = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+        $monthSelect = $dbDriver === 'pgsql' ? 'EXTRACT(MONTH FROM created_at) as month' : 'MONTH(created_at) as month';
+
+        $orderData = Order::selectRaw($monthSelect . ', COUNT(*) as count, SUM(price) as payments')
             ->whereYear('created_at', now()->year)
             ->groupBy('month')
             ->orderBy('month')
