@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Auto-log stock changes to inventory audit ledger
         if (class_exists('Workdo\ProductService\Models\WarehouseStock')) {
             \Workdo\ProductService\Models\WarehouseStock::updated(function ($stock) {
