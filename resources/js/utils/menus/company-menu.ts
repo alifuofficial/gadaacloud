@@ -132,20 +132,6 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
         order: 2990,
     },
     {
-        title: t('Import & Export Operations'),
-        href: route('settings.import-export.index'),
-        icon: FileSpreadsheet,
-        permission: 'manage-settings',
-        order: 2995,
-    },
-    {
-        title: t('Inventory Management'),
-        href: route('settings.inventory.index'),
-        icon: ClipboardList,
-        permission: 'manage-settings',
-        order: 2997,
-    },
-    {
         title: t('Settings'),
         href: route('settings.index'),
         icon: Settings,

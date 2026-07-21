@@ -29,11 +29,36 @@ class PlanModuleCheck
             return $next($request);
         } elseif ($user->hasRole('company')) {
             if (($user->plan_expire_date && now()->gt($user->plan_expire_date)) || ($user->active_plan == 0)) {
-                // Plan expired - only allow essential plan routes
-                $allowedRoutes = ['users.leave-impersonation','plans.index', 'plans.subscribe', 'plans.start-trial', 'plans.apply-coupon', 'payment.*.store','payment.*.status', 'bank-transfer.index','plans.assign-free'];
+                // Plan expired or not subscribed - only allow essential plan, dashboard, settings, and domain routes
+                $allowedRoutes = [
+                    'dashboard',
+                    'users.leave-impersonation',
+                    'plans.index', 
+                    'plans.subscribe', 
+                    'plans.start-trial', 
+                    'plans.apply-coupon', 
+                    'payment.*.store',
+                    'payment.*.status', 
+                    'bank-transfer.index',
+                    'plans.assign-free',
+                    'settings.index',
+                    'settings.brand.update',
+                    'settings.company.update',
+                    'settings.system.update',
+                    'settings.currency.update',
+                    'settings.domains.index',
+                    'settings.domains.subdomain.save',
+                    'settings.domains.custom.verify',
+                    'settings.domains.ssl.save',
+                    'settings.domains.search',
+                    'settings.domains.purchase',
+                ];
                 if (!$request->routeIs($allowedRoutes)) {
-                    return redirect()->route('plans.index')
-                        ->with('error', 'Your plan has expired. Please renew your subscription.');
+                    $message = ($user->active_plan == 0)
+                        ? 'Please subscribe to a plan to access this feature.'
+                        : 'Your plan has expired. Please renew your subscription.';
+                    
+                    return redirect()->route('plans.index')->with('error', $message);
                 }
             }
         } else {
@@ -41,8 +66,12 @@ class PlanModuleCheck
             $creator = $user->createdBy;
             if ($creator && ($creator->plan_expire_date && now()->gt($creator->plan_expire_date) || ($creator->active_plan == 0))) {
                 Auth::logout();
-                return redirect()->route('login')
-                    ->with('error', 'Company plan has expired. Please contact your administrator.');
+                
+                $message = ($creator->active_plan == 0)
+                    ? 'Company workspace is pending subscription. Please contact your administrator.'
+                    : 'Company plan has expired. Please contact your administrator.';
+
+                return redirect()->route('login')->with('error', $message);
             }
         }
 
