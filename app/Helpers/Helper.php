@@ -323,7 +323,17 @@ if (!function_exists('assignPlan')) {
             } else {
                 $user->plan_expire_date = null;
             }
+            // Persist the subscription core (active_plan + plan_expire_date + limits) FIRST,
+            // before any module side-effects run. This way plan activation is never lost
+            // even if a DefaultData/GivePermissionToRole listener throws or hangs on a
+            // third-party integration (e.g. Stripe/Paypal/Twilio/ZoomMeeting).
+            $user->total_user = $plan->number_of_users;
+            $user->storage_limit = $plan->storage_limit;
+            $user->save();
+
             // Handle modules assignment
+            $modulesSetupFailed = false;
+            $modulesSetupError = null;
             if ($modules !== null) {
                 $modules_array = explode(',', $modules);
             } else {
@@ -331,41 +341,61 @@ if (!function_exists('assignPlan')) {
             }
            if(!empty($modules))
             {
-                UserActiveModule::where('user_id', $user->id)->delete();
+                try {
+                    UserActiveModule::where('user_id', $user->id)->delete();
 
-                $modules_array = explode(',',$modules);
-                $currentActiveModules = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
-                
-                $user_module = $currentActiveModules;
-                foreach ($modules_array as $module) {
-                    if(!in_array($module,$user_module)){
-                        array_push($user_module,$module);
+                    $modules_array = explode(',',$modules);
+                    $currentActiveModules = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+
+                    $user_module = $currentActiveModules;
+                    foreach ($modules_array as $module) {
+                        if(!in_array($module,$user_module)){
+                            array_push($user_module,$module);
+                        }
                     }
-                }
 
-                $newModules = array_diff($user_module, $currentActiveModules);
-                foreach ($newModules as $moduleName) {
-                    UserActiveModule::create([
-                        'user_id' => $user->id,
-                        'module' => $moduleName,
-                    ]);
-                }
-                DefaultData::dispatch($user->id, $modules);
-                $client_role = Role::where('name', 'client')->where('created_by', $user->id)->first();
-                $staff_role = Role::where('name', 'staff')->where('created_by', $user->id)->first();
+                    $newModules = array_diff($user_module, $currentActiveModules);
+                    foreach ($newModules as $moduleName) {
+                        UserActiveModule::create([
+                            'user_id' => $user->id,
+                            'module' => $moduleName,
+                        ]);
+                    }
 
-                if (!empty($client_role)) {
-                    GivePermissionToRole::dispatch($client_role->id, 'client', $modules);
-                }
-                if (!empty($staff_role)) {
-                    GivePermissionToRole::dispatch($staff_role->id, 'staff', $modules);
+                    // Side-effect-heavy listeners. Run them after the plan is saved,
+                    // and isolate their failures so a misbehaving integration can never
+                    // roll back plan activation. Logged for diagnosis but non-fatal.
+                    try {
+                        DefaultData::dispatch($user->id, $modules);
+                    } catch (\Throwable $e) {
+                        $modulesSetupFailed = true;
+                        $modulesSetupError = $e->getMessage();
+                        \Illuminate\Support\Facades\Log::warning('assignPlan: DefaultData listener failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
+                    }
+
+                    $client_role = Role::where('name', 'client')->where('created_by', $user->id)->first();
+                    $staff_role = Role::where('name', 'staff')->where('created_by', $user->id)->first();
+
+                    if (!empty($client_role)) {
+                        try {
+                            GivePermissionToRole::dispatch($client_role->id, 'client', $modules);
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('assignPlan: GivePermissionToRole(client) failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
+                        }
+                    }
+                    if (!empty($staff_role)) {
+                        try {
+                            GivePermissionToRole::dispatch($staff_role->id, 'staff', $modules);
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('assignPlan: GivePermissionToRole(staff) failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $modulesSetupFailed = true;
+                    $modulesSetupError = $e->getMessage();
+                    \Illuminate\Support\Facades\Log::warning('assignPlan: module setup failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
                 }
             }
-            
-            // Set user limits from plan (don't modify the plan itself)
-            $user->total_user = $plan->number_of_users;
-            $user->storage_limit = $plan->storage_limit;
-            $user->save();
 
             // User count management logic
             $users = User::where('created_by', $user->id)->where('is_disable', 0)->get();
