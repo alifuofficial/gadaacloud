@@ -71,11 +71,15 @@ class DynadotService
                 ];
             }
 
-            $header = $data['SearchResponse']['SearchHeader'] ?? [];
-            $successCode = $header['SuccessCode'] ?? -1;
+            $successCode = $data['SearchResponse']['ResponseCode'] 
+                ?? $data['SearchResponse']['SearchHeader']['SuccessCode'] 
+                ?? -1;
 
             if ($successCode != 0) {
-                $errorMsg = $header['Error'] ?? null;
+                $errorMsg = $data['SearchResponse']['SearchHeader']['Error'] 
+                    ?? $data['SearchResponse']['Error'] 
+                    ?? $data['SearchResponse']['ErrorMessage'] 
+                    ?? null;
                 if (is_array($errorMsg)) {
                     $errorMsg = implode(', ', $errorMsg);
                 }
@@ -89,8 +93,14 @@ class DynadotService
                 ];
             }
 
-            $results = $data['SearchResponse']['SearchContent']['Results'] ?? [];
-            $domainResult = collect($results)->firstWhere('Domain', $domain);
+            $results = $data['SearchResponse']['SearchResults'] 
+                ?? $data['SearchResponse']['SearchContent']['Results'] 
+                ?? [];
+
+            $domainResult = collect($results)->first(function ($item) use ($domain) {
+                return (strtolower($item['Domain'] ?? '') === $domain) 
+                    || (strtolower($item['DomainName'] ?? '') === $domain);
+            });
 
             if (!$domainResult) {
                 return [
@@ -100,8 +110,11 @@ class DynadotService
                 ];
             }
 
+            $availValue = strtolower($domainResult['Available'] ?? '');
+            $isAvailable = ($availValue === 'yes' || $availValue === 'true' || $availValue === '1');
+
             return [
-                'available' => strtolower($domainResult['Available'] ?? '') === 'yes',
+                'available' => $isAvailable,
                 'domain' => $domain,
                 'error' => null
             ];
@@ -161,11 +174,15 @@ class DynadotService
                 ];
             }
 
-            $header = $data['RegisterResponse']['RegisterHeader'] ?? [];
-            $successCode = $header['SuccessCode'] ?? -1;
+            $successCode = $data['RegisterResponse']['ResponseCode'] 
+                ?? $data['RegisterResponse']['RegisterHeader']['SuccessCode'] 
+                ?? -1;
 
             if ($successCode != 0) {
-                $errorMsg = $header['Error'] ?? null;
+                $errorMsg = $data['RegisterResponse']['RegisterHeader']['Error'] 
+                    ?? $data['RegisterResponse']['Error'] 
+                    ?? $data['RegisterResponse']['ErrorMessage'] 
+                    ?? null;
                 if (is_array($errorMsg)) {
                     $errorMsg = implode(', ', $errorMsg);
                 }
@@ -179,7 +196,9 @@ class DynadotService
                 ];
             }
 
-            $content = $data['RegisterResponse']['RegisterContent'] ?? [];
+            $content = $data['RegisterResponse']['RegisterContent'] 
+                ?? $data['RegisterResponse'] 
+                ?? [];
             $expirationMs = $content['Expiration'] ?? null;
             $expiresAt = null;
 
