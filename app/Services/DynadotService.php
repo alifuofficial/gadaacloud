@@ -61,6 +61,7 @@ class DynadotService
             }
 
             $data = $response->json();
+            \Log::info('Dynadot API Search Response:', ['data' => $data, 'url' => $baseUrl, 'domain' => $domain]);
             
             if (!isset($data['SearchResponse'])) {
                 return [
@@ -74,10 +75,17 @@ class DynadotService
             $successCode = $header['SuccessCode'] ?? -1;
 
             if ($successCode != 0) {
+                $errorMsg = $header['Error'] ?? null;
+                if (is_array($errorMsg)) {
+                    $errorMsg = implode(', ', $errorMsg);
+                }
+                if (empty($errorMsg)) {
+                    $errorMsg = $response->body() ?: __('Unknown Dynadot API error.');
+                }
                 return [
                     'available' => false,
                     'domain' => $domain,
-                    'error' => $header['Error'] ?? __('Unknown Dynadot API error.')
+                    'error' => $errorMsg
                 ];
             }
 
@@ -157,10 +165,17 @@ class DynadotService
             $successCode = $header['SuccessCode'] ?? -1;
 
             if ($successCode != 0) {
+                $errorMsg = $header['Error'] ?? null;
+                if (is_array($errorMsg)) {
+                    $errorMsg = implode(', ', $errorMsg);
+                }
+                if (empty($errorMsg)) {
+                    $errorMsg = $response->body() ?: __('Unknown Dynadot API registration error.');
+                }
                 return [
                     'success' => false,
                     'expires_at' => null,
-                    'error' => $header['Error'] ?? __('Unknown Dynadot API registration error.')
+                    'error' => $errorMsg
                 ];
             }
 
