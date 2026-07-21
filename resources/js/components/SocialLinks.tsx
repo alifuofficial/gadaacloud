@@ -1,5 +1,13 @@
 import React from 'react';
-import * as LucideIcons from 'lucide-react';
+import {
+    Facebook, Twitter, Instagram, Linkedin, Youtube, Github, Globe, Mail, Phone,
+    MapPin, MessageSquare, Send, Link, MessageCircle, Share2, Info, User, HelpCircle, AtSign
+} from 'lucide-react';
+
+const LucideIcons: Record<string, any> = {
+    Facebook, Twitter, Instagram, Linkedin, Youtube, Github, Globe, Mail, Phone,
+    MapPin, MessageSquare, Send, Link, MessageCircle, Share2, Info, User, HelpCircle, AtSign
+};
 import { customSvgs } from '@/components/ui/icon-picker';
 
 interface SocialLink {

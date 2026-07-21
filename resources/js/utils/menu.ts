@@ -3,7 +3,41 @@ import { usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { getSuperAdminMenu } from './menus/superadmin-menu';
 import { getCompanyMenu } from './menus/company-menu';
-import * as LucideIcons from 'lucide-react';
+import {
+    LayoutGrid, Users, Warehouse, ArrowRightLeft, Package, Tag, Tags, Settings,
+    Image, CreditCard, Headphones, ShoppingCart, Kanban, Calendar, MessageCircle,
+    Replace, Receipt, Globe, FileSpreadsheet, ClipboardList, FileText, Briefcase,
+    Shield, Lock, Mail, Bell, Plus, Home, FileInput, HelpCircle, Activity,
+    AlertCircle, AlertTriangle, AlignLeft, Anchor, Aperture, Archive, ArrowDown,
+    ArrowLeft, ArrowRight, ArrowUp, BarChart2, Book, Bookmark, Box, Camera,
+    Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+    Clock, Cloud, Code, Compass, Copy, Cpu, Database, Edit, Eye, EyeOff,
+    File, Folder, Gift, HardDrive, Heart, Info, Key, Landmark, LifeBuoy,
+    Link, List, Map, MapPin, Maximize2, Menu, Mic, Minimize2, Monitor,
+    Moon, MoreHorizontal, MoreVertical, Music, Paperclip, PenTool, Percent,
+    Phone, Play, Power, Printer, Radio, Save, Search, Send, Share2,
+    Sliders, Star, Sun, Tablet, Terminal, ThumbsDown, ThumbsUp, Trash2,
+    TrendingUp, Truck, Tv, Umbrella, Unlock, Upload, User, UserPlus,
+    Video, Volume2, Wifi, Wrench, X, XCircle, Zap
+} from 'lucide-react';
+
+const LucideIcons: Record<string, any> = {
+    LayoutGrid, Users, Warehouse, ArrowRightLeft, Package, Tag, Tags, Settings,
+    Image, CreditCard, Headphones, ShoppingCart, Kanban, Calendar, MessageCircle,
+    Replace, Receipt, Globe, FileSpreadsheet, ClipboardList, FileText, Briefcase,
+    Shield, Lock, Mail, Bell, Plus, Home, FileInput, HelpCircle, Activity,
+    AlertCircle, AlertTriangle, AlignLeft, Anchor, Aperture, Archive, ArrowDown,
+    ArrowLeft, ArrowRight, ArrowUp, BarChart2, Book, Bookmark, Box, Camera,
+    Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+    Clock, Cloud, Code, Compass, Copy, Cpu, Database, Edit, Eye, EyeOff,
+    File, Folder, Gift, HardDrive, Heart, Info, Key, Landmark, LifeBuoy,
+    Link, List, Map, MapPin, Maximize2, Menu, Mic, Minimize2, Monitor,
+    Moon, MoreHorizontal, MoreVertical, Music, Paperclip, PenTool, Percent,
+    Phone, Play, Power, Printer, Radio, Save, Search, Send, Share2,
+    Sliders, Star, Sun, Tablet, Terminal, ThumbsDown, ThumbsUp, Trash2,
+    TrendingUp, Truck, Tv, Umbrella, Unlock, Upload, User, UserPlus,
+    Video, Volume2, Wifi, Wrench, X, XCircle, Zap
+};
 
 // Get role-based core menu items
 const getCoreMenuItems = (userRoles: string[], t: (key: string) => string): NavItem[] => {

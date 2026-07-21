@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
-import { Search, X } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import {
+    Home, User, Settings, Search, Bell, Mail, Phone, Calendar, Clock, Star,
+    Heart, Bookmark, Share, Share2, Download, Upload, Edit, Trash, Trash2, Plus, Minus, Check,
+    X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, ArrowRight,
+    ArrowUp, ArrowDown, Eye, EyeOff, Lock, Unlock, Shield, AlertCircle, Info,
+    HelpCircle, Menu, MoreHorizontal, MoreVertical, Grid, LayoutGrid, List, Filter, SortAsc, SortDesc,
+    RefreshCw, Power, Wifi, Battery, Volume, Volume2, Camera, Image, File, Folder,
+    Database, Server, Cloud, Globe, Map, Navigation, Compass, Target,
+    Facebook, Twitter, Instagram, Linkedin, Youtube, Github, Figma
+} from 'lucide-react';
+
+const LucideIcons: Record<string, any> = {
+    Home, User, Settings, Search, Bell, Mail, Phone, Calendar, Clock, Star,
+    Heart, Bookmark, Share, Share2, Download, Upload, Edit, Trash, Trash2, Plus, Minus, Check,
+    X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowLeft, ArrowRight,
+    ArrowUp, ArrowDown, Eye, EyeOff, Lock, Unlock, Shield, AlertCircle, Info,
+    HelpCircle, Menu, MoreHorizontal, MoreVertical, Grid, LayoutGrid, List, Filter, SortAsc, SortDesc,
+    RefreshCw, Power, Wifi, Battery, Volume, Volume2, Camera, Image, File, Folder,
+    Database, Server, Cloud, Globe, Map, Navigation, Compass, Target,
+    Facebook, Twitter, Instagram, Linkedin, Youtube, Github, Figma
+};
 import { Button } from './button';
 import { Input } from './input';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
