@@ -11,6 +11,22 @@ class StoreEmployeeRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Sanitise inputs before validation.
+     *
+     * The employee-create form sends manager_id = 'none' when no manager is selected.
+     * On Postgres the literal string 'none' would otherwise hit the `exists:employees,id`
+     * rule with a non-numeric value, producing SQLSTATE[22P02]: invalid input syntax
+     * for type bigint — and abort the whole request with HTTP 500 before the controller's
+     * own 'none' => null coercion (EmployeeController::store()) ever runs.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (in_array($this->input('manager_id'), ['', 'none', 'null'], true)) {
+            $this->merge(['manager_id' => null]);
+        }
+    }
+
     public function rules(): array
     {
         return [

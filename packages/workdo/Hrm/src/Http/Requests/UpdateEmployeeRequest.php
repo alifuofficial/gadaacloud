@@ -11,6 +11,19 @@ class UpdateEmployeeRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Sanitise inputs before validation (mirror of StoreEmployeeRequest).
+     * The employee-edit form sends manager_id = 'none' when no manager is selected.
+     * On Postgres the `exists:employees,id` rule would otherwise choke on the
+     * non-numeric string 'none' with SQLSTATE[22P02] and abort the update with 500.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (in_array($this->input('manager_id'), ['', 'none', 'null'], true)) {
+            $this->merge(['manager_id' => null]);
+        }
+    }
+
     public function rules(): array
     {
         return [
