@@ -127,14 +127,15 @@ class HandleInertiaRequests extends Middleware
             // If subscribed, filter permissions by active plan modules
             $activeModules = \App\Models\Plan::getUserSubscriptionModules($creator->id);
             $activeModulesLower = array_map('strtolower', $activeModules);
-            
+
             // Query all permissions from the database to map permission names to their modules
             $permissionModules = \DB::table('permissions')
                 ->whereIn('name', $permissions)
                 ->pluck('module', 'name')
                 ->toArray();
 
-            // Map permission module names to package names
+            // Map permission module names to package names (for sub-features that live inside a
+            // different addon than their module slug suggests).
             $moduleMap = [
                 'sales-proposals' => 'Lead',
                 'sales-invoices' => 'Account',
@@ -148,19 +149,46 @@ class HandleInertiaRequests extends Middleware
                 'inventory-management' => 'InventoryManagement',
             ];
 
-            return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModulesLower, $moduleMap) {
+            // All addon module names (StudlyCase), so we can recognise "sub-module groups"
+            // like 'employees', 'payrolls', 'attendances', 'leave-applications' ...
+            // These permission submodule strings are NOT themselves addons — they live inside
+            // a parent package (e.g. 'Hrm'). The package subscription gate is already enforced
+            // elsewhere (ActivatedModule() → activatedPackages in JS sidebar + PlanModuleCheck
+            // route middleware), so here we must NOT strip them, otherwise subscribed users only
+            // see one item per package (e.g. HRM showed only "System Setup").
+            $allAddonModulesLower = \App\Models\AddOn::pluck('module')
+                ->map(fn($m) => strtolower($m))
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // Core modules always allowed regardless of subscription (case-insensitive)
+            $coreModulesLower = ['dashboard', 'users', 'roles', 'settings', 'plans', 'media', 'messenger'];
+
+            return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModulesLower, $moduleMap, $allAddonModulesLower, $coreModulesLower) {
                 $module = $permissionModules[$permission] ?? null;
-                
-                // Always allow core modules (dashboard, users, roles, settings, plans, media, messenger)
-                if (!$module || in_array($module, ['dashboard', 'users', 'roles', 'settings', 'plans', 'media', 'messenger'])) {
+
+                // Always allow permission rows with no recorded module, or core modules
+                if (!$module || in_array(strtolower($module), $coreModulesLower)) {
                     return true;
                 }
 
-                // Check mapping or standard StudlyCase match (e.g. 'hrm' -> 'Hrm')
+                // Check StudlyCase mapping or exact module_MAP match against subscribed packages
                 $packageName = $moduleMap[$module] ?? \Illuminate\Support\Str::studly($module);
-                
-                // Allow only if the package name is in the active modules list (case-insensitive)
-                return in_array(strtolower($packageName), $activeModulesLower);
+                if (in_array(strtolower($packageName), $activeModulesLower)) {
+                    return true;
+                }
+
+                // The permission's submodule slug (e.g. 'employees', 'payrolls') is not itself
+                // an AddOn — meaning it belongs inside a parent package (whichever registered it).
+                // Don't strip: the parent-package subscription gate is enforced upstream
+                // (activatedPackages in resources/js/utils/menu.ts + PlanModuleCheck middleware).
+                if (!in_array(strtolower($packageName), $allAddonModulesLower) && !in_array(strtolower($module), $allAddonModulesLower)) {
+                    return true;
+                }
+
+                // This sub-module really is an addon the user hasn't subscribed to — filter out.
+                return false;
             }));
         }
         return [];
