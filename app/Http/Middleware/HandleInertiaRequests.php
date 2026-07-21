@@ -121,7 +121,7 @@ class HandleInertiaRequests extends Middleware
                     'manage-bank-transfer-requests',
                     'manage-settings'
                 ];
-                return array_intersect($permissions, $allowed);
+                return array_values(array_intersect($permissions, $allowed));
             }
 
             // If subscribed, filter permissions by active plan modules
