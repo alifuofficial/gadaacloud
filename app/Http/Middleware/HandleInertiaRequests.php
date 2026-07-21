@@ -149,8 +149,10 @@ class HandleInertiaRequests extends Middleware
 
             return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModules, $moduleMap) {
                 $module = $permissionModules[$permission] ?? null;
-                if (!$module) {
-                    return true; // If no module is associated, allow it (e.g. core dashboard, users)
+                
+                // Always allow core modules (dashboard, users, roles, settings, plans, media, messenger)
+                if (!$module || in_array($module, ['dashboard', 'users', 'roles', 'settings', 'plans', 'media', 'messenger'])) {
+                    return true;
                 }
 
                 // Check mapping or standard StudlyCase match (e.g. 'hrm' -> 'Hrm')
