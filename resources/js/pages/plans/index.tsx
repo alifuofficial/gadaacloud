@@ -197,6 +197,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
 
                 {/* Plans Content */}
                 {activePlans.length > 0 ? (
+                    <>
                     <div className="space-y-6 overflow-x-auto pt-6 hidden md:block">
                         {/* Plans Header Cards */}
                         <div className="grid gap-6" style={{ gridTemplateColumns: `300px repeat(${activePlans.length}, 280px)`, minWidth: `${300 + (activePlans.length * 280) + ((activePlans.length - 1) * 24)}px` }}>
@@ -566,6 +567,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
                             );
                         })}
                     </div>
+                    </>
                 ) : (
                     <div className="text-center py-12">
                         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
