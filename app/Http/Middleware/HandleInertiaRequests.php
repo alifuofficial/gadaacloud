@@ -126,6 +126,7 @@ class HandleInertiaRequests extends Middleware
 
             // If subscribed, filter permissions by active plan modules
             $activeModules = \App\Models\Plan::getUserSubscriptionModules($creator->id);
+            $activeModulesLower = array_map('strtolower', $activeModules);
             
             // Query all permissions from the database to map permission names to their modules
             $permissionModules = \DB::table('permissions')
@@ -147,7 +148,7 @@ class HandleInertiaRequests extends Middleware
                 'inventory-management' => 'InventoryManagement',
             ];
 
-            return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModules, $moduleMap) {
+            return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModulesLower, $moduleMap) {
                 $module = $permissionModules[$permission] ?? null;
                 
                 // Always allow core modules (dashboard, users, roles, settings, plans, media, messenger)
@@ -158,8 +159,8 @@ class HandleInertiaRequests extends Middleware
                 // Check mapping or standard StudlyCase match (e.g. 'hrm' -> 'Hrm')
                 $packageName = $moduleMap[$module] ?? \Illuminate\Support\Str::studly($module);
                 
-                // Allow only if the package name is in the active modules list
-                return in_array($packageName, $activeModules);
+                // Allow only if the package name is in the active modules list (case-insensitive)
+                return in_array(strtolower($packageName), $activeModulesLower);
             }));
         }
         return [];
