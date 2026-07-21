@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 export default function Register({ baseDomain = 'gadaa.cloud' }: { baseDomain?: string }) {
     const { t } = useTranslation();
     const [step, setStep] = useState(1);
+    const [subdomainStatus, setSubdomainStatus] = useState<'checking' | 'available' | 'taken' | 'invalid' | null>(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -35,6 +36,42 @@ export default function Register({ baseDomain = 'gadaa.cloud' }: { baseDomain?: 
             setStep(3);
         }
     }, [errors]);
+
+    // Live Subdomain Availability Check with Debounce
+    useEffect(() => {
+        if (!data.subdomain.trim()) {
+            setSubdomainStatus(null);
+            return;
+        }
+
+        const subdomainRegex = /^[a-z0-9-]+$/;
+        if (!subdomainRegex.test(data.subdomain)) {
+            setSubdomainStatus('invalid');
+            errors.subdomain = t('Subdomain can only contain lowercase letters, numbers, and dashes');
+            return;
+        }
+
+        setSubdomainStatus('checking');
+        errors.subdomain = '';
+
+        const timer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/check-subdomain?subdomain=${data.subdomain}`);
+                const res = await response.json();
+                if (res.available) {
+                    setSubdomainStatus('available');
+                    errors.subdomain = '';
+                } else {
+                    setSubdomainStatus('taken');
+                    errors.subdomain = res.message || t('This subdomain is already taken');
+                }
+            } catch (err) {
+                setSubdomainStatus(null);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [data.subdomain]);
 
     const validateStep1 = () => {
         let valid = true;
@@ -67,6 +104,15 @@ export default function Register({ baseDomain = 'gadaa.cloud' }: { baseDomain?: 
             valid = false;
         } else if (!subdomainRegex.test(data.subdomain)) {
             errors.subdomain = t('Subdomain can only contain lowercase letters, numbers, and dashes');
+            valid = false;
+        } else if (subdomainStatus === 'taken') {
+            errors.subdomain = t('Subdomain is already taken');
+            valid = false;
+        } else if (subdomainStatus === 'checking') {
+            errors.subdomain = t('Checking availability...');
+            valid = false;
+        } else if (subdomainStatus === 'invalid') {
+            errors.subdomain = t('Invalid subdomain format');
             valid = false;
         } else {
             errors.subdomain = '';
@@ -209,6 +255,27 @@ export default function Register({ baseDomain = 'gadaa.cloud' }: { baseDomain?: 
                                         .{baseDomain}
                                     </span>
                                 </div>
+                                {subdomainStatus === 'checking' && (
+                                    <p className="text-xs text-blue-500 mt-1 flex items-center gap-1.5 animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></span>
+                                        {t('Checking availability...')}
+                                    </p>
+                                )}
+                                {subdomainStatus === 'available' && (
+                                    <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1.5 font-medium">
+                                        ✨ {t('Subdomain is available!')}
+                                    </p>
+                                )}
+                                {subdomainStatus === 'taken' && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1.5 font-medium">
+                                        ❌ {t('This subdomain is already taken')}
+                                    </p>
+                                )}
+                                {subdomainStatus === 'invalid' && (
+                                    <p className="text-xs text-amber-500 mt-1 flex items-center gap-1.5 font-medium">
+                                        ⚠️ {t('Invalid format')}
+                                    </p>
+                                )}
                                 <InputError message={errors.subdomain} />
                                 
                                 <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
@@ -278,7 +345,8 @@ export default function Register({ baseDomain = 'gadaa.cloud' }: { baseDomain?: 
                         <Button
                             type="button"
                             onClick={handleNext}
-                            className="flex-1 bg-primary text-white py-2.5 text-sm font-medium tracking-wide transition-all duration-200 rounded-md shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                            disabled={step === 2 && subdomainStatus !== 'available'}
+                            className="flex-1 bg-primary text-white py-2.5 text-sm font-medium tracking-wide transition-all duration-200 rounded-md shadow-md hover:shadow-lg transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {t('NEXT')}
                         </Button>

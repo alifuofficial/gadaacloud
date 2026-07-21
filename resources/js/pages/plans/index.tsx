@@ -197,7 +197,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
 
                 {/* Plans Content */}
                 {activePlans.length > 0 ? (
-                    <div className="space-y-6 overflow-x-auto pt-6">
+                    <div className="space-y-6 overflow-x-auto pt-6 hidden md:block">
                         {/* Plans Header Cards */}
                         <div className="grid gap-6" style={{ gridTemplateColumns: `300px repeat(${activePlans.length}, 280px)`, minWidth: `${300 + (activePlans.length * 280) + ((activePlans.length - 1) * 24)}px` }}>
                             {/* Features Header */}
@@ -417,6 +417,154 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
                                     })}
                                 </div>
                         </div>
+                    </div>
+
+                    {/* Mobile View: Clean Responsive Plan Cards */}
+                    <div className="block md:hidden space-y-6 pt-4">
+                        {activePlans.map((plan) => {
+                            const enabledFeatures = allModules.filter(module => hasModule(plan, module));
+                            const totalFeatures = allModules.length;
+
+                            return (
+                                <div key={plan.id} className={`bg-white dark:bg-gray-800 rounded-2xl p-6 border-2 relative transition-all duration-300 ${
+                                    plan.id === mostPopularPlanId && activePlans.length > 1
+                                        ? 'border-primary ring-2 ring-primary/20'
+                                        : 'border-gray-200 dark:border-gray-700'
+                                } ${!plan.status ? 'grayscale opacity-50' : ''}`}>
+                                    
+                                    {plan.id === mostPopularPlanId && activePlans.length > 1 && (
+                                        <div className="absolute -top-4 left-6 whitespace-nowrap z-10">
+                                            <Badge className="bg-primary text-white px-3 py-1.5 text-xs font-bold shadow-lg border-2 border-white dark:border-gray-800">
+                                                ⭐ {t('Most Popular')}
+                                            </Badge>
+                                        </div>
+                                    )}
+
+                                    {isCompanyUser && isCurrentlySubscribed(plan) && (
+                                        <div className="absolute top-4 right-4 bg-primary/20 text-primary dark:bg-primary/30 dark:text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-primary/35 shadow-sm">
+                                            {t('Active')}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{plan.description}</p>
+                                        </div>
+
+                                        <div className="py-2 border-y border-gray-100 dark:border-gray-700">
+                                            {plan.free_plan ? (
+                                                <div className="flex items-baseline space-x-1">
+                                                    <span className="text-3xl font-black text-primary">{t('Free')}</span>
+                                                    <span className="text-xs text-gray-500 font-semibold">{t('Forever')}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-baseline space-x-1">
+                                                    <span className="text-3xl font-black text-gray-900 dark:text-white">
+                                                        {formatAdminCurrency(pricingPeriod === 'monthly' ? plan.package_price_monthly : plan.package_price_yearly).replace('.00', '')}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                                                        /{pricingPeriod === 'monthly' ? t('mo') : t('yr')}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Card limits */}
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                            <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                                                <p className="text-gray-500 font-medium">{t('Users Limit')}</p>
+                                                <p className="text-gray-900 dark:text-white font-bold mt-0.5">
+                                                    {plan.number_of_users === -1 ? t('Unlimited') : `${plan.number_of_users} ${t('users')}`}
+                                                </p>
+                                            </div>
+                                            <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                                                <p className="text-gray-500 font-medium">{t('Storage Limit')}</p>
+                                                <p className="text-gray-900 dark:text-white font-bold mt-0.5">
+                                                    {formatStorage(plan.storage_limit)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Collapsible Features list */}
+                                        <div className="space-y-2">
+                                            <details className="group border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+                                                <summary className="flex items-center justify-between p-3 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                    <span>{t('Included Features')} ({enabledFeatures.length}/{totalFeatures})</span>
+                                                    <span className="transition-transform group-open:rotate-180">
+                                                        ▼
+                                                    </span>
+                                                </summary>
+                                                <div className="p-3 pt-0 border-t border-gray-100 dark:border-gray-800 space-y-2 max-h-[220px] overflow-y-auto">
+                                                    {allModules.map((module) => {
+                                                        const isIncluded = hasModule(plan, module);
+                                                        return (
+                                                            <div key={module.module} className="flex items-center justify-between text-xs py-1">
+                                                                <span className={`capitalize ${isIncluded ? 'text-gray-800 dark:text-gray-200 font-medium' : 'text-gray-400 line-through'}`}>
+                                                                    {module.alias}
+                                                                </span>
+                                                                {isIncluded ? (
+                                                                    <span className="text-green-600 font-bold">✓</span>
+                                                                ) : (
+                                                                    <span className="text-gray-300 font-bold">✗</span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </details>
+                                        </div>
+
+                                        {/* Action buttons */}
+                                        {isCompanyUser && (
+                                            <div className="pt-2 space-y-2">
+                                                {isCurrentlySubscribed(plan) && currentSubscription ? (
+                                                    <div className="text-center p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                                        <p className="text-xs text-green-600 dark:text-green-300">
+                                                            {t('Expires on')} {currentSubscription.expire_date ? formatDate(currentSubscription.expire_date) : t('Lifetime')}
+                                                        </p>
+                                                    </div>
+                                                ) : auth.user?.trial_expire_date && auth.user.active_plan === plan.id ? (
+                                                    <div className="text-center p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                                        <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                                                            {t('Trial expires on')} {formatDate(auth.user.trial_expire_date)}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        {plan.free_plan ? (
+                                                            <Button
+                                                                className="w-full py-2"
+                                                                onClick={() => handleAssignFreePlan(plan)}
+                                                            >
+                                                                {t('Subscribe to Plan')}
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                className="w-full py-2"
+                                                                onClick={() => router.visit(route('plans.subscribe', { plan: plan.id, period: pricingPeriod }))}
+                                                            >
+                                                                {t('Subscribe to Plan')}
+                                                            </Button>
+                                                        )}
+                                                        {canStartTrial(plan) && (
+                                                            <Button
+                                                                className="w-full py-2"
+                                                                variant="outline"
+                                                                onClick={() => handleStartTrial(plan)}
+                                                            >
+                                                                <Clock className="h-4 w-4 mr-2" />
+                                                                {t('Start Trial')} ({plan.trial_days}d)
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="text-center py-12">

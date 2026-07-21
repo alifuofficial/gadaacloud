@@ -110,4 +110,23 @@ class RegisteredUserController extends Controller
             return back()->withErrors(['error' => 'Registration failed. Please try again.']);
         }
     }
+
+    /**
+     * Check if a subdomain is available.
+     */
+    public function checkSubdomain(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $subdomain = strtolower(trim($request->query('subdomain')));
+        if (empty($subdomain)) {
+            return response()->json(['available' => false, 'message' => __('Subdomain is required')]);
+        }
+
+        $reserved = ['admin', 'superadmin', 'www', 'mail', 'api', 'localhost', 'gadaa', 'gadaacloud'];
+        if (in_array($subdomain, $reserved)) {
+            return response()->json(['available' => false, 'message' => __('This subdomain is reserved')]);
+        }
+
+        $exists = \DB::table('tenant_domains')->where('subdomain', $subdomain)->exists();
+        return response()->json(['available' => !$exists, 'message' => !$exists ? __('Subdomain is available') : __('Subdomain is already taken')]);
+    }
 }

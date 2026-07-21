@@ -92,12 +92,73 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Get user permissions (placeholder - implement based on your permission system)
+     * Get user permissions filtered by active plan and packages
      */
     private function getUserPermissions($user): array
     {
         if (method_exists($user, 'getAllPermissions')) {
-            return $user->getAllPermissions()->pluck('name')->toArray();
+            $permissions = $user->getAllPermissions()->pluck('name')->toArray();
+
+            // Check if superadmin
+            if ($user->hasRole('superadmin')) {
+                return $permissions;
+            }
+
+            // Find company creator user
+            $creator = $user->type === 'company' ? $user : \App\Models\User::find($user->created_by);
+            if (!$creator) {
+                return $permissions;
+            }
+
+            // Check if plan is inactive or expired
+            $planExpired = $creator->plan_expire_date && now()->gt($creator->plan_expire_date);
+            if ($creator->active_plan == 0 || $planExpired) {
+                // Return ONLY essential billing and dashboard permissions
+                $allowed = [
+                    'manage-dashboard',
+                    'manage-plans',
+                    'manage-orders',
+                    'manage-bank-transfer-requests',
+                    'manage-settings'
+                ];
+                return array_intersect($permissions, $allowed);
+            }
+
+            // If subscribed, filter permissions by active plan modules
+            $activeModules = \App\Models\Plan::getUserSubscriptionModules($creator->id);
+            
+            // Query all permissions from the database to map permission names to their modules
+            $permissionModules = \DB::table('permissions')
+                ->whereIn('name', $permissions)
+                ->pluck('module', 'name')
+                ->toArray();
+
+            // Map permission module names to package names
+            $moduleMap = [
+                'sales-proposals' => 'Lead',
+                'sales-invoices' => 'Account',
+                'purchase-invoices' => 'Account',
+                'warehouses' => 'Account',
+                'transfers' => 'Account',
+                'helpdesk-tickets' => 'SupportTicket',
+                'support-ticket' => 'SupportTicket',
+                'messenger' => 'Messenger',
+                'import-export' => 'ImportExport',
+                'inventory-management' => 'InventoryManagement',
+            ];
+
+            return array_values(array_filter($permissions, function($permission) use ($permissionModules, $activeModules, $moduleMap) {
+                $module = $permissionModules[$permission] ?? null;
+                if (!$module) {
+                    return true; // If no module is associated, allow it (e.g. core dashboard, users)
+                }
+
+                // Check mapping or standard StudlyCase match (e.g. 'hrm' -> 'Hrm')
+                $packageName = $moduleMap[$module] ?? \Illuminate\Support\Str::studly($module);
+                
+                // Allow only if the package name is in the active modules list
+                return in_array($packageName, $activeModules);
+            }));
         }
         return [];
     }
