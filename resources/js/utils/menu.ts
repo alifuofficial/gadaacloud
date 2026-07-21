@@ -99,20 +99,26 @@ const groupMenusByParent = (menuItems: NavItem[], packageMenuItems: NavItem[]): 
 
 // Filter menu items based on permissions
 const filterByPermission = (items: NavItem[], userPermissions: string[]): NavItem[] => {
+    const permissions = Array.isArray(userPermissions) 
+        ? userPermissions 
+        : typeof userPermissions === 'object' && userPermissions !== null 
+            ? Object.values(userPermissions) as string[]
+            : [];
+
     return items.filter(item => {
         if (!item.permission) {
             if (item.children) {
-                item.children = filterByPermission(item.children, userPermissions);
+                item.children = filterByPermission(item.children, permissions);
             }
             return true;
         }
 
-        if (!userPermissions.includes(item.permission)) {
+        if (!permissions.includes(item.permission)) {
             return false;
         }
 
         if (item.children) {
-            item.children = filterByPermission(item.children, userPermissions);
+            item.children = filterByPermission(item.children, permissions);
             return item.children.length > 0;
         }
 
@@ -124,9 +130,28 @@ const filterByPermission = (items: NavItem[], userPermissions: string[]): NavIte
 export const allMenuItems = (): NavItem[] => {
     const { auth } = usePage().props as any;
     const { t } = useTranslation();
-    const userPermissions = auth?.user?.permissions || [];
-    const userRoles = auth?.user?.roles || [];
-    const activatedPackages = auth?.user?.activatedPackages || [];
+    
+    // Safety convert if Spatie permissions/roles are returned as objects (associative arrays)
+    const rawPermissions = auth?.user?.permissions || [];
+    const userPermissions = Array.isArray(rawPermissions) 
+        ? rawPermissions 
+        : typeof rawPermissions === 'object' && rawPermissions !== null 
+            ? Object.values(rawPermissions) as string[]
+            : [];
+
+    const rawRoles = auth?.user?.roles || [];
+    const userRoles = Array.isArray(rawRoles) 
+        ? rawRoles 
+        : typeof rawRoles === 'object' && rawRoles !== null 
+            ? Object.values(rawRoles) as string[]
+            : [];
+
+    const rawPackages = auth?.user?.activatedPackages || [];
+    const activatedPackages = Array.isArray(rawPackages) 
+        ? rawPackages 
+        : typeof rawPackages === 'object' && rawPackages !== null 
+            ? Object.values(rawPackages) as string[]
+            : [];
 
     const coreMenuItems = getCoreMenuItems(userRoles, t);
 
