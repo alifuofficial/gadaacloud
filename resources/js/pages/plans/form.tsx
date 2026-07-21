@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { SubscriptionInfo } from '@/components/ui/subscription-info';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatAdminCurrency, getPackageAlias, getPackageFavicon } from '@/utils/helpers';
+import ModuleIcon from '@/components/ui/module-icon';
 
 interface Plan {
     id?: number;
@@ -262,7 +263,9 @@ function PlanForm({ plan, activeModules, isEdit = false, userSubscriptionInfo }:
                                 <div className="grid grid-cols-4 gap-3 pr-4">
                                 {filteredModules.map((module) => (
                                     <div key={module.module} className="flex items-center gap-3 p-4 border rounded hover:bg-muted/50">
-                                        <img src={getPackageFavicon(module.module)} alt="" className="w-8 h-8 border rounded" />
+                                        <div className="w-8 h-8 rounded border bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-center flex-shrink-0">
+                                            <ModuleIcon moduleName={module.module} className="w-5 h-5" />
+                                        </div>
                                         <span className="text-sm truncate flex-1">{getPackageAlias(module.module)}</span>
                                         <Checkbox
                                             checked={data.modules.includes(module.module)}

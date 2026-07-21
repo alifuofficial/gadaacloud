@@ -9,6 +9,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatAdminCurrency, formatStorage, formatDate, getPackageFavicon, getPackageAlias, getSubscriptionDetails } from '@/utils/helpers';
+import ModuleIcon from '@/components/ui/module-icon';
 
 interface Plan {
     id: number;
@@ -279,7 +280,9 @@ function SubscriptionLayout({ plan, allModules, pricingPeriod, onSubscribe, bank
                                     key={module.module}
                                     className="flex items-center gap-3 p-4 border rounded hover:bg-muted/50"
                                 >
-                                    <img src={getPackageFavicon(module.module)} alt="" className="w-8 h-8 border rounded" />
+                                    <div className="w-8 h-8 rounded border bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-center flex-shrink-0">
+                                        <ModuleIcon moduleName={module.module} className="w-5 h-5" />
+                                    </div>
                                     <div className="flex-1">
                                         <span className="text-sm truncate block">{getPackageAlias(module.alias)}</span>
                                     </div>
