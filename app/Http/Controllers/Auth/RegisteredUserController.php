@@ -28,7 +28,11 @@ class RegisteredUserController extends Controller
             return redirect()->route('login');
         }
 
-        return Inertia::render('auth/register');
+        $baseDomain = parse_url(config('app.url'), PHP_URL_HOST) ?? 'gadaa.cloud';
+
+        return Inertia::render('auth/register', [
+            'baseDomain' => $baseDomain
+        ]);
     }
 
     /**
@@ -48,6 +52,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'subdomain' => 'required|alpha_dash|max:50|unique:tenant_domains,subdomain',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -64,6 +69,15 @@ class RegisteredUserController extends Controller
                 'type' => 'company',
                 'lang' => admin_setting('defaultLanguage') ?? 'en',
                 'created_by' => $adminUser ? $adminUser->id : null,
+            ]);
+
+            // Save Subdomain
+            \DB::table('tenant_domains')->insert([
+                'user_id' => $user->id,
+                'subdomain' => strtolower($request->subdomain),
+                'custom_domain_status' => 'pending_dns',
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
 
             User::CompanySetting($user->id);
