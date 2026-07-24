@@ -213,6 +213,7 @@ if (!function_exists('getImageUrlPrefix')) {
 }
 
 // Users Activated Module
+// Users Activated Module
 if (!function_exists('ActivatedModule')) {
     function ActivatedModule($user_id = null)
     {
@@ -239,9 +240,41 @@ if (!function_exists('ActivatedModule')) {
                 }
 
                 if ($user) {
-                    $active_module = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+                    $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+
+                    $plan_modules = [];
+                    if (!empty($user->active_plan)) {
+                        $plan = \App\Models\Plan::find($user->active_plan);
+                        if ($plan && !empty($plan->modules)) {
+                            if (is_array($plan->modules)) {
+                                $plan_modules = $plan->modules;
+                            } else if (is_string($plan->modules)) {
+                                $decoded = json_decode($plan->modules, true);
+                                $plan_modules = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $plan->modules)));
+                            }
+                        }
+                    }
+
+                    // Auto-repair: If user has an active plan with modules but UserActiveModule table lacks entries, sync them.
+                    if (!empty($plan_modules)) {
+                        $missing = array_diff($plan_modules, $db_active);
+                        if (!empty($missing)) {
+                            foreach ($missing as $modName) {
+                                $modName = trim($modName);
+                                if (!empty($modName)) {
+                                    UserActiveModule::firstOrCreate([
+                                        'user_id' => $user->id,
+                                        'module'  => $modName,
+                                    ]);
+                                }
+                            }
+                            $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+                        }
+                    }
+
+                    $active_module = array_unique(array_merge($plan_modules, $db_active));
                     $user_active_module = array_values(array_intersect($available_modules, $active_module));
-                    $user_active_module = array_values(array_unique(array_merge($activated_module,$user_active_module)));
+                    $user_active_module = array_values(array_unique(array_merge($activated_module, $user_active_module)));
                 }
             }
         } else {
@@ -334,39 +367,43 @@ if (!function_exists('assignPlan')) {
             // Handle modules assignment
             $modulesSetupFailed = false;
             $modulesSetupError = null;
-            if ($modules !== null) {
-                $modules_array = explode(',', $modules);
-            } else {
-                $modules_array = is_array($plan->modules) ? $plan->modules : [];
+
+            $modules_to_assign = [];
+            if (!empty($modules)) {
+                if (is_array($modules)) {
+                    $modules_to_assign = $modules;
+                } else {
+                    $modules_to_assign = array_filter(array_map('trim', explode(',', $modules)));
+                }
             }
-           if(!empty($modules))
-            {
+
+            if (empty($modules_to_assign) && $plan && !empty($plan->modules)) {
+                if (is_array($plan->modules)) {
+                    $modules_to_assign = $plan->modules;
+                } else if (is_string($plan->modules)) {
+                    $decoded = json_decode($plan->modules, true);
+                    $modules_to_assign = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $plan->modules)));
+                }
+            }
+
+            if (!empty($modules_to_assign)) {
                 try {
                     UserActiveModule::where('user_id', $user->id)->delete();
 
-                    $modules_array = explode(',',$modules);
-                    $currentActiveModules = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
-
-                    $user_module = $currentActiveModules;
-                    foreach ($modules_array as $module) {
-                        if(!in_array($module,$user_module)){
-                            array_push($user_module,$module);
+                    foreach ($modules_to_assign as $moduleName) {
+                        $moduleName = trim($moduleName);
+                        if (!empty($moduleName)) {
+                            UserActiveModule::create([
+                                'user_id' => $user->id,
+                                'module' => $moduleName,
+                            ]);
                         }
                     }
 
-                    $newModules = array_diff($user_module, $currentActiveModules);
-                    foreach ($newModules as $moduleName) {
-                        UserActiveModule::create([
-                            'user_id' => $user->id,
-                            'module' => $moduleName,
-                        ]);
-                    }
+                    $modules_str = implode(',', $modules_to_assign);
 
-                    // Side-effect-heavy listeners. Run them after the plan is saved,
-                    // and isolate their failures so a misbehaving integration can never
-                    // roll back plan activation. Logged for diagnosis but non-fatal.
                     try {
-                        DefaultData::dispatch($user->id, $modules);
+                        DefaultData::dispatch($user->id, $modules_str);
                     } catch (\Throwable $e) {
                         $modulesSetupFailed = true;
                         $modulesSetupError = $e->getMessage();
@@ -378,14 +415,14 @@ if (!function_exists('assignPlan')) {
 
                     if (!empty($client_role)) {
                         try {
-                            GivePermissionToRole::dispatch($client_role->id, 'client', $modules);
+                            GivePermissionToRole::dispatch($client_role->id, 'client', $modules_str);
                         } catch (\Throwable $e) {
                             \Illuminate\Support\Facades\Log::warning('assignPlan: GivePermissionToRole(client) failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
                         }
                     }
                     if (!empty($staff_role)) {
                         try {
-                            GivePermissionToRole::dispatch($staff_role->id, 'staff', $modules);
+                            GivePermissionToRole::dispatch($staff_role->id, 'staff', $modules_str);
                         } catch (\Throwable $e) {
                             \Illuminate\Support\Facades\Log::warning('assignPlan: GivePermissionToRole(staff) failed for user_id='.$user->id.' — '.$e->getMessage(), ['exception' => $e]);
                         }
