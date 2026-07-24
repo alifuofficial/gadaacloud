@@ -28,19 +28,22 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        if (Auth::user()->can('manage-hrm-dashboard')) {
-            $user = Auth::user();
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
 
+        if ($user->can('manage-hrm-dashboard') || in_array($user->type, ['company', 'hr', 'superadmin', 'staff'])) {
             switch ($user->type) {
                 case 'company':
-                    return $this->companyDashboard($request);
                 case 'hr':
+                case 'superadmin':
                     return $this->companyDashboard($request);
                 default:
                     return $this->employeeDashboard($request);
             }
         }
-        return back()->with('error', __('Permission denied'));
+        return redirect()->route('dashboard')->with('error', __('Permission denied'));
     }
 
 
@@ -48,45 +51,48 @@ class DashboardController extends Controller
     {
         $creatorId = creatorId();
         $today = Carbon::today();
+        $todayStr = $today->format('Y-m-d');
+        $startOfMonth = $today->copy()->startOfMonth()->format('Y-m-d');
+        $endOfMonth = $today->copy()->endOfMonth()->format('Y-m-d');
 
         // Total Employees
         $totalEmployees = Employee::where('created_by', $creatorId)->count();
 
         // Present Today (employees with attendance today)
         $presentToday = Attendance::where('created_by', $creatorId)
-            ->where('date', $today)
+            ->where('date', $todayStr)
             ->whereNotNull('clock_in')
-            ->distinct('employee_id')
-            ->count();
+            ->distinct()
+            ->count('employee_id');
 
         // Absent Today (employees with attendance status 'absent' today)
         $absentToday = Attendance::where('created_by', $creatorId)
-            ->where('date', $today)
+            ->where('date', $todayStr)
             ->where('status', 'absent')
-            ->distinct('employee_id')
-            ->count();
+            ->distinct()
+            ->count('employee_id');
 
         // On Leave (approved leave applications for today)
         $onLeave = LeaveApplication::where('created_by', $creatorId)
             ->where('status', 'approved')
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->count();
 
         // Yesterday's absent count for comparison
-        $yesterday = Carbon::yesterday();
+        $yesterdayStr = Carbon::yesterday()->format('Y-m-d');
 
         $absentYesterday = Attendance::where('created_by', $creatorId)
-            ->where('date', $yesterday)
+            ->where('date', $yesterdayStr)
             ->where('status', 'absent')
-            ->distinct('employee_id')
-            ->count();
+            ->distinct()
+            ->count('employee_id');
 
         // Pending leave applications (current month)
         $pendingLeaves = LeaveApplication::where('created_by', $creatorId)
             ->where('status', 'pending')
-            ->whereMonth('start_date', $today->month)
-            ->whereYear('start_date', $today->year)
+            ->where('start_date', '>=', $startOfMonth)
+            ->where('start_date', '<=', $endOfMonth)
             ->count();
 
         // Total Branches
@@ -95,17 +101,16 @@ class DashboardController extends Controller
         // Total Departments
         $totalDepartments = Department::where('created_by', $creatorId)->count();
 
-        // Total Promotions (current month)
+        // Total Promotions (current month - effective_date is varchar in DB)
         $totalPromotions = Promotion::where('created_by', $creatorId)
-            ->whereMonth('effective_date', $today->month)
-            ->whereYear('effective_date', $today->year)
+            ->where('effective_date', 'like', $today->format('Y-m') . '%')
             ->count();
 
         // Terminations (current month with accepted status)
         $terminations = Termination::where('created_by', $creatorId)
             ->where('status', 'approved')
-            ->whereMonth('termination_date', $today->month)
-            ->whereYear('termination_date', $today->year)
+            ->where('termination_date', '>=', $startOfMonth)
+            ->where('termination_date', '<=', $endOfMonth)
             ->count();
 
         $isDemo = config('app.is_demo');
@@ -129,11 +134,11 @@ class DashboardController extends Controller
             ];
         });
 
-
         // Employees Without Attendance Today
         $attendedEmployeeIds = Attendance::where('created_by', $creatorId)
-            ->where('date', $today)
+            ->where('date', $todayStr)
             ->pluck('employee_id')
+            ->filter()
             ->toArray();
 
         $absentEmployees = Employee::where('created_by', $creatorId)
@@ -142,17 +147,17 @@ class DashboardController extends Controller
             ->get();
 
         // Employees on Leave Today
-        $leavesToday = LeaveApplication::with('employee')->where('created_by', $creatorId)
+        $leavesToday = LeaveApplication::with(['employee', 'leave_type'])
+            ->where('created_by', $creatorId)
             ->where('status', 'approved')
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
-            ->with(['employee', 'leave_type'])
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->get();
 
         if ($isDemo && $leavesToday->isEmpty()) {
             $leaveTypes = ['Medical Leave', 'Annual Leave', 'Casual Leave'];
-            $leaveCount = min(rand(2, 5), $absentEmployees->count());
-            $demoLeaves = $absentEmployees->random($leaveCount);
+            $leaveCount = min(rand(2, 5), max(1, $absentEmployees->count()));
+            $demoLeaves = $absentEmployees->count() > 0 ? $absentEmployees->random($leaveCount) : collect();
             
             $employeesOnLeaveToday = $demoLeaves->map(function ($employee) use ($leaveTypes) {
                 return [
@@ -259,8 +264,8 @@ class DashboardController extends Controller
         // Recent Announcements (active between today's date)
         $recentAnnouncements = Announcement::where('created_by', $creatorId)
             ->where('status', 'active')
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->latest()
             ->get()
             ->map(function ($announcement) {
@@ -300,14 +305,17 @@ class DashboardController extends Controller
         $userId = Auth::id();
         $creatorId = creatorId();
         $today = Carbon::today();
-        $currentYear = $today->year;
-        $currentMonth = $today->month;
+        $todayStr = $today->format('Y-m-d');
+        $startOfMonth = $today->copy()->startOfMonth()->format('Y-m-d');
+        $endOfMonth = $today->copy()->endOfMonth()->format('Y-m-d');
+        $startOfYear = $today->copy()->startOfYear()->format('Y-m-d');
+        $endOfYear = $today->copy()->endOfYear()->format('Y-m-d');
 
         // My Attendance (this month)
         $myAttendance = Attendance::where('created_by', $creatorId)
             ->where('employee_id', $userId)
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
+            ->where('date', '>=', $startOfMonth)
+            ->where('date', '<=', $endOfMonth)
             ->whereNotNull('clock_in')
             ->count();
 
@@ -317,50 +325,52 @@ class DashboardController extends Controller
         $totalApprovedLeaveYear = LeaveApplication::where('created_by', $creatorId)
             ->where('employee_id', $userId)
             ->where('status', 'approved')
-            ->whereYear('start_date', $currentYear)
+            ->where('start_date', '>=', $startOfYear)
+            ->where('start_date', '<=', $endOfYear)
             ->sum('total_days');
 
         // Total Approved Leave (this month)
         $totalApprovedLeaveMonth = LeaveApplication::where('created_by', $creatorId)
             ->where('employee_id', $userId)
             ->where('status', 'approved')
-            ->whereMonth('start_date', $currentMonth)
-            ->whereYear('start_date', $currentYear)
+            ->where('start_date', '>=', $startOfMonth)
+            ->where('start_date', '<=', $endOfMonth)
             ->sum('total_days');
 
         // Pending Requests
         $pendingRequests = LeaveApplication::where('created_by', $creatorId)
             ->where('employee_id', $userId)
             ->where('status', 'pending')
-            ->whereMonth('start_date', $currentMonth)
-            ->whereYear('start_date', $currentYear)
+            ->where('start_date', '>=', $startOfMonth)
+            ->where('start_date', '<=', $endOfMonth)
             ->count();
 
         // Total Absent Days (this month)
         $totalAbsentDays = Attendance::where('created_by', $creatorId)
             ->where('employee_id', $userId)
             ->where('status', 'absent')
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
+            ->where('date', '>=', $startOfMonth)
+            ->where('date', '<=', $endOfMonth)
             ->count();
 
-        // Total Awards (this month)
+        // Total Awards (this month - award_date is varchar in DB)
         $totalAwards = Award::where('created_by', $creatorId)
             ->where('employee_id', $userId)
-            ->whereMonth('award_date', $currentMonth)
-            ->whereYear('award_date', $currentYear)
+            ->where('award_date', 'like', $today->format('Y-m') . '%')
             ->count();
 
         // Total Warnings (this year)
         $totalWarnings = Warning::where('created_by', $creatorId)
             ->where('employee_id', $userId)
-            ->whereYear('warning_date', $currentYear)
+            ->where('warning_date', '>=', $startOfYear)
+            ->where('warning_date', '<=', $endOfYear)
             ->count();
 
         // Total Complaints (this year)
         $totalComplaints = Complaint::where('created_by', $creatorId)
             ->where('employee_id', $userId)
-            ->whereYear('complaint_date', $currentYear)
+            ->where('complaint_date', '>=', $startOfYear)
+            ->where('complaint_date', '<=', $endOfYear)
             ->count();
 
         // Events and Holidays for Calendar
@@ -421,8 +431,8 @@ class DashboardController extends Controller
         // Recent Announcements (active between today's date)
         $recentAnnouncements = Announcement::where('created_by', $creatorId)
             ->where('status', 'active')
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->latest()
             ->get()
             ->map(function ($announcement) {
@@ -496,7 +506,7 @@ class DashboardController extends Controller
                     'total_allowances' => $payslip->total_allowances,
                     'total_deductions' => $payslip->total_deductions,
                     'net_pay' => $payslip->net_pay,
-                    'created_at' => $payslip->created_at->format('Y-m-d')
+                    'created_at' => $payslip->created_at ? $payslip->created_at->format('Y-m-d') : ''
                 ];
             });
 
@@ -513,7 +523,7 @@ class DashboardController extends Controller
         // Today's Attendance for Clock In/Out
         $todayAttendance = Attendance::where('created_by', $creatorId)
             ->where('employee_id', $userId)
-            ->where('date', $today)
+            ->where('date', $todayStr)
             ->first();
 
         // Check if clock in/out should be allowed
@@ -525,13 +535,13 @@ class DashboardController extends Controller
         $isOnLeave = LeaveApplication::where('created_by', $creatorId)
             ->where('employee_id', $userId)
             ->where('status', 'approved')
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->exists();
             
         $isHoliday = Holiday::where('created_by', $creatorId)
-            ->where('start_date', '<=', $today)
-            ->where('end_date', '>=', $today)
+            ->where('start_date', '<=', $todayStr)
+            ->where('end_date', '>=', $todayStr)
             ->exists();
 
         // Determine if user is currently clocked in (including night shifts)
