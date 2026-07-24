@@ -13,17 +13,28 @@ class StoreEmployeeRequest extends FormRequest
 
     /**
      * Sanitise inputs before validation.
-     *
-     * The employee-create form sends manager_id = 'none' when no manager is selected.
-     * On Postgres the literal string 'none' would otherwise hit the `exists:employees,id`
-     * rule with a non-numeric value, producing SQLSTATE[22P02]: invalid input syntax
-     * for type bigint — and abort the whole request with HTTP 500 before the controller's
-     * own 'none' => null coercion (EmployeeController::store()) ever runs.
+     * Converts empty strings / 'none' / 'null' to null for optional foreign keys and nullable fields.
      */
     protected function prepareForValidation(): void
     {
-        if (in_array($this->input('manager_id'), ['', 'none', 'null'], true)) {
-            $this->merge(['manager_id' => null]);
+        $fieldsToNullify = [
+            'manager_id',
+            'shift_id',
+            'tax_payer_id',
+            'address_line_2',
+            'documents',
+        ];
+
+        $updates = [];
+        foreach ($fieldsToNullify as $field) {
+            $val = $this->input($field);
+            if (in_array($val, ['', 'none', 'null', 'undefined'], true)) {
+                $updates[$field] = null;
+            }
+        }
+
+        if (!empty($updates)) {
+            $this->merge($updates);
         }
     }
 
@@ -33,7 +44,7 @@ class StoreEmployeeRequest extends FormRequest
             'employee_id' => 'required|max:50',
             'date_of_birth' => 'required|date',
             'gender' => 'required',
-            'shift_id' => 'required|exists:shifts,id',
+            'shift_id' => 'nullable|exists:shifts,id',
             'date_of_joining' => 'required|date',
             'employment_type' => 'required',
             'address_line_1' => 'required|max:255',

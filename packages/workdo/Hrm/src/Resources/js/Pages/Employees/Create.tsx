@@ -66,10 +66,7 @@ export default function Create() {
 
     useEffect(() => {
         setFilteredBranches(branches || []);
-        if (!data.user_id) {
-            setData('branch_id', '');
-        }
-    }, [data.user_id]);
+    }, [branches]);
 
     useEffect(() => {
         if (data.branch_id) {
@@ -84,7 +81,7 @@ export default function Create() {
             setData('department_id', '');
             setData('designation_id', '');
         }
-    }, [data.branch_id]);
+    }, [data.branch_id, departments]);
 
     useEffect(() => {
         if (data.department_id) {
@@ -97,7 +94,7 @@ export default function Create() {
             setFilteredDesignations([]);
             setData('designation_id', '');
         }
-    }, [data.department_id]);
+    }, [data.department_id, designations]);
 
     const validatePersonalTab = () => {
         return data.employee_id.trim() !== '' &&
@@ -106,12 +103,13 @@ export default function Create() {
     };
 
     const validateEmploymentTab = () => {
-        return data.user_id !== '' &&
-            data.employment_type !== '' &&
-            data.shift_id !== '' &&
-            data.branch_id !== '' &&
-            data.department_id !== '' &&
-            data.designation_id !== '';
+        const hasUser = data.user_id !== '';
+        const hasBranch = data.branch_id !== '';
+        const hasDepartment = data.department_id !== '';
+        const hasDesignation = data.designation_id !== '';
+        const hasShiftIfAvailable = (shifts && shifts.length > 0) ? data.shift_id !== '' : true;
+
+        return hasUser && hasBranch && hasDepartment && hasDesignation && hasShiftIfAvailable;
     };
 
     const validateContactTab = () => {
@@ -363,11 +361,9 @@ export default function Create() {
                                         <Select
                                             value={data.branch_id?.toString() || ''}
                                             onValueChange={(value) => setData('branch_id', value)}
-                                            disabled={!data.user_id}
-                                            
                                         >
                                             <SelectTrigger>
-                                                <SelectValue placeholder={data.user_id ? t('Select Branch') : t('Select User first')} />
+                                                <SelectValue placeholder={t('Select Branch')} />
                                             </SelectTrigger>
                                             <SelectContent searchable={true}>
                                                 {filteredBranches?.map((item: any) => (

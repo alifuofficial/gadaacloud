@@ -12,15 +12,29 @@ class UpdateEmployeeRequest extends FormRequest
     }
 
     /**
-     * Sanitise inputs before validation (mirror of StoreEmployeeRequest).
-     * The employee-edit form sends manager_id = 'none' when no manager is selected.
-     * On Postgres the `exists:employees,id` rule would otherwise choke on the
-     * non-numeric string 'none' with SQLSTATE[22P02] and abort the update with 500.
+     * Sanitise inputs before validation.
+     * Converts empty strings / 'none' / 'null' to null for optional foreign keys and nullable fields.
      */
     protected function prepareForValidation(): void
     {
-        if (in_array($this->input('manager_id'), ['', 'none', 'null'], true)) {
-            $this->merge(['manager_id' => null]);
+        $fieldsToNullify = [
+            'manager_id',
+            'shift_id',
+            'tax_payer_id',
+            'address_line_2',
+            'documents',
+        ];
+
+        $updates = [];
+        foreach ($fieldsToNullify as $field) {
+            $val = $this->input($field);
+            if (in_array($val, ['', 'none', 'null', 'undefined'], true)) {
+                $updates[$field] = null;
+            }
+        }
+
+        if (!empty($updates)) {
+            $this->merge($updates);
         }
     }
 
@@ -29,7 +43,7 @@ class UpdateEmployeeRequest extends FormRequest
         return [
             'date_of_birth' => 'required|date',
             'gender' => 'required',
-            'shift_id' => 'required|exists:shifts,id',
+            'shift_id' => 'nullable|exists:shifts,id',
             'date_of_joining' => 'required|date',
             'employment_type' => 'required',
             'address_line_1' => 'required|max:255',

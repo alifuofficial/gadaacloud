@@ -76,15 +76,35 @@ class EmployeeController extends Controller
     public function create()
     {
         if (Auth::user()->can('create-employees')) {
+            $creatorId = creatorId();
+            $alreadyLinkedUserIds = Employee::where('created_by', $creatorId)
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->toArray();
+
+            // Fetch available users for employee link. If no staff-type users are found, fetch all company-level users not linked yet.
+            $users = User::emp()->where('created_by', $creatorId)
+                ->whereNotIn('id', $alreadyLinkedUserIds)
+                ->select('id', 'name', 'email')
+                ->get();
+
+            if ($users->isEmpty()) {
+                $users = User::where('created_by', $creatorId)
+                    ->whereNotIn('id', $alreadyLinkedUserIds)
+                    ->whereNotIn('type', ['superadmin', 'super admin', 'company'])
+                    ->select('id', 'name', 'email')
+                    ->get();
+            }
+
             return Inertia::render('Hrm/Employees/Create', [
-                'users' => User::emp()->where('created_by', creatorId())->whereNotIn('id', Employee::where('created_by', creatorId())->pluck('user_id'))->select('id', 'name')->get(),
-                'branches' => Branch::where('created_by', creatorId())->select('id', 'branch_name')->get(),
-                'departments' => Department::where('created_by', creatorId())->select('id', 'department_name', 'branch_id')->get(),
-                'designations' => Designation::where('created_by', creatorId())->select('id', 'designation_name', 'branch_id', 'department_id')->get(),
-                'shifts' => Shift::where('created_by', creatorId())->select('id', 'shift_name')->get(),
-                'documentTypes' => EmployeeDocumentType::where('created_by', creatorId())->select('id', 'document_name', 'is_required')->get(),
+                'users' => $users,
+                'branches' => Branch::where('created_by', $creatorId)->select('id', 'branch_name')->get(),
+                'departments' => Department::where('created_by', $creatorId)->select('id', 'department_name', 'branch_id')->get(),
+                'designations' => Designation::where('created_by', $creatorId)->select('id', 'designation_name', 'branch_id', 'department_id')->get(),
+                'shifts' => Shift::where('created_by', $creatorId)->select('id', 'shift_name')->get(),
+                'documentTypes' => EmployeeDocumentType::where('created_by', $creatorId)->select('id', 'document_name', 'is_required')->get(),
                 'generatedEmployeeId' => Employee::generateEmployeeId(),
-                'employees' => Employee::with('user')->where('created_by', creatorId())->get()->map(function ($emp) {
+                'employees' => Employee::with('user')->where('created_by', $creatorId)->get()->map(function ($emp) {
                     return [
                         'id' => $emp->id,
                         'name' => $emp->user->name ?? 'Unknown',
@@ -110,11 +130,11 @@ class EmployeeController extends Controller
             $employee->employee_id = $validated['employee_id'];
             $employee->date_of_birth = $validated['date_of_birth'];
             $employee->gender = $validated['gender'];
-            $employee->shift = $validated['shift_id'];
+            $employee->shift = !empty($validated['shift_id']) ? $validated['shift_id'] : null;
             $employee->date_of_joining = $validated['date_of_joining'];
             $employee->employment_type = $validated['employment_type'];
             $employee->address_line_1 = $validated['address_line_1'];
-            $employee->address_line_2 = $validated['address_line_2'];
+            $employee->address_line_2 = $validated['address_line_2'] ?? null;
             $employee->city = $validated['city'];
             $employee->state = $validated['state'];
             $employee->country = $validated['country'];
@@ -127,7 +147,7 @@ class EmployeeController extends Controller
             $employee->account_number = $validated['account_number'];
             $employee->bank_identifier_code = $validated['bank_identifier_code'];
             $employee->bank_branch = $validated['bank_branch'];
-            $employee->tax_payer_id = $validated['tax_payer_id'];
+            $employee->tax_payer_id = $validated['tax_payer_id'] ?? null;
             $employee->basic_salary = $validated['basic_salary'];
             $employee->hours_per_day = $validated['hours_per_day'];
             $employee->days_per_week = $validated['days_per_week'];
@@ -136,7 +156,14 @@ class EmployeeController extends Controller
             $employee->branch_id = $validated['branch_id'];
             $employee->department_id = $validated['department_id'];
             $employee->designation_id = $validated['designation_id'];
-            $employee->manager_id = ($validated['manager_id'] ?? null) === 'none' ? null : ($validated['manager_id'] ?? null);
+
+            $managerId = $validated['manager_id'] ?? null;
+            if (in_array($managerId, ['none', '', 'null', 'undefined'], true)) {
+                $managerId = null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'manager_id')) {
+                $employee->manager_id = $managerId;
+            }
 
             $employee->creator_id = Auth::id();
             $employee->created_by = creatorId();
