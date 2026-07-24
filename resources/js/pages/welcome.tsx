@@ -641,74 +641,77 @@ export default function Welcome({ auth }: PageProps) {
             </section>
 
             {/* Footer */}
-            <footer className="bg-[#0B1511] text-gray-400 py-16 border-t border-emerald-950/20">
-                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-10">
-                    {/* Column 1 - Brand info */}
-                    <div className="md:col-span-4 space-y-4 text-left">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded bg-[#008B5B] flex items-center justify-center text-white font-bold text-base shadow">G</div>
-                            <span className="font-extrabold text-lg text-white">GadaaCloud ERP</span>
-                        </Link>
-                        <p className="text-xs leading-relaxed text-gray-400">
-                            The leading cloud ERP solution built specifically for Ethiopian businesses.
-                        </p>
+            <footer className="bg-[#031B13] text-slate-300 pt-16 pb-12 border-t border-emerald-900/40">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 text-left">
+                        {/* Column 1 - Brand Info (4 Cols) */}
+                        <div className="lg:col-span-4 space-y-4">
+                            <Link href="/" className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-[#00A76F] flex items-center justify-center text-white font-extrabold text-base shadow">G</div>
+                                <span className="font-extrabold text-lg text-white">Gadaa<span className="text-[#34D399]">Cloud</span> ERP</span>
+                            </Link>
+                            <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+                                The leading cloud ERP solution built specifically for Ethiopian businesses.
+                            </p>
+                        </div>
+
+                        {/* Column 2 - Products (2 Cols) */}
+                        <div className="lg:col-span-2 space-y-3">
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Products')}</h4>
+                            <ul className="space-y-2 text-xs text-slate-400">
+                                <li><a href="#features" className="hover:text-white transition-colors">{t('Accounting')}</a></li>
+                                <li><a href="#features" className="hover:text-white transition-colors">{t('POS System')}</a></li>
+                                <li><a href="#features" className="hover:text-white transition-colors">{t('Inventory')}</a></li>
+                                <li><a href="#features" className="hover:text-white transition-colors">{t('HR & Payroll')}</a></li>
+                                <li><a href="#features" className="hover:text-white transition-colors">{t('CRM')}</a></li>
+                            </ul>
+                        </div>
+
+                        {/* Column 3 - Solutions (2 Cols) */}
+                        <div className="lg:col-span-2 space-y-3">
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Solutions')}</h4>
+                            <ul className="space-y-2 text-xs text-slate-400">
+                                <li><a href="#solutions" className="hover:text-white transition-colors">{t('Small Business')}</a></li>
+                                <li><a href="#solutions" className="hover:text-white transition-colors">{t('Enterprise')}</a></li>
+                                <li><a href="#solutions" className="hover:text-white transition-colors">{t('Retail')}</a></li>
+                                <li><a href="#solutions" className="hover:text-white transition-colors">{t('Manufacturing')}</a></li>
+                                <li><a href="#solutions" className="hover:text-white transition-colors">{t('Distribution')}</a></li>
+                            </ul>
+                        </div>
+
+                        {/* Column 4 - Resources (2 Cols) */}
+                        <div className="lg:col-span-2 space-y-3">
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Resources')}</h4>
+                            <ul className="space-y-2 text-xs text-slate-400">
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Documentation')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Blog')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Help Center')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('API')}</a></li>
+                            </ul>
+                        </div>
+
+                        {/* Column 5 - Company (2 Cols) */}
+                        <div className="lg:col-span-2 space-y-3">
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Company')}</h4>
+                            <ul className="space-y-2 text-xs text-slate-400">
+                                <li><a href="#" className="hover:text-white transition-colors">{t('About Us')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Careers')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Partners')}</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">{t('Contact Us')}</a></li>
+                            </ul>
+                        </div>
                     </div>
 
-                    {/* Column 2 - Products links */}
-                    <div className="md:col-span-2 space-y-3 text-left">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Products')}</h4>
-                        <ul className="space-y-2 text-xs">
-                            <li><a href="#features" className="hover:text-white transition-colors">{t('Accounting')}</a></li>
-                            <li><a href="#features" className="hover:text-white transition-colors">{t('POS System')}</a></li>
-                            <li><a href="#features" className="hover:text-white transition-colors">{t('Inventory')}</a></li>
-                            <li><a href="#features" className="hover:text-white transition-colors">{t('HR & Payroll')}</a></li>
-                            <li><a href="#features" className="hover:text-white transition-colors">{t('CRM')}</a></li>
-                        </ul>
-                    </div>
-
-                    {/* Column 3 - Solutions links */}
-                    <div className="md:col-span-2 space-y-3 text-left">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Solutions')}</h4>
-                        <ul className="space-y-2 text-xs">
-                            <li><a href="#solutions" className="hover:text-white transition-colors">{t('Small Business')}</a></li>
-                            <li><a href="#solutions" className="hover:text-white transition-colors">{t('Enterprise')}</a></li>
-                            <li><a href="#solutions" className="hover:text-white transition-colors">{t('Retail')}</a></li>
-                            <li><a href="#solutions" className="hover:text-white transition-colors">{t('Manufacturing')}</a></li>
-                            <li><a href="#solutions" className="hover:text-white transition-colors">{t('Distribution')}</a></li>
-                        </ul>
-                    </div>
-
-                    {/* Column 4 - Resources links */}
-                    <div className="md:col-span-2 space-y-3 text-left">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Resources')}</h4>
-                        <ul className="space-y-2 text-xs">
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Documentation')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Blog')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Help Center')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('API')}</a></li>
-                        </ul>
-                    </div>
-
-                    {/* Column 5 - Company links */}
-                    <div className="md:col-span-2 space-y-3 text-left">
-                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t('Company')}</h4>
-                        <ul className="space-y-2 text-xs">
-                            <li><a href="#" className="hover:text-white transition-colors">{t('About Us')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Careers')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Partners')}</a></li>
-                            <li><a href="#" className="hover:text-white transition-colors">{t('Contact Us')}</a></li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="max-w-7xl mx-auto px-6 border-t border-emerald-950/20 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-                    <span>&copy; {new Date().getFullYear()} GadaaCloud ERP. All rights reserved.</span>
-                    <div className="flex gap-6">
-                        <a href="#" className="hover:text-white transition-colors">{t('Privacy Policy')}</a>
-                        <a href="#" className="hover:text-white transition-colors">{t('Terms of Service')}</a>
+                    <div className="border-t border-emerald-900/40 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400">
+                        <span>&copy; {new Date().getFullYear()} GadaaCloud ERP. All rights reserved. · Built for Ethiopian Enterprise 🇪🇹</span>
+                        <div className="flex gap-6">
+                            <a href="#" className="hover:text-white transition-colors">{t('Privacy Policy')}</a>
+                            <a href="#" className="hover:text-white transition-colors">{t('Terms of Service')}</a>
+                        </div>
                     </div>
                 </div>
             </footer>
         </div>
     );
 }
+
