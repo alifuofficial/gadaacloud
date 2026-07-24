@@ -9,6 +9,8 @@ export default function Dashboard() {
     const { auth } = usePage().props as any;
     const user = auth?.user;
 
+    const isCompanyOwner = user?.type === 'company' || user?.type === 'superadmin';
+
     // Check if the plan is expired or inactive (active_plan === 0 or plan_expire_date is past)
     const isExpired = user?.plan_expire_date ? new Date(user.plan_expire_date) < new Date() : false;
     const isInactive = !user?.active_plan || user?.active_plan === 0 || user?.active_plan === '0';
@@ -29,13 +31,17 @@ export default function Dashboard() {
                         {t('Workspace Inactive')}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mb-6 leading-relaxed">
-                        {t('Subscribe to a subscription plan to get detailed analytics and unlock full management tools for your business.')}
+                        {isCompanyOwner
+                            ? t('Subscribe to a subscription plan to get detailed analytics and unlock full management tools for your business.')
+                            : t('Your company workspace subscription is currently inactive. Please contact your company administrator to activate or renew your subscription.')}
                     </p>
-                    <Link href={route('plans.index')}>
-                        <Button className="bg-primary text-white hover:bg-primary/95 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]">
-                            {t('Choose a Subscription Plan')}
-                        </Button>
-                    </Link>
+                    {isCompanyOwner && (
+                        <Link href={route('plans.index')}>
+                            <Button className="bg-primary text-white hover:bg-primary/95 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]">
+                                {t('Choose a Subscription Plan')}
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             ) : (
                 <div className="flex flex-1 flex-col gap-4 h-full">

@@ -51,19 +51,34 @@ class HandleInertiaRequests extends Middleware
             $defaultLanguages = array_values($languages);
         }
 
+        $user = $request->user();
+        $userData = null;
+
+        if ($user) {
+            $userData = $user->toArray();
+
+            // If user is a sub-user (staff, employee, hr, etc.), inherit plan and expire date from company creator
+            if ($user->type !== 'superadmin' && $user->type !== 'company' && !empty($user->created_by)) {
+                $companyUser = \App\Models\User::find($user->created_by);
+                if ($companyUser) {
+                    if (empty($userData['active_plan']) || $userData['active_plan'] === 0 || $userData['active_plan'] === '0') {
+                        $userData['active_plan'] = $companyUser->active_plan;
+                    }
+                    if (empty($userData['plan_expire_date'])) {
+                        $userData['plan_expire_date'] = $companyUser->plan_expire_date;
+                    }
+                }
+            }
+
+            $userData['permissions'] = $this->getUserPermissions($user);
+            $userData['roles'] = $this->getUserRoles($user);
+            $userData['activatedPackages'] = ActivatedModule();
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user()
-                    ? array_merge(
-                        $request->user()->toArray(),
-                        [
-                            'permissions' => $this->getUserPermissions($request->user()),
-                            'roles' => $this->getUserRoles($request->user()),
-                            'activatedPackages' => ActivatedModule(),
-                        ]
-                    )
-                    : ['activatedPackages' => ActivatedModule()],
+                'user' => $userData ?? ['activatedPackages' => ActivatedModule()],
                 'impersonating' => $request->session()->has('impersonator_id'),
                 'lang' => $locale,
             ],
@@ -73,7 +88,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'packages' => (new Module())->allModules(),
             'adminAllSetting' =>   $request->user() ?  getAdminAllSetting() : getAdminAllSetting(true),
-            'companyAllSetting' => $request->user() ? getCompanyAllSetting($request->user()->id) : [],
+            'companyAllSetting' => $request->user() ? getCompanyAllSetting(creatorId()) : [],
             'imageUrlPrefix' =>  getImageUrlPrefix(),
             'baseUrl' => url('/'),
             'currencies' => config('default_currency.currencies', []),
