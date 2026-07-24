@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         (new PermissionRoleSeeder())->run();
+        (new CustomModulePermissionsSeeder())->run();
         (new DefultSetting())->run();
         (new PlanSeeder())->run();
         (new EmailTemplatesSeeder())->run();
