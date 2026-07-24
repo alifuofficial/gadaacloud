@@ -38,14 +38,15 @@ class RoleController extends Controller
     {
         if(Auth::user()->can('create-roles')){
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
+            $activeModules = ActivatedModule();
 
             $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module');
             $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules) {
+                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules, $activeModules) {
                     if (in_array($addOn, $hiddenModules)) {
                         return false;
                     }
-                    return $addOn === 'general' || Module_is_active($addOn);
+                    return $addOn === 'general' || in_array($addOn, $activeModules);
                 })
                 ->map(function ($addOnPermissions) {
                     return $addOnPermissions->groupBy('module');
@@ -77,14 +78,15 @@ class RoleController extends Controller
     {
         if(Auth::user()->can('edit-roles')){
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
+            $activeModules = ActivatedModule();
 
             $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module','editable');
             $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules) {
+                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules, $activeModules) {
                     if (in_array($addOn, $hiddenModules)) {
                         return false;
                     }
-                    return $addOn === 'general' || Module_is_active($addOn);
+                    return $addOn === 'general' || in_array($addOn, $activeModules);
                 })
                 ->map(function ($addOnPermissions) {
                     return $addOnPermissions->groupBy('module');

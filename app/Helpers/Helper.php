@@ -291,31 +291,23 @@ if (!function_exists('ActivatedModule')) {
 if (!function_exists('Module_is_active')) {
     function Module_is_active($module, $user_id = null)
     {
-        if ((new Module())->has($module)) {
+        static $userActiveModulesCache = [];
 
-            $isModuleActive = (new Module())->isEnabled($module);
-            if ($isModuleActive == false) {
-                return false;
-            }
-
-            if (!empty($user_id)) {
-                $user = User::find($user_id);
-            } else {
-                $user = Auth::user();
-            }
-            if (!empty($user)) {
-                if ($user->type == 'superadmin') {
-                    return true;
-                } else {
-                    $active_module = ActivatedModule($user->id);
-                    if ((count($active_module) > 0 && in_array($module, $active_module))) {
-                        return true;
-                    }
-                    return false;
-                }
-            }
+        if (empty($module)) {
             return false;
         }
+
+        $userId = $user_id ?? Auth::id();
+        $cacheKey = $userId ?? 0;
+
+        if (!isset($userActiveModulesCache[$cacheKey])) {
+            $userActiveModulesCache[$cacheKey] = ActivatedModule($userId);
+        }
+
+        if (in_array($module, $userActiveModulesCache[$cacheKey])) {
+            return true;
+        }
+
         return false;
     }
 }
