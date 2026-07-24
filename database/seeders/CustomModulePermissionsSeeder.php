@@ -11,6 +11,7 @@ class CustomModulePermissionsSeeder extends Seeder
 {
     public function run()
     {
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         $permissions = [
             // Import & Export Operations
             [

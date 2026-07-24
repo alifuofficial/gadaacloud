@@ -40,14 +40,14 @@ class RoleController extends Controller
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
             $activeModules = ActivatedModule();
 
-            $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module');
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            $allPermissions = Permission::whereIn('add_on', array_merge(['general'], $activeModules))
+                ->whereNotIn('add_on', $hiddenModules)
+                ->select('id', 'name', 'label', 'add_on', 'module')
+                ->get();
+
             $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules, $activeModules) {
-                    if (in_array($addOn, $hiddenModules)) {
-                        return false;
-                    }
-                    return $addOn === 'general' || in_array($addOn, $activeModules);
-                })
                 ->map(function ($addOnPermissions) {
                     return $addOnPermissions->groupBy('module');
                 });
@@ -80,14 +80,14 @@ class RoleController extends Controller
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
             $activeModules = ActivatedModule();
 
-            $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module','editable');
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            $allPermissions = Permission::whereIn('add_on', array_merge(['general'], $activeModules))
+                ->whereNotIn('add_on', $hiddenModules)
+                ->select('id', 'name', 'label', 'add_on', 'module', 'editable')
+                ->get();
+
             $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) use ($hiddenModules, $activeModules) {
-                    if (in_array($addOn, $hiddenModules)) {
-                        return false;
-                    }
-                    return $addOn === 'general' || in_array($addOn, $activeModules);
-                })
                 ->map(function ($addOnPermissions) {
                     return $addOnPermissions->groupBy('module');
                 });
