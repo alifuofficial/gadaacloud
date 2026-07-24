@@ -253,9 +253,11 @@ if (!function_exists('ActivatedModule')) {
                                 $plan_modules = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $plan->modules)));
                             }
                         }
+                        // Subscribed users get access to all installed modules
+                        $plan_modules = array_unique(array_merge($plan_modules, $available_modules));
                     }
 
-                    // Auto-repair: If user has an active plan with modules but UserActiveModule table lacks entries, sync them.
+                    // Auto-repair: If user has an active plan but UserActiveModule table lacks entries, sync them.
                     if (!empty($plan_modules)) {
                         $missing = array_diff($plan_modules, $db_active);
                         if (!empty($missing)) {

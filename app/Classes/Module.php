@@ -101,9 +101,32 @@ class Module
 
     public function allEnabled(): array
     {
+        try {
+            $packageDirs = File::directories(base_path('packages/workdo'));
+            foreach ($packageDirs as $dir) {
+                $jsonFile = $dir . '/module.json';
+                if (File::exists($jsonFile)) {
+                    $json = json_decode(File::get($jsonFile), true);
+                    if (!empty($json['name'])) {
+                        $modName = $json['name'];
+                        AddOn::firstOrCreate(
+                            ['module' => $modName],
+                            [
+                                'name'          => $json['alias'] ?? $modName,
+                                'monthly_price' => $json['monthly_price'] ?? 0,
+                                'yearly_price'  => $json['yearly_price'] ?? 0,
+                                'package_name'  => $json['package_name'] ?? strtolower($modName),
+                                'is_enable'     => true,
+                                'for_admin'     => $json['for_admin'] ?? false,
+                                'priority'      => $json['priority'] ?? 100,
+                            ]
+                        );
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
 
         return AddOn::where('is_enable', 1)->orderBy('priority')->pluck('module')->toArray() ?? [];
-
     }
 
     public function allEnabledAdmin(): array
