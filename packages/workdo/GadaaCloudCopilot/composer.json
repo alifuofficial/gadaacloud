@@ -1,0 +1,10 @@
+{
+    "name": "workdo/gadaacloudcopilot",
+    "description": "AI Copilot Module for GadaaCloud",
+    "type": "laravel-module",
+    "autoload": {
+        "psr-4": {
+            "Workdo\\GadaaCloudCopilot\\": "src/"
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "GadaaCloudCopilot",
+    "alias": "GadaaCloud Copilot",
+    "description": "AI Autonomous Agent for Financial Forecasting, Operational Automation, Tax Calculations & System Analytics",
+    "priority": 5,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "package_name": "gadaacloudcopilot"
+}
