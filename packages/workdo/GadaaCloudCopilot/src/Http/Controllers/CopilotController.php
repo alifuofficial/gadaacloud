@@ -7,6 +7,7 @@ use Workdo\GadaaCloudCopilot\Models\CopilotInsight;
 use Workdo\GadaaCloudCopilot\Models\CopilotAutomation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class CopilotController extends Controller
@@ -15,69 +16,92 @@ class CopilotController extends Controller
     {
         $companyId = creatorId();
 
+        $totalSales = 0;
+        $collectedSales = 0;
+        $pendingReceivables = 0;
+
+        $totalPurchases = 0;
+        $paidPurchases = 0;
+        $pendingPayables = 0;
+
+        $totalEmployees = 0;
+        $totalBasicSalary = 0;
+
         // 1. Sales & Receivables Summary
-        $salesInvoices = DB::table('sales_invoices')
-            ->where('created_by', $companyId)
-            ->select(
-                DB::raw("SUM(COALESCE(grand_total, total, 0)) as total_sales"),
-                DB::raw("SUM(CASE WHEN status = 'paid' THEN COALESCE(grand_total, total, 0) ELSE 0 END) as collected_sales"),
-                DB::raw("SUM(CASE WHEN status != 'paid' THEN COALESCE(grand_total, total, 0) ELSE 0 END) as pending_receivables")
-            )->first();
+        try {
+            if (Schema::hasTable('sales_invoices')) {
+                $salesInvoices = DB::table('sales_invoices')
+                    ->where('created_by', $companyId)
+                    ->select(
+                        DB::raw("SUM(COALESCE(total_amount, 0)) as total_sales"),
+                        DB::raw("SUM(COALESCE(paid_amount, 0)) as collected_sales"),
+                        DB::raw("SUM(COALESCE(balance_amount, 0)) as pending_receivables")
+                    )->first();
+
+                $totalSales = floatval($salesInvoices->total_sales ?? 0);
+                $collectedSales = floatval($salesInvoices->collected_sales ?? 0);
+                $pendingReceivables = floatval($salesInvoices->pending_receivables ?? 0);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning("Copilot sales_invoices query notice: " . $e->getMessage());
+        }
 
         // 2. Purchases & Payables Summary
-        $purchaseInvoices = DB::table('purchase_invoices')
-            ->where('created_by', $companyId)
-            ->select(
-                DB::raw("SUM(COALESCE(grand_total, total, 0)) as total_purchases"),
-                DB::raw("SUM(CASE WHEN status = 'paid' THEN COALESCE(grand_total, total, 0) ELSE 0 END) as paid_purchases"),
-                DB::raw("SUM(CASE WHEN status != 'paid' THEN COALESCE(grand_total, total, 0) ELSE 0 END) as pending_payables")
-            )->first();
+        try {
+            if (Schema::hasTable('purchase_invoices')) {
+                $purchaseInvoices = DB::table('purchase_invoices')
+                    ->where('created_by', $companyId)
+                    ->select(
+                        DB::raw("SUM(COALESCE(total_amount, 0)) as total_purchases"),
+                        DB::raw("SUM(COALESCE(paid_amount, 0)) as paid_purchases"),
+                        DB::raw("SUM(COALESCE(balance_amount, 0)) as pending_payables")
+                    )->first();
+
+                $totalPurchases = floatval($purchaseInvoices->total_purchases ?? 0);
+                $paidPurchases = floatval($purchaseInvoices->paid_purchases ?? 0);
+                $pendingPayables = floatval($purchaseInvoices->pending_payables ?? 0);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning("Copilot purchase_invoices query notice: " . $e->getMessage());
+        }
 
         // 3. HRM & Payroll Metrics
-        $employeeStats = DB::table('employees')
-            ->where('created_by', $companyId)
-            ->select(
-                DB::raw("COUNT(*) as total_employees"),
-                DB::raw("SUM(COALESCE(basic_salary, 0)) as total_basic_salary")
-            )->first();
+        try {
+            if (Schema::hasTable('employees')) {
+                $employeeStats = DB::table('employees')
+                    ->where('created_by', $companyId)
+                    ->select(
+                        DB::raw("COUNT(*) as total_employees"),
+                        DB::raw("SUM(COALESCE(basic_salary, 0)) as total_basic_salary")
+                    )->first();
 
-        $totalSales = floatval($salesInvoices->total_sales ?? 0);
-        $collectedSales = floatval($salesInvoices->collected_sales ?? 0);
-        $pendingReceivables = floatval($salesInvoices->pending_receivables ?? 0);
-
-        $totalPurchases = floatval($purchaseInvoices->total_purchases ?? 0);
-        $paidPurchases = floatval($purchaseInvoices->paid_purchases ?? 0);
-        $pendingPayables = floatval($purchaseInvoices->pending_payables ?? 0);
-
-        $totalEmployees = intval($employeeStats->total_employees ?? 0);
-        $totalBasicSalary = floatval($employeeStats->total_basic_salary ?? 0);
+                $totalEmployees = intval($employeeStats->total_employees ?? 0);
+                $totalBasicSalary = floatval($employeeStats->total_basic_salary ?? 0);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning("Copilot employees query notice: " . $e->getMessage());
+        }
 
         $netCashFlow = $collectedSales - $paidPurchases - $totalBasicSalary;
 
         // 4. Ethiopian Tax Calculation Engine
-        // A. VAT (15% standard rate)
         $vatOutput = $totalSales * 0.15;
         $vatInput  = $totalPurchases * 0.15;
         $netVatPayable = max(0, $vatOutput - $vatInput);
 
-        // B. Withholding Tax (2% Goods/Services, 3% Contracts)
         $withholdingEst = $totalSales * 0.02;
 
-        // C. Ethiopian Payroll Taxes (Schedule A & Pension)
-        // Ethiopian Progressive Income Tax: 0-600 (0%), 601-1650 (10%), 1651-3200 (15%), 3201-5250 (20%), 5251-7800 (25%), 7801-10900 (30%), >10900 (35%)
         $estEmploymentTax = $this->calculateEthiopianEmploymentTax($totalBasicSalary);
         $employeePensionEst = $totalBasicSalary * 0.07;
         $employerPensionEst = $totalBasicSalary * 0.11;
         $totalPensionEst    = $employeePensionEst + $employerPensionEst;
 
-        // D. Turnover Tax (TOT - 2% Goods, 10% Services)
         $totGoodsEst = $totalSales * 0.02;
 
-        // E. Corporate / Business Income Tax Estimate (30% in Ethiopia)
         $taxableIncomeEst = max(0, $totalSales - $totalPurchases - $totalBasicSalary);
         $businessTaxEst   = $taxableIncomeEst * 0.30;
 
-        // 5. Generate AI Cashflow Forecast for Next 6 Months (incorporating Ethiopian Seasonal Events)
+        // 5. Generate AI Cashflow Forecast for Next 6 Months
         $forecastMonths = [];
         $today = now();
         $ethiopianEvents = [
@@ -113,54 +137,68 @@ class CopilotController extends Controller
         }
 
         // 6. Trade & Landed Cost Intelligence
-        $demurrageRiskCount = 2; // Active LCs approaching port deadline
-        $estimatedLandedCostMarkup = $totalPurchases > 0 ? round(($totalPurchases * 0.18), 2) : 0; // Est. 18% freight+customs
+        $demurrageRiskCount = 2;
+        $estimatedLandedCostMarkup = $totalPurchases > 0 ? round(($totalPurchases * 0.18), 2) : 0;
 
-        // 7. Fetch Automations & Insights
-        $automations = CopilotAutomation::where('created_by', $companyId)->get();
-        if ($automations->isEmpty()) {
-            $defaultAutomations = [
-                [
-                    'created_by' => $companyId,
-                    'name' => 'Auto Overdue Invoice Payment Reminders',
-                    'trigger_event' => 'invoice_due',
-                    'action_type' => 'send_email',
-                    'is_active' => true,
-                    'config' => ['days_overdue' => 3],
-                ],
-                [
-                    'created_by' => $companyId,
-                    'name' => 'Djibouti Port Demurrage Risk Warning',
-                    'trigger_event' => 'lc_demurrage_near',
-                    'action_type' => 'create_alert',
-                    'is_active' => true,
-                    'config' => ['days_before_expiry' => 5],
-                ],
-                [
-                    'created_by' => $companyId,
-                    'name' => 'Ethiopian Monthly Tax Filing Reminder (MoR)',
-                    'trigger_event' => 'tax_period',
-                    'action_type' => 'create_alert',
-                    'is_active' => true,
-                    'config' => ['due_day' => 30],
-                ],
-                [
-                    'created_by' => $companyId,
-                    'name' => 'Low Inventory Reorder Trigger',
-                    'trigger_event' => 'low_stock',
-                    'action_type' => 'reorder_stock',
-                    'is_active' => true,
-                    'config' => ['threshold' => 5],
-                ],
-            ];
+        // 7. Fetch Automations & Insights (with fallback)
+        $automations = collect();
+        try {
+            if (Schema::hasTable('copilot_automations')) {
+                $automations = CopilotAutomation::where('created_by', $companyId)->get();
+                if ($automations->isEmpty()) {
+                    $defaultAutomations = [
+                        [
+                            'created_by' => $companyId,
+                            'name' => 'Auto Overdue Invoice Payment Reminders',
+                            'trigger_event' => 'invoice_due',
+                            'action_type' => 'send_email',
+                            'is_active' => true,
+                            'config' => ['days_overdue' => 3],
+                        ],
+                        [
+                            'created_by' => $companyId,
+                            'name' => 'Djibouti Port Demurrage Risk Warning',
+                            'trigger_event' => 'lc_demurrage_near',
+                            'action_type' => 'create_alert',
+                            'is_active' => true,
+                            'config' => ['days_before_expiry' => 5],
+                        ],
+                        [
+                            'created_by' => $companyId,
+                            'name' => 'Ethiopian Monthly Tax Filing Reminder (MoR)',
+                            'trigger_event' => 'tax_period',
+                            'action_type' => 'create_alert',
+                            'is_active' => true,
+                            'config' => ['due_day' => 30],
+                        ],
+                        [
+                            'created_by' => $companyId,
+                            'name' => 'Low Inventory Reorder Trigger',
+                            'trigger_event' => 'low_stock',
+                            'action_type' => 'reorder_stock',
+                            'is_active' => true,
+                            'config' => ['threshold' => 5],
+                        ],
+                    ];
 
-            foreach ($defaultAutomations as $da) {
-                CopilotAutomation::create($da);
+                    foreach ($defaultAutomations as $da) {
+                        CopilotAutomation::create($da);
+                    }
+                    $automations = CopilotAutomation::where('created_by', $companyId)->get();
+                }
             }
-            $automations = CopilotAutomation::where('created_by', $companyId)->get();
+        } catch (\Throwable $e) {
+            \Log::warning("Copilot automations query notice: " . $e->getMessage());
         }
 
-        $insights = CopilotInsight::where('created_by', $companyId)->orderBy('id', 'desc')->take(10)->get();
+        $insights = collect();
+        try {
+            if (Schema::hasTable('copilot_insights')) {
+                $insights = CopilotInsight::where('created_by', $companyId)->orderBy('id', 'desc')->take(10)->get();
+            }
+        } catch (\Throwable $e) {
+            \Log::warning("Copilot insights query notice: " . $e->getMessage());
+        }
 
         return Inertia::render('settings/copilot', [
             'metrics' => [
@@ -214,8 +252,6 @@ class CopilotController extends Controller
         ]);
 
         $prompt = strtolower($request->prompt);
-        $companyId = creatorId();
-
         $reply = "🤖 GadaaCloud Copilot Analysis:\n\n";
 
         if (str_contains($prompt, 'tax') || str_contains($prompt, 'vat') || str_contains($prompt, 'pension') || str_contains($prompt, 'mor')) {
@@ -242,9 +278,6 @@ class CopilotController extends Controller
         ]);
     }
 
-    /**
-     * Helper to compute Ethiopian Progressive Employment Income Tax (Schedule A)
-     */
     private function calculateEthiopianEmploymentTax($grossSalary)
     {
         if ($grossSalary <= 600) {
