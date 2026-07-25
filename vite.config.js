@@ -45,12 +45,35 @@ export default defineConfig({
         },
     },
     build: {
+        target: 'es2020',
+        cssCodeSplit: true,
+        chunkSizeWarningLimit: 1200,
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom'],
-                    ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-                    utils: ['date-fns', 'clsx']
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('react') || id.includes('react-dom') || id.includes('@inertiajs')) {
+                            return 'vendor-react';
+                        }
+                        if (id.includes('@radix-ui') || id.includes('lucide-react')) {
+                            return 'vendor-ui';
+                        }
+                        if (id.includes('@fullcalendar')) {
+                            return 'vendor-calendar';
+                        }
+                        if (id.includes('@tiptap') || id.includes('tinymce')) {
+                            return 'vendor-editor';
+                        }
+                        if (id.includes('recharts') || id.includes('d3')) {
+                            return 'vendor-charts';
+                        }
+                        if (id.includes('html2pdf') || id.includes('jspdf') || id.includes('html2canvas')) {
+                            return 'vendor-pdf';
+                        }
+                        if (id.includes('xlsx') || id.includes('papaparse')) {
+                            return 'vendor-excel';
+                        }
+                    }
                 }
             },
         },

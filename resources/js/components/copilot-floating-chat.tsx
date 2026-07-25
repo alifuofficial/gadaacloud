@@ -224,7 +224,7 @@ function CopilotFloatingChatInner() {
                                 </div>
                                 <div className="text-[9px] text-slate-400 flex items-center gap-1 font-mono">
                                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    Google Gemini 1.5 Active
+                                    ERP AI Active
                                 </div>
                             </div>
                         </div>
