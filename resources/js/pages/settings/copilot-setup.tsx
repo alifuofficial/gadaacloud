@@ -34,9 +34,18 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
         systemPrompt: aiSettings.systemPrompt || '',
     });
 
+    let indexUrl = '/settings/copilot';
+    let saveUrl = '/settings/copilot/setup';
+    try {
+        if (typeof route === 'function') {
+            indexUrl = route('settings.copilot.index');
+            saveUrl = route('settings.copilot.setup.save');
+        }
+    } catch (e) {}
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('settings.copilot.setup.save'));
+        post(saveUrl);
     };
 
     const providerModels: Record<string, Array<{ id: string; name: string; desc: string }>> = {
@@ -58,7 +67,7 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{ label: t('GadaaCloud Copilot'), url: route('settings.copilot.index') }, { label: t('AI Model Setup') }]}
+            breadcrumbs={[{ label: t('GadaaCloud Copilot'), url: indexUrl }, { label: t('AI Model Setup') }]}
             pageTitle={t('GadaaCloud Copilot AI Setup')}
         >
             <Head title={t('AI Model Setup')} />

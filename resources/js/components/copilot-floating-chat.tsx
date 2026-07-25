@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { Component, ReactNode, useState, useRef, useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Bot, X, Send, ShieldCheck, ArrowRight, RefreshCw, MessageSquare, Terminal } from 'lucide-react';
+import { Sparkles, Bot, X, Send, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface ChatMessage {
     id: string;
@@ -15,9 +15,30 @@ interface ChatMessage {
     confidence?: number;
 }
 
-export default function CopilotFloatingChat() {
+class CopilotErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+    componentDidCatch(error: any, errorInfo: any) {
+        console.error("CopilotFloatingChat Error Boundary caught an error:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return null;
+        }
+        return this.props.children;
+    }
+}
+
+function CopilotFloatingChatInner() {
     const { t } = useTranslation();
-    const { auth } = usePage().props as any;
+    const pageObj = usePage() as any;
+    const auth = pageObj?.props?.auth || {};
+
     const [isOpen, setIsOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [loading, setLoading] = useState(false);
@@ -59,7 +80,14 @@ export default function CopilotFloatingChat() {
         setLoading(true);
 
         try {
-            const response = await axios.post(route('settings.copilot.query'), {
+            let queryUrl = '/settings/copilot/query';
+            try {
+                if (typeof route === 'function') {
+                    queryUrl = route('settings.copilot.query');
+                }
+            } catch (e) {}
+
+            const response = await axios.post(queryUrl, {
                 prompt: queryText,
             });
 
@@ -226,5 +254,13 @@ export default function CopilotFloatingChat() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function CopilotFloatingChat() {
+    return (
+        <CopilotErrorBoundary>
+            <CopilotFloatingChatInner />
+        </CopilotErrorBoundary>
     );
 }
