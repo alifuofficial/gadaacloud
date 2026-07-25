@@ -20,7 +20,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        if(Auth::user()->can('manage-account-dashboard')){
+        if (Auth::user()->hasRole('superadmin') || Auth::user()->hasRole('company') || Auth::user()->can('manage-account-dashboard')) {
             $user = Auth::user();
             $userType = $user->type;
 
@@ -36,7 +36,7 @@ class DashboardController extends Controller
                     return $this->staffDashboard();
             }
         }
-        return back()->with('error', __('Permission denied'));
+        return redirect()->route('dashboard')->with('error', __('Permission denied'));
     }
 
     private function companyDashboard()
@@ -90,6 +90,8 @@ class DashboardController extends Controller
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $monthName = $date->format('M');
+            $startOfMonth = $date->copy()->startOfMonth();
+            $endOfMonth = $date->copy()->endOfMonth();
             
             if ($isDemo) {
                 $customerPayments = rand(15000, 45000) + rand(0, 99) / 100;
@@ -98,15 +100,15 @@ class DashboardController extends Controller
                 $customerPayments = CustomerPayment::whereHas('customer', function($q) use ($creatorId) {
                     $q->where('created_by', $creatorId);
                 })
-                ->whereMonth('created_at', $date->month)
-                ->whereYear('created_at', $date->year)
+                ->where('created_at', '>=', $startOfMonth)
+                ->where('created_at', '<=', $endOfMonth)
                 ->sum('payment_amount');
                 
                 $vendorPayments = VendorPayment::whereHas('vendor', function($q) use ($creatorId) {
                     $q->where('created_by', $creatorId);
                 })
-                ->whereMonth('created_at', $date->month)
-                ->whereYear('created_at', $date->year)
+                ->where('created_at', '>=', $startOfMonth)
+                ->where('created_at', '<=', $endOfMonth)
                 ->sum('payment_amount');
             }
             
@@ -151,13 +153,15 @@ class DashboardController extends Controller
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $monthName = $date->format('M');
+            $startOfMonth = $date->copy()->startOfMonth();
+            $endOfMonth = $date->copy()->endOfMonth();
 
             if ($isDemo) {
                 $monthPayments = rand(1000, 10000) + rand(0, 99) / 100;
             } else {
                 $monthPayments = VendorPayment::where('vendor_id', $user->id)
-                    ->whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
+                    ->where('created_at', '>=', $startOfMonth)
+                    ->where('created_at', '<=', $endOfMonth)
                     ->sum('payment_amount');
             }
 
@@ -229,13 +233,15 @@ class DashboardController extends Controller
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $monthName = $date->format('M');
+            $startOfMonth = $date->copy()->startOfMonth();
+            $endOfMonth = $date->copy()->endOfMonth();
 
             if ($isDemo) {
                 $monthPayments = rand(2000, 15000) + rand(0, 99) / 100;
             } else {
                 $monthPayments = CustomerPayment::where('customer_id', $user->id)
-                    ->whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
+                    ->where('created_at', '>=', $startOfMonth)
+                    ->where('created_at', '<=', $endOfMonth)
                     ->sum('payment_amount');
             }
 
@@ -299,13 +305,18 @@ class DashboardController extends Controller
         $user = Auth::user();
         $creatorId = $user->created_by;
 
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
         $totalClients = Customer::where('created_by', $creatorId)->count();
         $totalVendors = Vendor::where('created_by', $creatorId)->count();
         $monthlyRevenue = Revenue::where('created_by', $creatorId)
-            ->whereMonth('created_at', Carbon::now()->month)
+            ->where('created_at', '>=', $startOfMonth)
+            ->where('created_at', '<=', $endOfMonth)
             ->sum('amount');
         $monthlyExpense = Expense::where('created_by', $creatorId)
-            ->whereMonth('created_at', Carbon::now()->month)
+            ->where('created_at', '>=', $startOfMonth)
+            ->where('created_at', '<=', $endOfMonth)
             ->sum('amount');
 
         $recentActivities = collect()
