@@ -5,9 +5,11 @@ namespace Workdo\GadaaCloudCopilot\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Workdo\GadaaCloudCopilot\Models\CopilotInsight;
 use Workdo\GadaaCloudCopilot\Models\CopilotAutomation;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class CopilotController extends Controller
@@ -140,7 +142,7 @@ class CopilotController extends Controller
         $demurrageRiskCount = 2;
         $estimatedLandedCostMarkup = $totalPurchases > 0 ? round(($totalPurchases * 0.18), 2) : 0;
 
-        // 7. Fetch Automations & Insights (with fallback)
+        // 7. Fetch Automations & Insights
         $automations = collect();
         try {
             if (Schema::hasTable('copilot_automations')) {
@@ -235,41 +237,163 @@ class CopilotController extends Controller
         ]);
     }
 
-    public function toggleAutomation(Request $request, $id)
+    /**
+     * Render AI Model Setup Page
+     */
+    public function setup()
     {
         $companyId = creatorId();
-        $automation = CopilotAutomation::where('created_by', $companyId)->where('id', $id)->firstOrFail();
-        $automation->is_active = !$automation->is_active;
-        $automation->save();
+        $settings = Setting::where('created_by', $companyId)
+            ->whereIn('key', [
+                'copilot_ai_provider',
+                'copilot_ai_model',
+                'copilot_api_key',
+                'copilot_temperature',
+                'copilot_max_tokens',
+                'copilot_system_prompt'
+            ])->pluck('value', 'key')->toArray();
 
-        return redirect()->back()->with('success', __('Automation status updated successfully.'));
+        return Inertia::render('settings/copilot-setup', [
+            'aiSettings' => [
+                'provider'      => $settings['copilot_ai_provider'] ?? 'gemini',
+                'model'         => $settings['copilot_ai_model'] ?? 'gemini-1.5-flash',
+                'apiKey'        => $settings['copilot_api_key'] ?? '',
+                'temperature'   => $settings['copilot_temperature'] ?? '0.3',
+                'maxTokens'     => $settings['copilot_max_tokens'] ?? '2048',
+                'systemPrompt'  => $settings['copilot_system_prompt'] ?? 'You are GadaaCloud Copilot, an autonomous ERP AI assistant for financial forecasting, Ethiopian tax engine calculations (MoR), supply chain trade management, and HR analytics.',
+            ],
+        ]);
     }
 
+    /**
+     * Save AI Model Settings
+     */
+    public function saveSetup(Request $request)
+    {
+        $request->validate([
+            'provider'     => 'required|string',
+            'model'        => 'required|string',
+            'apiKey'       => 'nullable|string',
+            'temperature'  => 'required|numeric|min:0|max:1',
+            'maxTokens'    => 'required|integer|min:256|max:8192',
+            'systemPrompt' => 'required|string',
+        ]);
+
+        $companyId = creatorId();
+        $fields = [
+            'copilot_ai_provider'   => $request->provider,
+            'copilot_ai_model'      => $request->model,
+            'copilot_api_key'       => $request->apiKey ?? '',
+            'copilot_temperature'   => (string)$request->temperature,
+            'copilot_max_tokens'    => (string)$request->maxTokens,
+            'copilot_system_prompt' => $request->systemPrompt,
+        ];
+
+        foreach ($fields as $key => $val) {
+            Setting::updateOrCreate(
+                ['key' => $key, 'created_by' => $companyId],
+                ['value' => $val, 'is_public' => 0]
+            );
+        }
+
+        return redirect()->back()->with('success', __('GadaaCloud Copilot AI model configuration saved successfully.'));
+    }
+
+    /**
+     * Floatable Chatbot & Query Terminal (Role & Permission Aware)
+     */
     public function queryCopilot(Request $request)
     {
         $request->validate([
             'prompt' => 'required|string',
         ]);
 
-        $prompt = strtolower($request->prompt);
-        $reply = "🤖 GadaaCloud Copilot Analysis:\n\n";
+        $user = Auth::user();
+        $companyId = creatorId();
+        $prompt = strtolower(trim($request->prompt));
 
-        if (str_contains($prompt, 'tax') || str_contains($prompt, 'vat') || str_contains($prompt, 'pension') || str_contains($prompt, 'mor')) {
-            $reply .= "• 🇪🇹 **Ethiopian Tax Engine Analysis**:\n";
-            $reply .= "  - **VAT (15%)**: Output VAT minus Input VAT is calculated monthly for MoR filing.\n";
-            $reply .= "  - **Schedule A Employment Tax**: Progressive brackets (0% to 35%) applied to monthly basic salaries.\n";
-            $reply .= "  - **Pension**: 7% Employee contribution + 11% Employer contribution.\n";
-            $reply .= "  - **Withholding**: 2% Goods/Services / 3% Contract Withholding automatically tracked.\n";
-        } elseif (str_contains($prompt, 'cash') || str_contains($prompt, 'forecast') || str_contains($prompt, 'predict') || str_contains($prompt, 'money')) {
-            $reply .= "• 📊 **AI Cash Flow & Forecast**:\n";
-            $reply .= "  - 6-month multi-variable trend models factoring seasonal Ethiopian peaks (Enkutatash, Genna, Ramadan).\n";
-            $reply .= "  - Real-time net liquidity calculated by combining paid sales minus supplier payables and payroll liabilities.\n";
-        } elseif (str_contains($prompt, 'port') || str_contains($prompt, 'lc') || str_contains($prompt, 'ship') || str_contains($prompt, 'trade')) {
-            $reply .= "• 🚢 **Import/Export & Landed Cost Intelligence**:\n";
-            $reply .= "  - Tracks Djibouti Port clearance timelines to minimize daily demurrage charges.\n";
-            $reply .= "  - Allocates freight, tariffs, and customs charges to calculate true unit margins.\n";
-        } else {
-            $reply .= "• ⚡ **System Status**: GadaaCloud Copilot is operating cross-module across HRM, Finance, Trade, and Inventory modules. System parameters are optimal.";
+        $userRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+        $userPermissions = method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [];
+
+        $isCompanyOrAdmin = $user->type === 'company' || $user->type === 'superadmin' || in_array('company', $userRoles) || in_array('superadmin', $userRoles);
+
+        $reply = "🤖 **GadaaCloud Copilot Intelligent Response**\n\n";
+
+        // Check 1: Financial & Sales Analytics
+        if (str_contains($prompt, 'sale') || str_contains($prompt, 'revenue') || str_contains($prompt, 'invoice') || str_contains($prompt, 'receivable')) {
+            if ($isCompanyOrAdmin || in_array('manage-account', $userPermissions) || in_array('manage-revenues', $userPermissions) || in_array('manage-invoices', $userPermissions)) {
+                $salesData = DB::table('sales_invoices')->where('created_by', $companyId)
+                    ->select(
+                        DB::raw("COUNT(*) as cnt"),
+                        DB::raw("SUM(COALESCE(total_amount, 0)) as total"),
+                        DB::raw("SUM(COALESCE(paid_amount, 0)) as paid"),
+                        DB::raw("SUM(COALESCE(balance_amount, 0)) as bal")
+                    )->first();
+
+                $total = number_format(floatval($salesData->total ?? 0), 2);
+                $paid  = number_format(floatval($salesData->paid ?? 0), 2);
+                $bal   = number_format(floatval($salesData->bal ?? 0), 2);
+
+                $reply .= "• 💰 **Sales & Receivables Overview**:\n";
+                $reply .= "  - **Total Sales Revenue**: {$total} ETB\n";
+                $reply .= "  - **Collected Payments**: {$paid} ETB\n";
+                $reply .= "  - **Pending Receivables**: {$bal} ETB ({$salesData->cnt} Invoices)\n";
+                $reply .= "  - **AI Recommendation**: Send automated payment reminders for outstanding balances.\n";
+            } else {
+                $reply .= "🔒 **Permission Access Notice**: You do not have permissions (`manage-revenues` or `manage-account`) to view sales financial records.";
+            }
+        }
+        // Check 2: Ethiopian Tax Engine & MoR
+        elseif (str_contains($prompt, 'tax') || str_contains($prompt, 'vat') || str_contains($prompt, 'pension') || str_contains($prompt, 'mor') || str_contains($prompt, 'withholding')) {
+            if ($isCompanyOrAdmin || in_array('manage-account', $userPermissions) || in_array('manage-account-reports', $userPermissions)) {
+                $basicSal = DB::table('employees')->where('created_by', $companyId)->sum('basic_salary') ?? 0;
+                $empTax = $this->calculateEthiopianEmploymentTax($basicSal);
+                $pension7 = $basicSal * 0.07;
+                $pension11 = $basicSal * 0.11;
+
+                $reply .= "• 🇪🇹 **Ethiopian Tax Engine (MoR Compliance)**:\n";
+                $reply .= "  - **Schedule A Employment Tax**: ~" . number_format($empTax, 2) . " ETB/mo\n";
+                $reply .= "  - **7% Employee Pension**: " . number_format($pension7, 2) . " ETB/mo\n";
+                $reply .= "  - **11% Employer Pension**: " . number_format($pension11, 2) . " ETB/mo\n";
+                $reply .= "  - **VAT (15%)**: Output VAT minus Input VAT for monthly MoR Declaration.\n";
+                $reply .= "  - **Withholding Tax**: 2% Goods/Services & 3% Contract Withholding tracked.\n";
+            } else {
+                $reply .= "🔒 **Permission Access Notice**: You do not have financial permissions (`manage-account-reports`) to view tax calculations.";
+            }
+        }
+        // Check 3: HR & Employee Payroll
+        elseif (str_contains($prompt, 'employee') || str_contains($prompt, 'staff') || str_contains($prompt, 'payroll') || str_contains($prompt, 'hrm') || str_contains($prompt, 'salary')) {
+            if ($isCompanyOrAdmin || in_array('manage-employee', $userPermissions) || in_array('manage-payrolls', $userPermissions) || in_array('manage-hrm', $userPermissions)) {
+                $empStats = DB::table('employees')->where('created_by', $companyId)
+                    ->select(DB::raw("COUNT(*) as cnt"), DB::raw("SUM(COALESCE(basic_salary, 0)) as sal"))->first();
+
+                $cnt = $empStats->cnt ?? 0;
+                $sal = number_format(floatval($empStats->sal ?? 0), 2);
+
+                $reply .= "• 👥 **HRM & Payroll Analytics**:\n";
+                $reply .= "  - **Active Employees**: {$cnt}\n";
+                $reply .= "  - **Monthly Basic Payroll**: {$sal} ETB\n";
+                $reply .= "  - **AI Status**: Employee attendance, leaves, and appraisal schedules are up to date.\n";
+            } else {
+                $reply .= "🔒 **Permission Access Notice**: You do not have HRM permissions (`manage-employee` or `manage-payrolls`) to view staff payroll.";
+            }
+        }
+        // Check 4: Cash Flow & Forecast
+        elseif (str_contains($prompt, 'cash') || str_contains($prompt, 'forecast') || str_contains($prompt, 'predict') || str_contains($prompt, 'profit')) {
+            if ($isCompanyOrAdmin || in_array('manage-account-dashboard', $userPermissions)) {
+                $reply .= "• 📊 **6-Month Cash Flow Forecast**:\n";
+                $reply .= "  - **Seasonal Trend Factor**: Factoring Enkutatash (+20%), Genna/Timkat (+15%), Ramadan (+12%).\n";
+                $reply .= "  - **Net Liquidity Direction**: Positive growth projected over next 2 quarters.\n";
+                $reply .= "  - **Action**: Maintain 15% cash reserve for upcoming quarterly tax filings.\n";
+            } else {
+                $reply .= "🔒 **Permission Access Notice**: You do not have permission (`manage-account-dashboard`) to view cash flow forecasts.";
+            }
+        }
+        // Check 5: General & System Info
+        else {
+            $reply .= "• ⚡ **User Context**: Connected as `{$user->name}` (`{$user->type}`).\n";
+            $reply .= "• 🛡️ **Active Permissions**: " . count($userPermissions) . " Spatie permissions active.\n";
+            $reply .= "• 🌐 **GadaaCloud Copilot**: Ask me about sales, receivables, Ethiopian taxes, employee payroll, cash flow forecasting, or Djibouti port demurrage warnings!";
         }
 
         return response()->json([

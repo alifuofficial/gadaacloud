@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { UserX, ArrowLeft } from "lucide-react";
 import { useFlashMessages } from "@/hooks/useFlashMessages";
+import CopilotFloatingChat from "@/components/copilot-floating-chat";
 
 function AuthenticatedLayoutContent({
     header,
@@ -154,6 +155,7 @@ function AuthenticatedLayoutContent({
             </SidebarInset>
         </SidebarProvider>
         <CookieConsent settings={adminAllSetting || {}} />
+        <CopilotFloatingChat />
         </div>
         </>
     );
