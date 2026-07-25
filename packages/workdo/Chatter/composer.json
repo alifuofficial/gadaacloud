@@ -1,0 +1,18 @@
+{
+    "name": "workdo/chatter",
+    "description": "Document Chatter & Activity Stream Module for GadaaCloud ERP",
+    "type": "laravel-package",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Workdo\\Chatter\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Workdo\\Chatter\\Providers\\ChatterServiceProvider"
+            ]
+        }
+    }
+}

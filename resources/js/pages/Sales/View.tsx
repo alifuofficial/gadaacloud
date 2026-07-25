@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { FileText, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageButtons } from '@/hooks/usePageButtons';
+import DocumentChatter from '@/components/chatter/document-chatter';
 
 interface ViewProps {
     invoice: SalesInvoice;
@@ -291,6 +292,9 @@ export default function View() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Universal Document Chatter & Activity Stream */}
+                <DocumentChatter model="sales_invoice" recordId={invoice.id} />
             </div>
         </AuthenticatedLayout>
     );

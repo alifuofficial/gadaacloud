@@ -1,0 +1,11 @@
+{
+    "name": "Chatter",
+    "alias": "Document Chatter & Activity Stream",
+    "description": "Per-record internal notes, @mentions, file attachments, and audit trail diff logs for all ERP documents.",
+    "version": "1.0.0",
+    "priority": 6,
+    "package_name": "chatter",
+    "for_admin": false,
+    "monthly_price": 0,
+    "yearly_price": 0
+}
