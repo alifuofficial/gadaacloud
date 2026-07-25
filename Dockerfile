@@ -12,7 +12,7 @@ RUN npm ci
 COPY . .
 # Copy vendor directory containing Ziggy routing helper
 COPY --from=php-builder /app/vendor ./vendor
-RUN npm run build
+RUN mkdir -p /app/public/build && npm run build
 
 # Stage 3: PHP & Apache Production Environment
 FROM php:8.2-apache-bullseye
