@@ -52,12 +52,23 @@ class HomeController extends Controller
             }
         }
 
+        $aiTotalTokens = 0;
+        $aiTotalCost = 0;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('copilot_token_usages')) {
+                $aiTotalTokens = intval(\Illuminate\Support\Facades\DB::table('copilot_token_usages')->sum('total_tokens') ?? 0);
+                $aiTotalCost = floatval(\Illuminate\Support\Facades\DB::table('copilot_token_usages')->sum('token_cost') ?? 0);
+            }
+        } catch (\Throwable $e) {}
+
         return Inertia::render('SuperAdminDashboard', [
             'stats' => [
                 'order_payments' => floatval(Order::sum('price') ?? 0),
                 'total_orders' => intval(Order::count()),
                 'total_plans' => intval(Plan::count()),
                 'total_companies' => intval(User::where('type', 'company')->count()),
+                'ai_total_tokens' => $aiTotalTokens,
+                'ai_total_cost' => $aiTotalCost,
             ],
             'chartData' => $chartData
         ]);

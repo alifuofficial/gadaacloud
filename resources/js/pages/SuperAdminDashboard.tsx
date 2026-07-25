@@ -3,7 +3,7 @@ import { Head } from "@inertiajs/react";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart } from '@/components/charts';
-import { Building2, ShoppingCart, CreditCard, Crown } from "lucide-react";
+import { Building2, ShoppingCart, CreditCard, Crown, Sparkles, Cpu } from "lucide-react";
 import { formatAdminCurrency } from '@/utils/helpers';
 
 interface SuperAdminDashboardProps {
@@ -12,6 +12,8 @@ interface SuperAdminDashboardProps {
         total_orders: number;
         total_plans: number;
         total_companies: number;
+        ai_total_tokens?: number;
+        ai_total_cost?: number;
     };
     chartData: Array<{
         month: string;
@@ -31,7 +33,7 @@ export default function SuperAdminDashboard({ stats, chartData }: SuperAdminDash
             <Head title={t('Dashboard')} />
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <Card className="relative overflow-hidden bg-gradient-to-r from-green-50 to-green-100 border-green-200">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-green-700">{t('Total Orders')}</CardTitle>
@@ -73,6 +75,26 @@ export default function SuperAdminDashboard({ stats, chartData }: SuperAdminDash
                     <CardContent>
                         <div className="text-2xl font-bold text-orange-700">{stats.total_companies}</div>
                         <p className="text-xs text-orange-700 opacity-80 mt-1">{t('Registered companies')}</p>
+                    </CardContent>
+                </Card>
+
+                {/* AI Copilot Token Usage & Cost Card */}
+                <Card className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-purple-500/30">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-purple-200 flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                            {t('AI Copilot Tokens')}
+                        </CardTitle>
+                        <Cpu className="h-7 w-7 text-emerald-400 opacity-80" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-white font-mono">
+                            {(stats.ai_total_tokens || 0).toLocaleString()}
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10 text-xs">
+                            <span className="text-slate-400">{t('Token Value')}:</span>
+                            <span className="font-bold text-emerald-400 font-mono">{formatAdminCurrency(stats.ai_total_cost || 0)}</span>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

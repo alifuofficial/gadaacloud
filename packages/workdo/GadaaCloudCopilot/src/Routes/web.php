@@ -9,4 +9,6 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::post('settings/copilot/setup', [CopilotController::class, 'saveSetup'])->name('settings.copilot.setup.save');
     Route::post('settings/copilot/automation/{id}/toggle', [CopilotController::class, 'toggleAutomation'])->name('settings.copilot.automation.toggle');
     Route::post('settings/copilot/query', [CopilotController::class, 'queryCopilot'])->name('settings.copilot.query');
+    Route::get('settings/copilot/memories', [CopilotController::class, 'getMemories'])->name('settings.copilot.memories');
+    Route::post('settings/copilot/memories/clear', [CopilotController::class, 'clearMemories'])->name('settings.copilot.memories.clear');
 });

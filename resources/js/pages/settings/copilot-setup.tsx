@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Bot, Key, Cpu, ShieldCheck, Zap, Layers, CheckCircle2, Eye, EyeOff, Info } from 'lucide-react';
+import { Sparkles, Cpu, Key, ShieldCheck, Zap, Layers, CheckCircle2, Eye, EyeOff, Info, Coins, ShieldAlert } from 'lucide-react';
 
 interface SetupProps {
     aiSettings: {
         provider: string;
         model: string;
         apiKey: string;
+        tokenPricePer1k: string;
         temperature: string;
         maxTokens: string;
         systemPrompt: string;
@@ -29,6 +30,7 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
         provider: aiSettings.provider || 'gemini',
         model: aiSettings.model || 'gemini-1.5-flash',
         apiKey: aiSettings.apiKey || '',
+        tokenPricePer1k: aiSettings.tokenPricePer1k || '0.05',
         temperature: aiSettings.temperature || '0.3',
         maxTokens: aiSettings.maxTokens || '2048',
         systemPrompt: aiSettings.systemPrompt || '',
@@ -67,51 +69,30 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{ label: t('GadaaCloud Copilot'), url: indexUrl }, { label: t('AI Model Setup') }]}
-            pageTitle={t('GadaaCloud Copilot AI Setup')}
+            breadcrumbs={[{ label: t('GadaaCloud Copilot'), url: indexUrl }, { label: t('Global AI Setup') }]}
+            pageTitle={t('Global AI Model & Token Pricing Setup')}
         >
-            <Head title={t('AI Model Setup')} />
+            <Head title={t('Global AI Model & Token Pricing Setup')} />
 
             <div className="max-w-6xl mx-auto space-y-6">
-                {/* Recommendation Banner */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white p-6 md:p-8 shadow-xl border border-purple-500/20">
+                {/* Superadmin Exclusive Banner */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950 to-indigo-950 text-white p-6 md:p-8 shadow-xl border border-purple-500/30">
                     <div className="relative z-10 space-y-4">
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-purple-500/20 text-purple-200 border-purple-400/30 px-3 py-1 text-xs">
-                                <Sparkles className="w-3.5 h-3.5 mr-1 text-purple-300 animate-pulse" />
-                                {t('Official Recommendation')}
+                            <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30 px-3 py-1 text-xs font-semibold">
+                                <ShieldAlert className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                                {t('Superadmin Control Panel')}
                             </Badge>
-                            <span className="text-xs text-purple-300/80 font-mono">GadaaCloud Copilot Core Engine</span>
+                            <span className="text-xs text-purple-300 font-mono">Centralized Multi-Tenant Engine</span>
                         </div>
 
                         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                            {t('Which AI Model is Perfect for GadaaCloud ERP?')}
+                            {t('Global AI Provider & Token Metering Rates')}
                         </h2>
 
                         <p className="text-slate-300 text-sm md:text-base max-w-3xl leading-relaxed">
-                            {t('We strongly recommend')} <span className="font-semibold text-emerald-400">Google Gemini 1.5 Flash / Pro</span> {t('for GadaaCloud ERP because of three massive advantages:')}
+                            {t('As Superadmin, you configure the central AI provider and API Key. Tenant companies will use this central model automatically, and their token consumption will be metered based on your configured Token Rate.')}
                         </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
-                                <div className="flex items-center gap-2 font-bold text-emerald-400 text-sm mb-1">
-                                    <Zap className="w-4 h-4" /> 1M Token Context Window
-                                </div>
-                                <p className="text-xs text-slate-300">Allows reading entire multi-year financial ledgers, complex tax schedules, and thousands of inventory records in a single query.</p>
-                            </div>
-                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
-                                <div className="flex items-center gap-2 font-bold text-blue-400 text-sm mb-1">
-                                    <ShieldCheck className="w-4 h-4" /> Real-time Speed & Low Cost
-                                </div>
-                                <p className="text-xs text-slate-300">Delivers instantaneous floatable chatbot responses (&lt;800ms) at 80% lower operational cost than GPT-4o.</p>
-                            </div>
-                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
-                                <div className="flex items-center gap-2 font-bold text-purple-400 text-sm mb-1">
-                                    <Layers className="w-4 h-4" /> Native Multimodal Document AI
-                                </div>
-                                <p className="text-xs text-slate-300">Parses attached PDF invoices, bank receipts, and Djibouti port customs documents directly without external OCR.</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -121,13 +102,36 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Cpu className="w-5 h-5 text-purple-600" />
-                                {t('AI Provider & Model Selection')}
+                                {t('Global Provider & Token Pricing')}
                             </CardTitle>
                             <CardDescription>
-                                {t('Choose your active AI provider and model to power GadaaCloud Copilot analytics and floatable assistant.')}
+                                {t('Configure the API Key and price rate charged per 1,000 AI tokens used by tenant companies.')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
+                            {/* Token Pricing Rate */}
+                            <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 space-y-2">
+                                <Label htmlFor="tokenPricePer1k" className="flex items-center gap-2 text-emerald-900 font-bold">
+                                    <Coins className="w-4 h-4 text-emerald-600" />
+                                    {t('Token Price Rate (per 1,000 Tokens in ETB / Currency)')}
+                                </Label>
+                                <div className="flex items-center gap-3">
+                                    <Input
+                                        id="tokenPricePer1k"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={data.tokenPricePer1k}
+                                        onChange={(e) => setData('tokenPricePer1k', e.target.value)}
+                                        className="bg-white font-mono text-sm max-w-xs border-emerald-300"
+                                    />
+                                    <span className="text-xs text-emerald-800 font-medium">ETB per 1,000 AI Tokens</span>
+                                </div>
+                                <p className="text-[11px] text-emerald-700">
+                                    Example: Setting <code>0.05</code> means 1,000 tokens consumed by a tenant generates 0.05 Br in metered AI value.
+                                </p>
+                            </div>
+
                             {/* Provider Selection */}
                             <div className="space-y-2">
                                 <Label htmlFor="provider">{t('AI Provider')}</Label>
@@ -188,11 +192,11 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                 </div>
                             </div>
 
-                            {/* API Key */}
+                            {/* Global API Key */}
                             <div className="space-y-2">
                                 <Label htmlFor="apiKey" className="flex items-center gap-2">
                                     <Key className="w-4 h-4 text-gray-500" />
-                                    {t('API Key')}
+                                    {t('Global AI API Key')}
                                 </Label>
                                 <div className="relative">
                                     <Input
@@ -200,7 +204,7 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                         type={showKey ? 'text' : 'password'}
                                         value={data.apiKey}
                                         onChange={(e) => setData('apiKey', e.target.value)}
-                                        placeholder={`Enter your ${data.provider.toUpperCase()} API key...`}
+                                        placeholder={`Enter global ${data.provider.toUpperCase()} API key...`}
                                         className="pr-10 font-mono text-sm"
                                     />
                                     <button
@@ -211,10 +215,6 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                         {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Info className="w-3.5 h-3.5 text-blue-500" />
-                                    {t('Your API key is encrypted and stored securely per tenant company.')}
-                                </p>
                             </div>
 
                             {/* Advanced Parameters */}
@@ -230,7 +230,6 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                         value={data.temperature}
                                         onChange={(e) => setData('temperature', e.target.value)}
                                     />
-                                    <span className="text-[11px] text-gray-500">Lower values (0.1 - 0.3) provide precise financial/tax numbers.</span>
                                 </div>
 
                                 <div className="space-y-2">
@@ -244,7 +243,6 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                         value={data.maxTokens}
                                         onChange={(e) => setData('maxTokens', e.target.value)}
                                     />
-                                    <span className="text-[11px] text-gray-500">Maximum response length per AI generation step.</span>
                                 </div>
                             </div>
 
@@ -263,7 +261,7 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                         <CardFooter className="flex justify-end gap-3 bg-gray-50 border-t px-6 py-4">
                             <Button type="submit" disabled={processing} className="bg-purple-700 hover:bg-purple-800 text-white">
                                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                                {t('Save AI Configuration')}
+                                {t('Save Global AI Configuration')}
                             </Button>
                         </CardFooter>
                     </Card>
