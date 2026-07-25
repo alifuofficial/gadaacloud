@@ -65,9 +65,13 @@ const getPackageMenuItems = (userRoles: string[], activatedPackages: string[], t
 
         if (module) {
             Object.values(module).forEach((item: any) => {
-                const result = typeof item === 'function' ? item(t) : item;
-                const items = Array.isArray(result) ? result : [result];
-                menuItems.push(...items);
+                try {
+                    const result = typeof item === 'function' ? item(t) : item;
+                    const items = Array.isArray(result) ? result : [result];
+                    menuItems.push(...items);
+                } catch (e) {
+                    console.error(`Failed to load menu for package ${packageName}:`, e);
+                }
             });
         }
     });
