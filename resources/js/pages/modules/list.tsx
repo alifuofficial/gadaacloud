@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage, Link } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from "@/components/ui/search-input";
 import NoRecordsFound from '@/components/no-records-found';
-import { Boxes, Package, Power, PowerOff, Shield, CheckCircle2, XCircle, DollarSign, X, Save } from "lucide-react";
-import { formatAdminCurrency } from '@/utils/helpers';
+import { Boxes, Package, Power, PowerOff, Shield, DollarSign, X, Save, Settings, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -43,7 +42,6 @@ type FilterKey = 'all' | 'enabled' | 'disabled' | 'admin';
 export default function List() {
     const { addons, stats } = usePage<ModulesListProps>().props;
     const { t } = useTranslation();
-    const pageProps = usePage().props;
 
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<FilterKey>('all');
@@ -100,90 +98,166 @@ export default function List() {
         { key: 'admin',    label: t('Admin only'),  count: stats.admin_only },
     ];
 
-    return (
-        <AuthenticatedLayout breadcrumbs={[{ label: t('Modules') }]} pageTitle={t('Modules')}>
-            <Head title={t('Modules')} />
+    let copilotSetupUrl = '/settings/copilot/setup';
+    try {
+        if (typeof route === 'function') {
+            copilotSetupUrl = route('settings.copilot.setup');
+        }
+    } catch (e) {}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <StatCard icon={<Boxes className="h-5 w-5" />} label={t('Total modules')} value={stats.total} tone="primary" />
-                <StatCard icon={<CheckCircle2 className="h-5 w-5" />} label={t('Enabled')} value={stats.enabled} tone="green" />
-                <StatCard icon={<XCircle className="h-5 w-5" />} label={t('Disabled')} value={stats.disabled} tone="gray" />
-                <StatCard icon={<Shield className="h-5 w-5" />} label={t('Admin-only')} value={stats.admin_only} tone="amber" />
+    return (
+        <AuthenticatedLayout
+            breadcrumbs={[{ label: t('Add-on Manager') }]}
+            pageTitle={t('Add-on Manager')}
+        >
+            <Head title={t('Add-on Manager')} />
+
+            {/* Header & Stats Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <StatCard icon={<Boxes className="h-5 w-5 text-emerald-600" />} label={t('Total Modules')} value={stats.total} tone="primary" />
+                <StatCard icon={<Package className="h-5 w-5 text-green-600" />} label={t('Enabled')} value={stats.enabled} tone="green" />
+                <StatCard icon={<PowerOff className="h-5 w-5 text-gray-500" />} label={t('Disabled')} value={stats.disabled} tone="gray" />
+                <StatCard icon={<Shield className="h-5 w-5 text-amber-600" />} label={t('Admin Only')} value={stats.admin_only} tone="amber" />
             </div>
 
-            <Card>
-                <CardHeader className="space-y-3">
-                    <SearchInput value={search} onChange={setSearch} onSearch={() => {}} placeholder={t('Search modules by name, package or key...')} className="w-full" />
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                        {FILTERS.map((f) => {
-                            const active = filter === f.key;
-                            return (
-                                <button
-                                    key={f.key}
-                                    onClick={() => setFilter(f.key)}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${active ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'}`}
-                                    style={active ? { background: 'hsl(var(--primary))' } : undefined}
-                                >
-                                    {f.label}
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active ? 'bg-white/20' : 'bg-gray-100 text-gray-600'}`}>{f.count}</span>
-                                </button>
-                            );
-                        })}
+            <Card className="border shadow-sm">
+                <CardHeader className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {/* Filters */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        {FILTERS.map((f) => (
+                            <Button
+                                key={f.key}
+                                variant={filter === f.key ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setFilter(f.key)}
+                                className={`h-8 text-xs font-medium rounded-full ${
+                                    filter === f.key
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900 border-gray-200'
+                                }`}
+                            >
+                                {f.label}
+                                <span className={`ml-1.5 px-1.5 py-0.2 text-[10px] rounded-full ${
+                                    filter === f.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                    {f.count}
+                                </span>
+                            </Button>
+                        ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="w-full sm:w-64">
+                        <SearchInput
+                            value={search}
+                            onChange={(val) => setSearch(val)}
+                            onSearch={() => {}}
+                            placeholder={t('Search modules...')}
+                        />
                     </div>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="p-0">
                     {filtered.length > 0 ? (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm min-w-[700px]">
+                            <table className="w-full text-sm text-left">
                                 <thead>
-                                    <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50/60">
-                                        <th className="p-3">{t('Module')}</th>
-                                        <th className="p-3 hidden md:table-cell">{t('Package')}</th>
-                                        <th className="p-3 text-right">{t('Monthly')}</th>
-                                        <th className="p-3 text-right hidden md:table-cell">{t('Yearly')}</th>
-                                        <th className="p-3 text-center">{t('Status')}</th>
-                                        <th className="p-3 text-center hidden lg:table-cell">{t('Admin only')}</th>
-                                        <th className="p-3 text-center">{t('Priority')}</th>
-                                        <th className="p-3 text-right">{t('Actions')}</th>
+                                    <tr className="bg-gray-50/80 border-b text-gray-500 font-semibold text-xs uppercase tracking-wider">
+                                        <th className="p-3.5 pl-6">{t('Module')}</th>
+                                        <th className="p-3.5">{t('Package')}</th>
+                                        <th className="p-3.5 text-center">{t('Monthly')}</th>
+                                        <th className="p-3.5 text-center">{t('Yearly')}</th>
+                                        <th className="p-3.5 text-center">{t('Status')}</th>
+                                        <th className="p-3.5 text-center hidden lg:table-cell">{t('Admin Only')}</th>
+                                        <th className="p-3.5 text-center">{t('Priority')}</th>
+                                        <th className="p-3.5 pr-6 text-right">{t('Actions')}</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-100">
                                     {filtered.map((m) => (
-                                        <tr key={m.id} className="border-t border-gray-100 hover:bg-gray-50/40 transition-colors">
-                                            <td className="p-3">
+                                        <tr key={m.id} className="hover:bg-gray-50/60 transition-colors">
+                                            <td className="p-3 pl-6 font-medium text-gray-900">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="relative flex-shrink-0">
-                                                        <img src={m.image} alt={m.name} className="h-9 w-9 object-contain rounded-lg border border-gray-100 bg-white" onError={(e) => { const t = e.target as HTMLImageElement; t.style.display = 'none'; t.nextElementSibling?.classList.remove('hidden'); }} />
-                                                        <Package className="h-9 w-9 text-gray-400 hidden p-1.5" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="font-semibold text-gray-900 truncate">{m.name}</div>
-                                                        <div className="text-[11px] text-gray-400 truncate font-mono">{m.module}</div>
+                                                    <img
+                                                        src={m.image}
+                                                        alt={m.name}
+                                                        className="w-8 h-8 rounded-lg object-cover border bg-white p-0.5 shadow-2xs"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLElement).style.display = 'none';
+                                                        }}
+                                                    />
+                                                    <div>
+                                                        <div className="font-semibold text-gray-900 flex items-center gap-1.5">
+                                                            {m.name}
+                                                            {m.module === 'GadaaCloudCopilot' && (
+                                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded-full border border-purple-200">
+                                                                    <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+                                                                    AI Engine
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 font-mono">{m.module}</div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="p-3 hidden md:table-cell">
-                                                {m.package_name ? <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs font-medium">{m.package_name}</span> : <span className="text-gray-300 text-xs">—</span>}
+                                            <td className="p-3 text-gray-500 font-mono text-xs">
+                                                {m.package_name ? (
+                                                    <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-600">{m.package_name}</span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
                                             </td>
-                                            <td className="p-3 text-right font-medium text-gray-800 whitespace-nowrap">
-                                                {m.monthly_price > 0 ? formatAdminCurrency(m.monthly_price, pageProps) : <span className="text-gray-300 text-xs">Free</span>}
+                                            <td className="p-3 text-center text-gray-600">
+                                                {m.monthly_price === 0 ? (
+                                                    <span className="text-xs font-semibold text-emerald-600">{t('Free')}</span>
+                                                ) : (
+                                                    <span className="font-mono text-xs">${m.monthly_price.toFixed(2)}</span>
+                                                )}
                                             </td>
-                                            <td className="p-3 text-right font-medium text-gray-800 whitespace-nowrap hidden md:table-cell">
-                                                {m.yearly_price > 0 ? formatAdminCurrency(m.yearly_price, pageProps) : <span className="text-gray-300 text-xs">Free</span>}
+                                            <td className="p-3 text-center text-gray-600">
+                                                {m.yearly_price === 0 ? (
+                                                    <span className="text-xs font-semibold text-emerald-600">{t('Free')}</span>
+                                                ) : (
+                                                    <span className="font-mono text-xs">${m.yearly_price.toFixed(2)}</span>
+                                                )}
                                             </td>
                                             <td className="p-3 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${m.is_enable ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'}`}>
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                                                    {m.is_enable ? t('Active') : t('Inactive')}
-                                                </span>
+                                                {m.is_enable ? (
+                                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                        {t('Active')}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full border border-gray-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                                        {t('Disabled')}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="p-3 text-center hidden lg:table-cell">
                                                 {m.for_admin ? <Shield className="h-4 w-4 inline-block text-amber-500" /> : <span className="text-gray-300 text-xs">—</span>}
                                             </td>
                                             <td className="p-3 text-center text-gray-600 whitespace-nowrap">{m.priority}</td>
-                                            <td className="p-3 text-right">
+                                            <td className="p-3 pr-6 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
+                                                    {/* AI Copilot Configuration Button for Superadmin */}
+                                                    {(m.module === 'GadaaCloudCopilot' || m.module === 'GadaaCloudCopilot') && (
+                                                        <TooltipProvider>
+                                                            <Tooltip delayDuration={0}>
+                                                                <TooltipTrigger asChild>
+                                                                    <Link
+                                                                        href={copilotSetupUrl}
+                                                                        className="inline-flex items-center justify-center h-8 px-2.5 rounded-md bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs gap-1 shadow-sm transition-colors"
+                                                                    >
+                                                                        <Settings className="h-3.5 w-3.5" />
+                                                                        <span>{t('AI Config')}</span>
+                                                                    </Link>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>{t('Configure Global AI API Key & Token Pricing')}</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+
                                                     {/* Set Price button */}
                                                     <TooltipProvider>
                                                         <Tooltip delayDuration={0}>
