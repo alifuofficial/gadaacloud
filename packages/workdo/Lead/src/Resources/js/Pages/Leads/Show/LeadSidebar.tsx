@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { User, CheckSquare, Users, Package, Database, File, Phone, Activity } from 'lucide-react';
+import { User, CheckSquare, Users, Package, Database, File, Phone, Activity, MessageSquare } from 'lucide-react';
 
 interface SidebarItem {
     key: string;
@@ -69,6 +69,12 @@ export default function LeadSidebar({ activeItem, onSectionChange }: LeadSidebar
             label: t('Activity'),  
             icon: Activity,    
             permission: 'manage-lead-activity'
+        },
+        {
+            key: 'chatter',
+            label: t('Chatter Stream'),
+            icon: MessageSquare,
+            permission: 'view-leads'
         },
     ];
 

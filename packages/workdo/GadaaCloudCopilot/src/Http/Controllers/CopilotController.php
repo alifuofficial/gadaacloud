@@ -333,6 +333,10 @@ class CopilotController extends Controller
 
     public function createAutomation(Request $request)
     {
+        if ($request->isMethod('get')) {
+            return redirect()->route('settings.copilot.index');
+        }
+
         $request->validate([
             'name'          => 'required|string',
             'trigger_event' => 'required|string',
@@ -354,6 +358,10 @@ class CopilotController extends Controller
 
     public function toggleAutomation(Request $request, $id)
     {
+        if ($request->isMethod('get')) {
+            return redirect()->route('settings.copilot.index');
+        }
+
         $companyId = creatorId();
         $automation = CopilotAutomation::where('created_by', $companyId)->where('id', $id)->firstOrFail();
         $automation->is_active = !$automation->is_active;

@@ -16,6 +16,7 @@ import Calls from './Calls/Index';
 import Files from './Files';
 import ConvertToDeal from './ConvertToDeal';
 import { Lead } from '../types';
+import DocumentChatter from '@/components/chatter/document-chatter';
 
 interface ShowLeadProps {
     lead: Lead;
@@ -43,6 +44,7 @@ export default function Show() {
             case 'calls':     return <Calls lead={lead} />;
             case 'files':     return <Files lead={lead} />;
             case 'activity':  return <Activity lead={lead} />;
+            case 'chatter':   return <DocumentChatter model="lead" recordId={lead.id} title={t('Lead Document Chatter & Stream')} />;
             default:          return null;
         }
     };
@@ -89,12 +91,17 @@ export default function Show() {
                 <div className="md:w-56 flex-shrink-0">
                     <LeadSidebar activeItem={activeSection} onSectionChange={setActiveSection} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 space-y-6">
                     <Card className="shadow-sm">
                         <CardContent className="p-6">
                             {renderSectionContent()}
                         </CardContent>
                     </Card>
+
+                    {/* Document Chatter & Activity Stream */}
+                    {activeSection !== 'chatter' && (
+                        <DocumentChatter model="lead" recordId={lead.id} title={t('Lead Document Chatter & Activity Stream')} />
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>
