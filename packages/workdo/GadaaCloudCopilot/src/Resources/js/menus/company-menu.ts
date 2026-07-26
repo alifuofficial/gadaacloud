@@ -1,5 +1,5 @@
 import { NavItem } from '@/types';
-import { Bot, Cpu, LayoutDashboard, Zap, UserCheck, Eye } from 'lucide-react';
+import { Bot, Cpu, LayoutDashboard, Zap, UserCheck, Eye, TrendingUp } from 'lucide-react';
 
 export const gadaaCloudCopilotMenu = (t: (key: string) => string): NavItem[] => {
     let indexHref = '/settings/copilot';
@@ -23,6 +23,12 @@ export const gadaaCloudCopilotMenu = (t: (key: string) => string): NavItem[] => 
             title: t('Overview & 360° AI Telemetry'),
             href: indexHref,
             icon: LayoutDashboard,
+            permission: 'manage-settings',
+        },
+        {
+            title: t('Predictive AI & Machine Learning'),
+            href: `${indexHref}?tab=predictions`,
+            icon: TrendingUp,
             permission: 'manage-settings',
         },
         {
