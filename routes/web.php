@@ -217,12 +217,17 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck'])->group(function () {
     Route::post('admin/domains/settings', [DomainController::class, 'updateDynadotSettings'])->name('admin.domains.settings.update');
     Route::post('admin/domains/{id}/toggle-status', [DomainController::class, 'toggleStatus'])->name('admin.domains.status.toggle');
 
-    // Trade & LC Operations routes
+    // Trade & IE Operations routes
+    Route::get('import-export/dashboard', [ImportExportController::class, 'dashboard'])->name('import-export.dashboard');
     Route::get('settings/import-export', [ImportExportController::class, 'index'])->name('settings.import-export.index');
     Route::post('settings/import-export/lc', [ImportExportController::class, 'storeLc'])->name('settings.import-export.lc.store');
     Route::post('settings/import-export/shipment', [ImportExportController::class, 'storeShipment'])->name('settings.import-export.shipment.store');
     Route::post('settings/import-export/shipment/{id}/status', [ImportExportController::class, 'updateShipmentStatus'])->name('settings.import-export.shipment.status');
     Route::post('settings/import-export/landed-cost', [ImportExportController::class, 'storeLandedCost'])->name('settings.import-export.landed-cost.store');
+    Route::post('settings/import-export/forex', [ImportExportController::class, 'storeForexQueue'])->name('settings.import-export.forex.store');
+    Route::post('settings/import-export/djibouti', [ImportExportController::class, 'storeDjiboutiContainer'])->name('settings.import-export.djibouti.store');
+    Route::post('settings/import-export/ecc', [ImportExportController::class, 'calculateEccDuty'])->name('settings.import-export.ecc.calculate');
+    Route::post('settings/import-export/ecx', [ImportExportController::class, 'storeEcxContract'])->name('settings.import-export.ecx.store');
 
     // Inventory Management routes
     Route::get('settings/inventory', [InventoryController::class, 'index'])->name('settings.inventory.index');

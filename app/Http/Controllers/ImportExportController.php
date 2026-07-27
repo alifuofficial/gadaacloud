@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Workdo\Account\Models\ChartOfAccount;
 use Workdo\Account\Models\JournalEntry;
@@ -18,41 +19,225 @@ use Workdo\Account\Models\JournalEntryItem;
 class ImportExportController extends Controller
 {
     /**
-     * Dashboard View
+     * Requirement 1: IE Dashboard View (Overview of all Import/Export Operations)
      */
-    public function index()
+    public function dashboard()
     {
         $companyId = creatorId();
 
-        $lcs = TradeLc::with(['purchaseOrder', 'vendor'])->orderBy('id', 'desc')->get();
-        $shipments = TradeShipment::with('lc')->orderBy('id', 'desc')->get();
-        $landedCosts = TradeLandedCost::with('lc')->orderBy('id', 'desc')->get();
+        $lcs = TradeLc::where('created_by', $companyId)->orWhere('created_by', 2)->with(['purchaseOrder', 'vendor'])->orderBy('id', 'desc')->get();
+        $shipments = TradeShipment::where('created_by', $companyId)->orWhere('created_by', 2)->with('lc')->orderBy('id', 'desc')->get();
+        $landedCosts = TradeLandedCost::where('created_by', $companyId)->orWhere('created_by', 2)->with('lc')->orderBy('id', 'desc')->get();
 
-        // Get purchase invoices to link LCs to
-        $purchaseOrders = PurchaseInvoice::orderBy('id', 'desc')->get(['id', 'invoice_number', 'total_amount', 'vendor_id']);
-        
-        // Get vendor list
-        $vendors = User::where('type', 'vendor')
-            ->orWhere('type', 'company')
-            ->orderBy('name', 'asc')
-            ->get(['id', 'name', 'email']);
-
-        // Accounts list for allocation displays
-        $accounts = [];
-        if (class_exists('Workdo\Account\Models\ChartOfAccount')) {
-            $accounts = ChartOfAccount::where('created_by', $companyId)
-                ->orderBy('account_name', 'asc')
-                ->get(['id', 'account_name', 'account_code']);
+        $forexQueues = [];
+        if (Schema::hasTable('nbe_forex_queues')) {
+            $forexQueues = DB::table('nbe_forex_queues')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
         }
 
-        return Inertia::render('settings/import_export', [
+        $djiboutiContainers = [];
+        if (Schema::hasTable('djibouti_port_containers')) {
+            $djiboutiContainers = DB::table('djibouti_port_containers')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
+        }
+
+        $eccCustomsDuties = [];
+        if (Schema::hasTable('ecc_customs_duties')) {
+            $eccCustomsDuties = DB::table('ecc_customs_duties')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
+        }
+
+        $ecxContracts = [];
+        if (Schema::hasTable('ecx_export_contracts')) {
+            $ecxContracts = DB::table('ecx_export_contracts')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
+        }
+
+        // Summary Stats Calculation
+        $totalLcValueUsd = $lcs->sum('amount');
+        $activeShipmentsCount = $shipments->whereIn('status', ['on_port', 'in_transit', 'customs_clearance'])->count();
+        $pendingForexUsd = collect($forexQueues)->where('queue_status', 'pending')->sum('amount_usd');
+        
+        // Calculate Demurrage Risk
+        $totalDemurrageRiskUsd = 0;
+        foreach ($djiboutiContainers as $c) {
+            $discharge = \Carbon\Carbon::parse($c->discharge_date);
+            $daysInPort = max(0, now()->diffInDays($discharge));
+            if ($daysInPort > $c->free_storage_days && $c->status === 'in_port') {
+                $overdueDays = $daysInPort - $c->free_storage_days;
+                $totalDemurrageRiskUsd += ($overdueDays * floatval($c->daily_demurrage_usd));
+            }
+        }
+
+        $totalExportUsd = collect($ecxContracts)->sum('contract_value_usd');
+
+        return Inertia::render('import-export/Dashboard', [
             'lcs' => $lcs,
             'shipments' => $shipments,
             'landedCosts' => $landedCosts,
-            'purchaseOrders' => $purchaseOrders,
-            'vendors' => $vendors,
-            'accounts' => $accounts
+            'forexQueues' => $forexQueues,
+            'djiboutiContainers' => $djiboutiContainers,
+            'eccCustomsDuties' => $eccCustomsDuties,
+            'ecxContracts' => $ecxContracts,
+            'summary' => [
+                'totalLcValueUsd' => $totalLcValueUsd,
+                'activeShipmentsCount' => $activeShipmentsCount,
+                'pendingForexUsd' => $pendingForexUsd,
+                'totalDemurrageRiskUsd' => $totalDemurrageRiskUsd,
+                'totalExportUsd' => $totalExportUsd,
+            ],
         ]);
+    }
+
+    /**
+     * Standard Settings View
+     */
+    public function index()
+    {
+        return $this->dashboard();
+    }
+
+    /**
+     * Store NBE Forex Allocation Queue Entry
+     */
+    public function storeForexQueue(Request $request)
+    {
+        $request->validate([
+            'lc_number' => 'required|string|max:100',
+            'bank_name' => 'required|string|max:255',
+            'nbe_queue_number' => 'nullable|string|max:100',
+            'amount_usd' => 'required|numeric|min:1',
+            'application_date' => 'required|date',
+        ]);
+
+        $companyId = creatorId();
+
+        DB::table('nbe_forex_queues')->insert([
+            'created_by' => $companyId,
+            'lc_number' => $request->lc_number,
+            'bank_name' => $request->bank_name,
+            'nbe_queue_number' => $request->nbe_queue_number ?? ('NBE-FX-' . rand(1000, 9999)),
+            'is_franco_valuta' => $request->boolean('is_franco_valuta'),
+            'amount_usd' => $request->amount_usd,
+            'queue_status' => $request->input('queue_status', 'pending'),
+            'application_date' => $request->application_date,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', __('NBE Forex Allocation Queue entry recorded successfully.'));
+    }
+
+    /**
+     * Store Djibouti Container Demurrage Record
+     */
+    public function storeDjiboutiContainer(Request $request)
+    {
+        $request->validate([
+            'container_number' => 'required|string|max:100',
+            'vessel_name' => 'required|string|max:255',
+            'bill_of_lading' => 'required|string|max:100',
+            'discharge_date' => 'required|date',
+            'free_storage_days' => 'required|integer|min:1',
+            'daily_demurrage_usd' => 'required|numeric|min:0',
+        ]);
+
+        $companyId = creatorId();
+
+        DB::table('djibouti_port_containers')->insert([
+            'created_by' => $companyId,
+            'container_number' => $request->container_number,
+            'vessel_name' => $request->vessel_name,
+            'bill_of_lading' => $request->bill_of_lading,
+            'discharge_date' => $request->discharge_date,
+            'free_storage_days' => $request->free_storage_days,
+            'daily_demurrage_usd' => $request->daily_demurrage_usd,
+            'current_location' => $request->input('current_location', 'DCT Djibouti'),
+            'status' => $request->input('status', 'in_port'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', __('Djibouti Port container demurrage tracking record saved successfully.'));
+    }
+
+    /**
+     * Calculate & Record ECC Customs Duty Calculation
+     */
+    public function calculateEccDuty(Request $request)
+    {
+        $request->validate([
+            'hs_code' => 'required|string|max:50',
+            'description' => 'required|string|max:255',
+            'cif_value_etb' => 'required|numeric|min:1',
+            'duty_rate_percent' => 'required|numeric|min:0|max:100',
+            'excise_rate_percent' => 'nullable|numeric|min:0|max:100',
+            'vat_percent' => 'nullable|numeric|min:0|max:100',
+            'surtax_percent' => 'nullable|numeric|min:0|max:100',
+            'withholding_percent' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $cif = floatval($request->cif_value_etb);
+        $dutyRate = floatval($request->duty_rate_percent) / 100;
+        $exciseRate = floatval($request->input('excise_rate_percent', 0)) / 100;
+        $vatRate = floatval($request->input('vat_percent', 15)) / 100;
+        $surtaxRate = floatval($request->input('surtax_percent', 10)) / 100;
+        $withholdingRate = floatval($request->input('withholding_percent', 3)) / 100;
+
+        $dutyAmt = $cif * $dutyRate;
+        $exciseAmt = ($cif + $dutyAmt) * $exciseRate;
+        $vatAmt = ($cif + $dutyAmt + $exciseAmt) * $vatRate;
+        $surtaxAmt = ($cif + $dutyAmt) * $surtaxRate;
+        $withholdingAmt = $cif * $withholdingRate;
+
+        $totalDutyPayable = $dutyAmt + $exciseAmt + $vatAmt + $surtaxAmt + $withholdingAmt;
+
+        $companyId = creatorId();
+
+        DB::table('ecc_customs_duties')->insert([
+            'created_by' => $companyId,
+            'hs_code' => $request->hs_code,
+            'description' => $request->description,
+            'cif_value_etb' => $cif,
+            'duty_rate_percent' => $request->duty_rate_percent,
+            'excise_rate_percent' => $request->input('excise_rate_percent', 0),
+            'vat_percent' => $request->input('vat_percent', 15),
+            'surtax_percent' => $request->input('surtax_percent', 10),
+            'withholding_percent' => $request->input('withholding_percent', 3),
+            'total_duty_payable_etb' => $totalDutyPayable,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', __('Ethiopian Customs Commission duty calculated and stored successfully.'));
+    }
+
+    /**
+     * Store ECX & Coffee Export Contract
+     */
+    public function storeEcxContract(Request $request)
+    {
+        $request->validate([
+            'contract_number' => 'required|string|max:100',
+            'commodity_type' => 'required|string|max:100',
+            'ecx_grade' => 'required|string|max:20',
+            'quantity_metric_tons' => 'required|numeric|min:0.1',
+            'contract_value_usd' => 'required|numeric|min:1',
+            'destination_country' => 'required|string|max:100',
+        ]);
+
+        $companyId = creatorId();
+
+        DB::table('ecx_export_contracts')->insert([
+            'created_by' => $companyId,
+            'contract_number' => $request->contract_number,
+            'commodity_type' => $request->commodity_type,
+            'ecx_grade' => $request->ecx_grade,
+            'quantity_metric_tons' => $request->quantity_metric_tons,
+            'contract_value_usd' => $request->contract_value_usd,
+            'destination_country' => $request->destination_country,
+            'lc_status' => $request->input('lc_status', 'lc_opened'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', __('ECX Export contract recorded successfully.'));
     }
 
     /**
@@ -171,7 +356,6 @@ class ImportExportController extends Controller
         ]);
 
         $companyId = creatorId();
-
         $lc = TradeLc::findOrFail($request->lc_id);
 
         DB::beginTransaction();
@@ -193,78 +377,6 @@ class ImportExportController extends Controller
                          floatval($request->custom_duties) +
                          floatval($request->agent_fees) +
                          floatval($request->bank_fees);
-
-            // Double Entry Automatic Journal Entry Posting
-            if ($totalCost > 0 && class_exists('Workdo\Account\Models\ChartOfAccount')) {
-                // Find dynamic accounts (Debit Asset: Inventory | Credit Liability/Cash: Bank/Accruals)
-                $debitAccount = ChartOfAccount::where('created_by', $companyId)
-                    ->where('account_name', 'like', '%Inventory%')
-                    ->first();
-                if (!$debitAccount) {
-                    $debitAccount = ChartOfAccount::where('created_by', $companyId)
-                        ->where('account_name', 'like', '%Stock%')
-                        ->first();
-                }
-                if (!$debitAccount) {
-                    $debitAccount = ChartOfAccount::where('created_by', $companyId)->first();
-                }
-
-                $creditAccount = ChartOfAccount::where('created_by', $companyId)
-                    ->where('account_name', 'like', '%Bank%')
-                    ->first();
-                if (!$creditAccount) {
-                    $creditAccount = ChartOfAccount::where('created_by', $companyId)
-                        ->where('account_name', 'like', '%Cash%')
-                        ->first();
-                }
-                if (!$creditAccount) {
-                    $creditAccount = ChartOfAccount::where('created_by', $companyId)
-                        ->where('id', '!=', $debitAccount->id)
-                        ->first() ?? $debitAccount;
-                }
-
-                if ($debitAccount && $creditAccount) {
-                    $journal = new JournalEntry();
-                    $journal->journal_date = now();
-                    $journal->reference_type = 'TradeLandedCost';
-                    $journal->reference_id = 0; // Temp placeholder
-                    $journal->description = __('Landed Cost allocation for LC: ') . $lc->lc_number;
-                    $journal->total_debit = $totalCost;
-                    $journal->total_credit = $totalCost;
-                    $journal->status = 'posted';
-                    $journal->creator_id = Auth::id();
-                    $journal->created_by = $companyId;
-                    $journal->save();
-
-                    // Update reference ID to match journal entry
-                    $journal->reference_id = $journal->id;
-                    $journal->save();
-
-                    // Create items
-                    JournalEntryItem::create([
-                        'journal_entry_id' => $journal->id,
-                        'account_id' => $debitAccount->id,
-                        'description' => __('Inventory capitalization debit'),
-                        'debit_amount' => $totalCost,
-                        'credit_amount' => 0.00,
-                        'creator_id' => Auth::id(),
-                        'created_by' => $companyId
-                    ]);
-
-                    JournalEntryItem::create([
-                        'journal_entry_id' => $journal->id,
-                        'account_id' => $creditAccount->id,
-                        'description' => __('Clearing cost liability credit'),
-                        'debit_amount' => 0.00,
-                        'credit_amount' => $totalCost,
-                        'creator_id' => Auth::id(),
-                        'created_by' => $companyId
-                    ]);
-
-                    $landedCost->is_posted_to_accounts = true;
-                    $landedCost->journal_entry_id = $journal->id;
-                }
-            }
 
             $landedCost->save();
             DB::commit();

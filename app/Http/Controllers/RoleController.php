@@ -39,10 +39,13 @@ class RoleController extends Controller
         if(Auth::user()->can('create-roles')){
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
             $activeModules = ActivatedModule();
+            if (!in_array('GadaaCloudCopilot', $activeModules)) {
+                $activeModules[] = 'GadaaCloudCopilot';
+            }
 
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-            $allPermissions = Permission::whereIn('add_on', array_merge(['general'], $activeModules))
+            $allPermissions = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], $activeModules))
                 ->whereNotIn('add_on', $hiddenModules)
                 ->select('id', 'name', 'label', 'add_on', 'module')
                 ->get();
@@ -79,10 +82,13 @@ class RoleController extends Controller
         if(Auth::user()->can('edit-roles')){
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
             $activeModules = ActivatedModule();
+            if (!in_array('GadaaCloudCopilot', $activeModules)) {
+                $activeModules[] = 'GadaaCloudCopilot';
+            }
 
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-            $allPermissions = Permission::whereIn('add_on', array_merge(['general'], $activeModules))
+            $allPermissions = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], $activeModules))
                 ->whereNotIn('add_on', $hiddenModules)
                 ->select('id', 'name', 'label', 'add_on', 'module', 'editable')
                 ->get();

@@ -567,6 +567,45 @@ class CopilotController extends Controller
                     $reply .= "🔒 **Permission Access Notice**: You do not have permissions (`manage-revenues` or `manage-account`) to view sales financial records.";
                 }
             }
+            elseif (str_contains($prompt, 'import') || str_contains($prompt, 'export') || str_contains($prompt, 'forex') || str_contains($prompt, 'nbe') || str_contains($prompt, 'djibouti') || str_contains($prompt, 'demurrage') || str_contains($prompt, 'customs') || str_contains($prompt, 'ecc') || str_contains($prompt, 'ecx') || str_contains($prompt, 'coffee') || str_contains($prompt, 'lc')) {
+                if (in_array('company', $userRoles) || in_array('manage-settings', $userPermissions) || in_array('manage-import-export', $userPermissions)) {
+                    $reply .= "• 🚢 **Import & Export Operations (Ethiopian Logistics Telemetry)**:\n";
+
+                    if (Schema::hasTable('trade_lcs')) {
+                        $lcs = DB::table('trade_lcs')->where('created_by', $companyId)->orWhere('created_by', 2)->get();
+                        $shipments = DB::table('trade_shipments')->where('created_by', $companyId)->orWhere('created_by', 2)->get();
+                        $reply .= "  - **Letters of Credit (LC)**: " . $lcs->count() . " Active LCs | Total Value: $" . number_format($lcs->sum('amount'), 2) . "\n";
+                        $reply .= "  - **Sea Shipments in Transit**: " . $shipments->whereIn('status', ['on_port', 'in_transit', 'customs_clearance'])->count() . " Active Cargo Vessels\n";
+                    }
+
+                    if (Schema::hasTable('nbe_forex_queues')) {
+                        $forex = DB::table('nbe_forex_queues')->where('created_by', $companyId)->orWhere('created_by', 2)->get();
+                        $pendingForex = $forex->where('queue_status', 'pending')->sum('amount_usd');
+                        $reply .= "  - **NBE Forex Allocation Queue**: " . $forex->where('queue_status', 'pending')->count() . " Pending Applications ($" . number_format($pendingForex, 2) . " USD)\n";
+                    }
+
+                    if (Schema::hasTable('djibouti_port_containers')) {
+                        $containers = DB::table('djibouti_port_containers')->where('created_by', $companyId)->orWhere('created_by', 2)->where('status', 'in_port')->get();
+                        $demurrageRiskCount = 0;
+                        $demurrageUsd = 0;
+                        foreach ($containers as $c) {
+                            $days = max(0, now()->diffInDays(\Carbon\Carbon::parse($c->discharge_date)));
+                            if ($days > $c->free_storage_days) {
+                                $demurrageRiskCount++;
+                                $demurrageUsd += ($days - $c->free_storage_days) * floatval($c->daily_demurrage_usd);
+                            }
+                        }
+                        $reply .= "  - **Djibouti Port Storage & Demurrage**: " . $containers->count() . " Containers at DCT Port | Overdue Demurrage Risk: $" . number_format($demurrageUsd, 2) . " USD ({$demurrageRiskCount} Overdue Containers)\n";
+                    }
+
+                    if (Schema::hasTable('ecx_export_contracts')) {
+                        $ecx = DB::table('ecx_export_contracts')->where('created_by', $companyId)->orWhere('created_by', 2)->get();
+                        $reply .= "  - **ECX & Coffee Export Contracts**: " . $ecx->count() . " Active Contracts | Total Value: $" . number_format($ecx->sum('contract_value_usd'), 2) . " USD\n";
+                    }
+                } else {
+                    $reply .= "🔒 **Permission Access Notice**: You do not have permissions (`manage-import-export`) to view import & export trade operations.";
+                }
+            }
             elseif (str_contains($prompt, 'tax') || str_contains($prompt, 'vat') || str_contains($prompt, 'pension') || str_contains($prompt, 'mor')) {
                 if (in_array('company', $userRoles) || in_array('manage-account', $userPermissions) || in_array('manage-account-reports', $userPermissions)) {
                     $basicSal = DB::table('employees')->where('created_by', $companyId)->sum('basic_salary') ?? 0;
