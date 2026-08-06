@@ -99,7 +99,7 @@ createInertiaApp({
             ...import.meta.glob('../../packages/workdo/*/src/Resources/js/Pages/**/*.tsx')
         };
 
-        // Try pages/Pages directory (case-insensitive fallback for Linux/Docker)
+        // Try pages/Pages directory
         const pagePathLower = `./pages/${name}.tsx`;
         const pagePathUpper = `./Pages/${name}.tsx`;
         if (allPages[pagePathLower]) {
@@ -114,6 +114,17 @@ createInertiaApp({
         const packagePagePath = `../../packages/workdo/${packageName}/src/Resources/js/Pages/${subPagePath.join('/')}.tsx`;
         if (allPages[packagePagePath]) {
             return allPages[packagePagePath]();
+        }
+
+        // Case-insensitive / normalized search fallback across all globbed page keys
+        const nameLower = name.toLowerCase();
+        const matchingKey = Object.keys(allPages).find(k => {
+            const kLower = k.toLowerCase();
+            return kLower.endsWith(`/${nameLower}.tsx`) || kLower.includes(`/${nameLower}/index.tsx`);
+        });
+
+        if (matchingKey) {
+            return allPages[matchingKey]();
         }
 
         throw new Error(`Page not found: ${name}`);

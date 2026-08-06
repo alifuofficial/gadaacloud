@@ -92,7 +92,8 @@ class LandingPageController extends Controller
 
     public function settings()
     {
-        if(Auth::user()->can('manage-landing-page')){
+        $user = Auth::user();
+        if ($user && ($user->can('manage-landing-page') || $user->hasRole('superadmin') || $user->type === 'superadmin')) {
             $settings = LandingPageSetting::first();
             $customPages = CustomPage::where('is_active', true)->select('id', 'title', 'slug')->get();
             $landingPageEnabled = isLandingPageEnabled();
@@ -122,15 +123,15 @@ class LandingPageController extends Controller
                 'customPages' => $customPages,
                 'landingPageEnabled' => $landingPageEnabled
             ]);
-        }
-        else{
-            return back()->with('error', __('Permission denied'));
+        } else {
+            return redirect()->route('dashboard')->with('error', __('Permission denied'));
         }
     }
 
     public function store(Request $request)
     {
-        if(Auth::user()->can('edit-landing-page')){
+        $user = Auth::user();
+        if ($user && ($user->can('edit-landing-page') || $user->can('manage-landing-page') || $user->hasRole('superadmin') || $user->type === 'superadmin')) {
             $validated = $request->validate([
                 'company_name' => 'nullable|string|max:255',
                 'contact_email' => 'nullable|email|max:255',
