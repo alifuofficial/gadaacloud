@@ -1,9 +1,5 @@
-import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PhoneInputComponent } from '@/components/ui/phone-input';
-import { Type } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Globe, Type } from 'lucide-react';
 
 interface GeneralProps {
     data: any;
@@ -15,6 +11,29 @@ export default function General({ data, updateSectionData }: GeneralProps) {
 
     return (
         <div className="space-y-6">
+            <Card className="border-emerald-200 bg-emerald-50/30">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-100 rounded-lg">
+                                <Globe className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-emerald-950">{t('Landing Page Status')}</CardTitle>
+                                <p className="text-sm text-emerald-700">{t('Toggle whether visitors see the public landing page or are redirected directly to login.')}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-sm font-bold text-emerald-900">{data.landingPageEnabled ? t('Enabled (Public Landing Page)') : t('Disabled (Redirect to Login)')}</Label>
+                            <Switch
+                                checked={data.landingPageEnabled !== false && data.landingPageEnabled !== 'off'}
+                                onCheckedChange={(checked) => updateSectionData('landingPageEnabled', checked ? 'on' : 'off')}
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-3">

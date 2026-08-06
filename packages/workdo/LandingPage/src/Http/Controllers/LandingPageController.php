@@ -95,6 +95,8 @@ class LandingPageController extends Controller
         if(Auth::user()->can('manage-landing-page')){
             $settings = LandingPageSetting::first();
             $customPages = CustomPage::where('is_active', true)->select('id', 'title', 'slug')->get();
+            $landingPageEnabled = isLandingPageEnabled();
+
             return Inertia::render('LandingPage/Settings', [
                 'settings' => $settings ?: [
                     'company_name' => '',
@@ -117,7 +119,8 @@ class LandingPageController extends Controller
                         'section_order' => ['header', 'hero', 'stats', 'features', 'modules', 'benefits', 'gallery', 'cta', 'footer']
                     ]
                 ],
-                'customPages' => $customPages
+                'customPages' => $customPages,
+                'landingPageEnabled' => $landingPageEnabled
             ]);
         }
         else{
@@ -133,8 +136,17 @@ class LandingPageController extends Controller
                 'contact_email' => 'nullable|email|max:255',
                 'contact_phone' => 'nullable|string|max:255',
                 'contact_address' => 'nullable|string',
-                'config_sections' => 'nullable|array'
+                'config_sections' => 'nullable|array',
+                'landingPageEnabled' => 'nullable'
             ]);
+
+            if ($request->has('landingPageEnabled')) {
+                $val = in_array($request->landingPageEnabled, ['on', '1', true, 1], true) ? 'on' : 'off';
+                \App\Models\Setting::updateOrCreate(
+                    ['key' => 'landingPageEnabled', 'created_by' => 1],
+                    ['value' => $val]
+                );
+            }
 
             // Handle image paths - store only filename
             if (isset($validated['config_sections']['sections'])) {
@@ -142,6 +154,9 @@ class LandingPageController extends Controller
             }
 
             LandingPageSetting::updateOrCreate(['id' => 1], $validated);
+
+            // Always clear landing page settings cache so updates take effect immediately
+            Cache::forget('landing_page_settings');
 
             return back()->with('success', __('Settings saved successfully'));
         }

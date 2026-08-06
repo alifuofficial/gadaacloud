@@ -43,9 +43,10 @@ interface CustomPage {
 interface SettingsProps {
     settings: LandingPageSetting;
     customPages: CustomPage[];
+    landingPageEnabled?: boolean;
 }
 
-export default function Settings({ settings, customPages }: SettingsProps) {
+export default function Settings({ settings, customPages, landingPageEnabled = true }: SettingsProps) {
     const { t } = useTranslation();
     const { auth } = usePage<{auth: {user: any}}>().props;
 
@@ -92,6 +93,7 @@ export default function Settings({ settings, customPages }: SettingsProps) {
         contact_email: settings.contact_email || '',
         contact_phone: settings.contact_phone || '',
         contact_address: settings.contact_address || '',
+        landingPageEnabled: landingPageEnabled ? 'on' : 'off',
         config_sections: {
             ...incomingConfig,
             section_visibility: mergedSectionVisibility,

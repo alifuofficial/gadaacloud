@@ -154,6 +154,17 @@ export default function Landing({ settings }: LandingProps) {
     // -------- COLORS HELPERS --------
     const grad = (a: string = colors.primary, b: string = colors.secondary) => `linear-gradient(135deg, ${a}, ${b})`;
 
+    // -------- CMS CONFIG OVERRIDES --------
+    const heroSec = settings?.config_sections?.sections?.hero || {};
+    const visibility = settings?.config_sections?.section_visibility || {};
+
+    const heroTitle = heroSec.title || 'The modern AI cloud ERP built for Ethiopian businesses.';
+    const heroSubtitle = heroSec.subtitle || 'Accounting in Birr with VAT & TIN, real estate, POS, HRM, payroll and agribusiness modules — unified on a secure cloud platform running across all 11 regions, supercharged by an AI copilot that speaks Amharic.';
+    const primaryBtnText = heroSec.primary_button_text || primaryLabel;
+    const primaryBtnLink = heroSec.primary_button_link || primaryHref;
+    const secondaryBtnText = heroSec.secondary_button_text || t('Request a Demo');
+    const secondaryBtnLink = heroSec.secondary_button_link || route('login');
+
     // -------- ACTIONS --------
     const go = (link: string) => { window.location.href = link; };
     const primaryHref = isAuthenticated ? route('dashboard') : route('register');
@@ -275,19 +286,19 @@ export default function Landing({ settings }: LandingProps) {
                         </div>
 
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
-                            The <span className="bg-gradient-to-r from-[#00A76F] via-[#059669] to-emerald-600 bg-clip-text text-transparent">modern AI cloud ERP</span> built for Ethiopian businesses.
+                            {heroTitle}
                         </h1>
 
                         <p className="text-base sm:text-lg text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                            Accounting in Birr with VAT & TIN, real estate, POS, HRM, payroll and agribusiness modules — unified on a secure cloud platform running across all 11 regions, supercharged by an AI copilot that speaks Amharic.
+                            {heroSubtitle}
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                            <button onClick={() => go(primaryHref)} className="w-full sm:w-auto px-8 py-4 rounded-xl text-base font-bold text-white shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2" style={{ background: grad() }}>
-                                {primaryLabel} <ArrowRight className="h-5 w-5" />
+                            <button onClick={() => go(primaryBtnLink)} className="w-full sm:w-auto px-8 py-4 rounded-xl text-base font-bold text-white shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2" style={{ background: grad() }}>
+                                {primaryBtnText} <ArrowRight className="h-5 w-5" />
                             </button>
-                            <button onClick={() => go(route('login'))} className="w-full sm:w-auto px-8 py-4 rounded-xl text-base font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-center shadow-sm">
-                                {t('Request a Demo')}
+                            <button onClick={() => go(secondaryBtnLink)} className="w-full sm:w-auto px-8 py-4 rounded-xl text-base font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-center shadow-sm">
+                                {secondaryBtnText}
                             </button>
                         </div>
 
