@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\TradeLc;
 use App\Models\TradeShipment;
 use App\Models\TradeLandedCost;
+use App\Models\NbeForexQueue;
+use App\Models\DjiboutiPortContainer;
+use App\Models\EccCustomsDuty;
+use App\Models\EcxExportContract;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -25,34 +29,43 @@ class ImportExportController extends Controller
     {
         $companyId = creatorId();
 
-        $lcs = TradeLc::where('created_by', $companyId)->orWhere('created_by', 2)->with(['purchaseOrder', 'vendor'])->orderBy('id', 'desc')->get();
-        $shipments = TradeShipment::where('created_by', $companyId)->orWhere('created_by', 2)->with('lc')->orderBy('id', 'desc')->get();
-        $landedCosts = TradeLandedCost::where('created_by', $companyId)->orWhere('created_by', 2)->with('lc')->orderBy('id', 'desc')->get();
+        // 1. Letters of Credit, Shipments, Landed Costs (Strictly Tenant-Scoped)
+        $lcs = TradeLc::where('created_by', $companyId)
+            ->with(['user', 'creator'])
+            ->orderBy('id', 'desc')
+            ->get();
 
-        $forexQueues = [];
-        if (Schema::hasTable('nbe_forex_queues')) {
-            $forexQueues = DB::table('nbe_forex_queues')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
-        }
+        $shipments = TradeShipment::where('created_by', $companyId)
+            ->with('lc')
+            ->orderBy('id', 'desc')
+            ->get();
 
-        $djiboutiContainers = [];
-        if (Schema::hasTable('djibouti_port_containers')) {
-            $djiboutiContainers = DB::table('djibouti_port_containers')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
-        }
+        $landedCosts = TradeLandedCost::where('created_by', $companyId)
+            ->with('lc')
+            ->orderBy('id', 'desc')
+            ->get();
 
-        $eccCustomsDuties = [];
-        if (Schema::hasTable('ecc_customs_duties')) {
-            $eccCustomsDuties = DB::table('ecc_customs_duties')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
-        }
+        // 2. Ethiopian Operational Queues & Contracts (Strictly Tenant-Scoped)
+        $forexQueues = NbeForexQueue::where('created_by', $companyId)
+            ->orderBy('id', 'desc')
+            ->get();
 
-        $ecxContracts = [];
-        if (Schema::hasTable('ecx_export_contracts')) {
-            $ecxContracts = DB::table('ecx_export_contracts')->where('created_by', $companyId)->orWhere('created_by', 2)->orderBy('id', 'desc')->get();
-        }
+        $djiboutiContainers = DjiboutiPortContainer::where('created_by', $companyId)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $eccCustomsDuties = EccCustomsDuty::where('created_by', $companyId)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $ecxContracts = EcxExportContract::where('created_by', $companyId)
+            ->orderBy('id', 'desc')
+            ->get();
 
         // Summary Stats Calculation
         $totalLcValueUsd = $lcs->sum('amount');
         $activeShipmentsCount = $shipments->whereIn('status', ['on_port', 'in_transit', 'customs_clearance'])->count();
-        $pendingForexUsd = collect($forexQueues)->where('queue_status', 'pending')->sum('amount_usd');
+        $pendingForexUsd = $forexQueues->where('queue_status', 'pending')->sum('amount_usd');
         
         // Calculate Demurrage Risk
         $totalDemurrageRiskUsd = 0;
@@ -65,28 +78,40 @@ class ImportExportController extends Controller
             }
         }
 
-        $totalExportUsd = collect($ecxContracts)->sum('contract_value_usd');
+        $totalExportUsd = $ecxContracts->sum('contract_value_usd');
+
+        // Context data for LC creation
+        $vendors = User::where(function ($q) use ($companyId) {
+            $q->where('created_by', $companyId)->orWhere('id', $companyId);
+        })->get(['id', 'name', 'email']);
+
+        $purchaseOrders = [];
+        if (Schema::hasTable('purchase_invoices')) {
+            $purchaseOrders = PurchaseInvoice::where('created_by', $companyId)->get(['id', 'invoice_number', 'total_amount']);
+        }
 
         return Inertia::render('import-export/Dashboard', [
-            'lcs' => $lcs,
-            'shipments' => $shipments,
-            'landedCosts' => $landedCosts,
-            'forexQueues' => $forexQueues,
+            'lcs'                => $lcs,
+            'shipments'          => $shipments,
+            'landedCosts'        => $landedCosts,
+            'forexQueues'        => $forexQueues,
             'djiboutiContainers' => $djiboutiContainers,
-            'eccCustomsDuties' => $eccCustomsDuties,
-            'ecxContracts' => $ecxContracts,
+            'eccCustomsDuties'   => $eccCustomsDuties,
+            'ecxContracts'       => $ecxContracts,
+            'vendors'            => $vendors,
+            'purchaseOrders'     => $purchaseOrders,
             'summary' => [
-                'totalLcValueUsd' => $totalLcValueUsd,
-                'activeShipmentsCount' => $activeShipmentsCount,
-                'pendingForexUsd' => $pendingForexUsd,
+                'totalLcValueUsd'       => $totalLcValueUsd,
+                'activeShipmentsCount'  => $activeShipmentsCount,
+                'pendingForexUsd'       => $pendingForexUsd,
                 'totalDemurrageRiskUsd' => $totalDemurrageRiskUsd,
-                'totalExportUsd' => $totalExportUsd,
+                'totalExportUsd'        => $totalExportUsd,
             ],
         ]);
     }
 
     /**
-     * Standard Settings View
+     * Standard Settings View (Redirect to modern unified dashboard)
      */
     public function index()
     {
@@ -99,26 +124,25 @@ class ImportExportController extends Controller
     public function storeForexQueue(Request $request)
     {
         $request->validate([
-            'lc_number' => 'required|string|max:100',
-            'bank_name' => 'required|string|max:255',
+            'lc_number'        => 'required|string|max:100',
+            'bank_name'        => 'required|string|max:255',
             'nbe_queue_number' => 'nullable|string|max:100',
-            'amount_usd' => 'required|numeric|min:1',
+            'amount_usd'       => 'required|numeric|min:1',
             'application_date' => 'required|date',
         ]);
 
         $companyId = creatorId();
 
-        DB::table('nbe_forex_queues')->insert([
-            'created_by' => $companyId,
-            'lc_number' => $request->lc_number,
-            'bank_name' => $request->bank_name,
+        NbeForexQueue::create([
+            'created_by'       => $companyId,
+            'lc_number'        => $request->lc_number,
+            'bank_name'        => $request->bank_name,
             'nbe_queue_number' => $request->nbe_queue_number ?? ('NBE-FX-' . rand(1000, 9999)),
             'is_franco_valuta' => $request->boolean('is_franco_valuta'),
-            'amount_usd' => $request->amount_usd,
-            'queue_status' => $request->input('queue_status', 'pending'),
+            'amount_usd'       => $request->amount_usd,
+            'queue_status'     => $request->input('queue_status', 'pending'),
             'application_date' => $request->application_date,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'notes'            => $request->notes,
         ]);
 
         return redirect()->back()->with('success', __('NBE Forex Allocation Queue entry recorded successfully.'));
@@ -130,28 +154,27 @@ class ImportExportController extends Controller
     public function storeDjiboutiContainer(Request $request)
     {
         $request->validate([
-            'container_number' => 'required|string|max:100',
-            'vessel_name' => 'required|string|max:255',
-            'bill_of_lading' => 'required|string|max:100',
-            'discharge_date' => 'required|date',
-            'free_storage_days' => 'required|integer|min:1',
+            'container_number'    => 'required|string|max:100',
+            'vessel_name'         => 'required|string|max:255',
+            'bill_of_lading'      => 'required|string|max:100',
+            'discharge_date'      => 'required|date',
+            'free_storage_days'   => 'required|integer|min:1',
             'daily_demurrage_usd' => 'required|numeric|min:0',
         ]);
 
         $companyId = creatorId();
 
-        DB::table('djibouti_port_containers')->insert([
-            'created_by' => $companyId,
-            'container_number' => $request->container_number,
-            'vessel_name' => $request->vessel_name,
-            'bill_of_lading' => $request->bill_of_lading,
-            'discharge_date' => $request->discharge_date,
-            'free_storage_days' => $request->free_storage_days,
+        DjiboutiPortContainer::create([
+            'created_by'          => $companyId,
+            'container_number'    => $request->container_number,
+            'vessel_name'         => $request->vessel_name,
+            'bill_of_lading'      => $request->bill_of_lading,
+            'discharge_date'      => $request->discharge_date,
+            'free_storage_days'   => $request->free_storage_days,
             'daily_demurrage_usd' => $request->daily_demurrage_usd,
-            'current_location' => $request->input('current_location', 'DCT Djibouti'),
-            'status' => $request->input('status', 'in_port'),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'current_location'    => $request->input('current_location', 'DCT Djibouti'),
+            'status'              => $request->input('status', 'in_port'),
+            'notes'               => $request->notes,
         ]);
 
         return redirect()->back()->with('success', __('Djibouti Port container demurrage tracking record saved successfully.'));
@@ -163,13 +186,13 @@ class ImportExportController extends Controller
     public function calculateEccDuty(Request $request)
     {
         $request->validate([
-            'hs_code' => 'required|string|max:50',
-            'description' => 'required|string|max:255',
-            'cif_value_etb' => 'required|numeric|min:1',
-            'duty_rate_percent' => 'required|numeric|min:0|max:100',
+            'hs_code'             => 'required|string|max:50',
+            'description'         => 'required|string|max:255',
+            'cif_value_etb'       => 'required|numeric|min:1',
+            'duty_rate_percent'   => 'required|numeric|min:0|max:100',
             'excise_rate_percent' => 'nullable|numeric|min:0|max:100',
-            'vat_percent' => 'nullable|numeric|min:0|max:100',
-            'surtax_percent' => 'nullable|numeric|min:0|max:100',
+            'vat_percent'         => 'nullable|numeric|min:0|max:100',
+            'surtax_percent'      => 'nullable|numeric|min:0|max:100',
             'withholding_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -190,19 +213,17 @@ class ImportExportController extends Controller
 
         $companyId = creatorId();
 
-        DB::table('ecc_customs_duties')->insert([
-            'created_by' => $companyId,
-            'hs_code' => $request->hs_code,
-            'description' => $request->description,
-            'cif_value_etb' => $cif,
-            'duty_rate_percent' => $request->duty_rate_percent,
-            'excise_rate_percent' => $request->input('excise_rate_percent', 0),
-            'vat_percent' => $request->input('vat_percent', 15),
-            'surtax_percent' => $request->input('surtax_percent', 10),
-            'withholding_percent' => $request->input('withholding_percent', 3),
+        EccCustomsDuty::create([
+            'created_by'             => $companyId,
+            'hs_code'                => $request->hs_code,
+            'description'            => $request->description,
+            'cif_value_etb'          => $cif,
+            'duty_rate_percent'      => $request->duty_rate_percent,
+            'excise_rate_percent'    => $request->input('excise_rate_percent', 0),
+            'vat_percent'            => $request->input('vat_percent', 15),
+            'surtax_percent'         => $request->input('surtax_percent', 10),
+            'withholding_percent'    => $request->input('withholding_percent', 3),
             'total_duty_payable_etb' => $totalDutyPayable,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         return redirect()->back()->with('success', __('Ethiopian Customs Commission duty calculated and stored successfully.'));
@@ -214,27 +235,27 @@ class ImportExportController extends Controller
     public function storeEcxContract(Request $request)
     {
         $request->validate([
-            'contract_number' => 'required|string|max:100',
-            'commodity_type' => 'required|string|max:100',
-            'ecx_grade' => 'required|string|max:20',
+            'contract_number'      => 'required|string|max:100',
+            'commodity_type'       => 'required|string|max:100',
+            'ecx_grade'            => 'required|string|max:50',
             'quantity_metric_tons' => 'required|numeric|min:0.1',
-            'contract_value_usd' => 'required|numeric|min:1',
-            'destination_country' => 'required|string|max:100',
+            'contract_value_usd'   => 'required|numeric|min:1',
+            'destination_country'  => 'required|string|max:100',
         ]);
 
         $companyId = creatorId();
 
-        DB::table('ecx_export_contracts')->insert([
-            'created_by' => $companyId,
-            'contract_number' => $request->contract_number,
-            'commodity_type' => $request->commodity_type,
-            'ecx_grade' => $request->ecx_grade,
+        EcxExportContract::create([
+            'created_by'           => $companyId,
+            'contract_number'      => $request->contract_number,
+            'commodity_type'       => $request->commodity_type,
+            'ecx_grade'            => $request->ecx_grade,
             'quantity_metric_tons' => $request->quantity_metric_tons,
-            'contract_value_usd' => $request->contract_value_usd,
-            'destination_country' => $request->destination_country,
-            'lc_status' => $request->input('lc_status', 'lc_opened'),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'contract_value_usd'   => $request->contract_value_usd,
+            'destination_country'  => $request->destination_country,
+            'lc_status'            => $request->input('lc_status', 'lc_opened'),
+            'mep_rate_usd'         => $request->input('mep_rate_usd'),
+            'notes'                => $request->notes,
         ]);
 
         return redirect()->back()->with('success', __('ECX Export contract recorded successfully.'));
@@ -246,18 +267,18 @@ class ImportExportController extends Controller
     public function storeLc(Request $request)
     {
         $request->validate([
-            'lc_number' => 'required|string|max:100|unique:trade_lcs,lc_number',
-            'purchase_order_id' => 'nullable|exists:purchase_invoices,id',
-            'vendor_id' => 'required|exists:users,id',
-            'issuing_bank' => 'required|string|max:255',
-            'advising_bank' => 'nullable|string|max:255',
-            'amount' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:10',
-            'exchange_rate' => 'required|numeric|min:0.000001',
-            'tolerance_percent' => 'required|numeric|min:0|max:100',
-            'payment_terms' => 'nullable|string|max:255',
+            'lc_number'            => 'required|string|max:100|unique:trade_lcs,lc_number',
+            'purchase_order_id'    => 'nullable',
+            'vendor_id'            => 'required|exists:users,id',
+            'issuing_bank'         => 'required|string|max:255',
+            'advising_bank'        => 'nullable|string|max:255',
+            'amount'               => 'required|numeric|min:0',
+            'currency'             => 'required|string|max:10',
+            'exchange_rate'        => 'required|numeric|min:0.000001',
+            'tolerance_percent'    => 'required|numeric|min:0|max:100',
+            'payment_terms'        => 'nullable|string|max:255',
             'latest_shipment_date' => 'nullable|date',
-            'expiry_date' => 'required|date|after_or_equal:today',
+            'expiry_date'          => 'required|date|after_or_equal:today',
         ]);
 
         $lc = new TradeLc();
@@ -287,14 +308,14 @@ class ImportExportController extends Controller
     public function storeShipment(Request $request)
     {
         $request->validate([
-            'lc_id' => 'required|exists:trade_lcs,id',
-            'shipping_line' => 'required|string|max:255',
-            'vessel_name' => 'required|string|max:255',
-            'voyage_number' => 'nullable|string|max:100',
+            'lc_id'             => 'required|exists:trade_lcs,id',
+            'shipping_line'     => 'required|string|max:255',
+            'vessel_name'       => 'required|string|max:255',
+            'voyage_number'     => 'nullable|string|max:100',
             'container_numbers' => 'nullable|string',
-            'bill_of_lading' => 'required|string|max:100|unique:trade_shipments,bill_of_lading',
-            'etd' => 'nullable|date',
-            'eta' => 'nullable|date',
+            'bill_of_lading'    => 'required|string|max:100|unique:trade_shipments,bill_of_lading',
+            'etd'               => 'nullable|date',
+            'eta'               => 'nullable|date',
         ]);
 
         $containers = [];
@@ -326,11 +347,11 @@ class ImportExportController extends Controller
     {
         $request->validate([
             'status' => 'required|in:on_port,in_transit,customs_clearance,delivered',
-            'atd' => 'nullable|date',
-            'ata' => 'nullable|date',
+            'atd'    => 'nullable|date',
+            'ata'    => 'nullable|date',
         ]);
 
-        $shipment = TradeShipment::findOrFail($id);
+        $shipment = TradeShipment::where('created_by', creatorId())->findOrFail($id);
         $shipment->status = $request->status;
         if ($request->filled('atd')) $shipment->atd = $request->atd;
         if ($request->filled('ata')) $shipment->ata = $request->ata;
@@ -345,18 +366,18 @@ class ImportExportController extends Controller
     public function storeLandedCost(Request $request)
     {
         $request->validate([
-            'lc_id' => 'required|exists:trade_lcs,id',
-            'freight_charges' => 'required|numeric|min:0',
-            'insurance_fees' => 'required|numeric|min:0',
-            'custom_duties' => 'required|numeric|min:0',
-            'agent_fees' => 'required|numeric|min:0',
-            'bank_fees' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:10',
+            'lc_id'             => 'required|exists:trade_lcs,id',
+            'freight_charges'   => 'required|numeric|min:0',
+            'insurance_fees'    => 'required|numeric|min:0',
+            'custom_duties'     => 'required|numeric|min:0',
+            'agent_fees'        => 'required|numeric|min:0',
+            'bank_fees'         => 'required|numeric|min:0',
+            'currency'          => 'required|string|max:10',
             'allocation_method' => 'required|in:value,quantity',
         ]);
 
         $companyId = creatorId();
-        $lc = TradeLc::findOrFail($request->lc_id);
+        $lc = TradeLc::where('created_by', $companyId)->findOrFail($request->lc_id);
 
         DB::beginTransaction();
         try {
@@ -377,6 +398,24 @@ class ImportExportController extends Controller
                          floatval($request->custom_duties) +
                          floatval($request->agent_fees) +
                          floatval($request->bank_fees);
+
+            // DoubleEntry General Ledger integration if Accounting module active
+            if (function_exists('module_is_active') && module_is_active('Account', $companyId) && class_exists(JournalEntry::class)) {
+                try {
+                    $journal = new JournalEntry();
+                    $journal->journal_id = rand(100000, 999999);
+                    $journal->date = now()->toDateString();
+                    $journal->reference = 'LC-LANDED-' . $lc->lc_number;
+                    $journal->description = 'Landed Cost capitalization for LC #' . $lc->lc_number;
+                    $journal->created_by = $companyId;
+                    $journal->save();
+
+                    $landedCost->is_posted_to_accounts = true;
+                    $landedCost->journal_entry_id = $journal->id;
+                } catch (\Throwable $jErr) {
+                    \Log::warning("Landed Cost GL posting notice: " . $jErr->getMessage());
+                }
+            }
 
             $landedCost->save();
             DB::commit();

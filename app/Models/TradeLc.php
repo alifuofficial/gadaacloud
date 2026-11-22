@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\TenantScoped;
+use Workdo\Chatter\Traits\HasChatter;
 
 class TradeLc extends Model
 {
-    use TenantScoped;
+    use TenantScoped, HasChatter;
 
     protected $table = 'trade_lcs';
 

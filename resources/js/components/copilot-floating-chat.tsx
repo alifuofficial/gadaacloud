@@ -5,7 +5,7 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Bot, X, Send, ShieldCheck, RefreshCw, Trash2, Brain } from 'lucide-react';
+import { Sparkles, Bot, X, Send, RefreshCw, Trash2, Brain } from 'lucide-react';
 
 interface ChatMessage {
     id: string;
@@ -38,7 +38,14 @@ function CopilotFloatingChatInner() {
     const { t } = useTranslation();
     const pageObj = usePage() as any;
     const auth = pageObj?.props?.auth || {};
+    const activatedPackages: string[] = auth?.user?.activatedPackages || [];
     const isSuperadmin = auth?.user?.type === 'superadmin';
+    const isCopilotSubscribed = isSuperadmin || activatedPackages.includes('GadaaCloudCopilot') || activatedPackages.includes('gadaacloudcopilot');
+
+    // Subscription tier check: do not render if tenant plan does not include Copilot
+    if (!isCopilotSubscribed) {
+        return null;
+    }
 
     const [isOpen, setIsOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
@@ -181,11 +188,11 @@ function CopilotFloatingChatInner() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="group relative flex items-center gap-3 bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 text-white p-3 pr-4 rounded-full shadow-2xl hover:shadow-purple-500/25 transition-all hover:scale-105 border border-purple-400/30"
+                    className="group relative flex items-center gap-3 bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 text-white p-3 pr-4 rounded-full shadow-xl hover:shadow-emerald-500/20 transition-all hover:scale-105 border border-emerald-400/30"
                 >
                     <div className="relative">
                         <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                            <Bot className="w-5 h-5 text-purple-200 group-hover:rotate-12 transition-transform" />
+                            <Bot className="w-5 h-5 text-emerald-200 group-hover:rotate-12 transition-transform" />
                         </div>
                         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -195,9 +202,9 @@ function CopilotFloatingChatInner() {
                     <div className="text-left">
                         <div className="text-xs font-bold tracking-wide text-white flex items-center gap-1">
                             {isSuperadmin ? 'Superadmin Copilot' : 'GadaaCloud Copilot'}
-                            <Sparkles className="w-3 h-3 text-purple-300 animate-pulse" />
+                            <Sparkles className="w-3 h-3 text-emerald-300 animate-pulse" />
                         </div>
-                        <div className="text-[9px] text-purple-200/80 font-mono flex items-center gap-1">
+                        <div className="text-[9px] text-emerald-200/80 font-mono flex items-center gap-1">
                             <Brain className="w-2.5 h-2.5 text-emerald-400" />
                             Memory Active
                         </div>
@@ -207,12 +214,12 @@ function CopilotFloatingChatInner() {
 
             {/* Chatbot Terminal Modal Window */}
             {isOpen && (
-                <div className="fixed bottom-20 right-6 z-[9999] w-[340px] sm:w-[390px] h-[520px] max-h-[82vh] bg-slate-950/95 border border-purple-500/30 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="fixed bottom-20 right-6 z-[9999] w-[340px] sm:w-[390px] h-[520px] max-h-[82vh] bg-slate-950/95 border border-emerald-500/30 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
                     {/* Header */}
-                    <div className="p-3.5 bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 border-b border-purple-500/20 flex items-center justify-between">
+                    <div className="p-3.5 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border-b border-emerald-500/20 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                            <div className="p-1.5 rounded-xl bg-purple-500/20 border border-purple-400/30">
-                                <Bot className="w-4 h-4 text-purple-300" />
+                            <div className="p-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/30">
+                                <Bot className="w-4 h-4 text-emerald-300" />
                             </div>
                             <div>
                                 <div className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -257,7 +264,7 @@ function CopilotFloatingChatInner() {
                                 <div
                                     className={`max-w-[88%] rounded-2xl p-3 space-y-1 ${
                                         msg.sender === 'user'
-                                            ? 'bg-purple-600 text-white rounded-br-none'
+                                            ? 'bg-emerald-600 text-white rounded-br-none'
                                             : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-sm'
                                     }`}
                                 >
@@ -280,7 +287,7 @@ function CopilotFloatingChatInner() {
                         {loading && (
                             <div className="flex justify-start">
                                 <div className="bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl rounded-bl-none p-2.5 flex items-center gap-2 text-[11px]">
-                                    <RefreshCw className="w-3 h-3 animate-spin text-purple-400" />
+                                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
                                     <span>Analyzing platform telemetry &amp; memory...</span>
                                 </div>
                             </div>
@@ -294,9 +301,9 @@ function CopilotFloatingChatInner() {
                             <button
                                 key={idx}
                                 onClick={() => handleSend(qp)}
-                                className="whitespace-nowrap text-[9px] bg-slate-800 hover:bg-purple-900/50 text-slate-300 hover:text-purple-200 px-2 py-0.5 rounded-full border border-slate-700 hover:border-purple-500/40 transition-all flex items-center gap-1"
+                                className="whitespace-nowrap text-[9px] bg-slate-800 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-200 px-2 py-0.5 rounded-full border border-slate-700 hover:border-emerald-500/40 transition-all flex items-center gap-1"
                             >
-                                <Sparkles className="w-2.5 h-2.5 text-purple-400" />
+                                <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
                                 {qp}
                             </button>
                         ))}
@@ -309,13 +316,13 @@ function CopilotFloatingChatInner() {
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                             placeholder={isSuperadmin ? "Ask about company issues, tickets, fixes..." : "Ask Copilot about sales, taxes, cashflow..."}
-                            className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs focus:ring-purple-500/50 h-9"
+                            className="bg-slate-900 border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs focus:ring-emerald-500/40 h-9"
                         />
                         <Button
                             onClick={() => handleSend()}
                             disabled={loading || !prompt.trim()}
                             size="icon"
-                            className="bg-purple-600 hover:bg-purple-700 text-white shrink-0 h-9 w-9"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 h-9 w-9"
                         >
                             <Send className="w-3.5 h-3.5" />
                         </Button>

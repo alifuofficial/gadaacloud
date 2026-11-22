@@ -76,14 +76,14 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
 
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Superadmin Exclusive Banner */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950 to-indigo-950 text-white p-6 md:p-8 shadow-xl border border-purple-500/30">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white p-6 md:p-8 shadow-md border border-emerald-500/20">
                     <div className="relative z-10 space-y-4">
                         <div className="flex items-center gap-3">
                             <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30 px-3 py-1 text-xs font-semibold">
                                 <ShieldAlert className="w-3.5 h-3.5 mr-1 text-amber-400" />
                                 {t('Superadmin Control Panel')}
                             </Badge>
-                            <span className="text-xs text-purple-300 font-mono">Centralized Multi-Tenant Engine</span>
+                            <span className="text-xs text-emerald-300 font-mono">Centralized Multi-Tenant Engine</span>
                         </div>
 
                         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
@@ -98,10 +98,10 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
 
                 {/* AI Configuration Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <Card className="border shadow-sm">
+                    <Card className="border border-slate-200/80 dark:border-slate-800 shadow-xs">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <Cpu className="w-5 h-5 text-purple-600" />
+                            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
+                                <Cpu className="w-5 h-5 text-emerald-600" />
                                 {t('Global Provider & Token Pricing')}
                             </CardTitle>
                             <CardDescription>
@@ -258,8 +258,8 @@ export default function CopilotSetup({ aiSettings }: SetupProps) {
                                 />
                             </div>
                         </CardContent>
-                        <CardFooter className="flex justify-end gap-3 bg-gray-50 border-t px-6 py-4">
-                            <Button type="submit" disabled={processing} className="bg-purple-700 hover:bg-purple-800 text-white">
+                        <CardFooter className="flex justify-end gap-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-6 py-4">
+                            <Button type="submit" disabled={processing} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                 {t('Save Global AI Configuration')}
                             </Button>

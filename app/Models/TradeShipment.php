@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\TenantScoped;
+use Workdo\Chatter\Traits\HasChatter;
 
 class TradeShipment extends Model
 {
-    use TenantScoped;
+    use TenantScoped, HasChatter;
 
     protected $table = 'trade_shipments';
 

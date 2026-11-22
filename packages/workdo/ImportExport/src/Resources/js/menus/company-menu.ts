@@ -2,6 +2,18 @@ import { NavItem } from '@/types';
 import { Ship, LayoutDashboard, Coins, Anchor, Calculator, FileText, Award } from 'lucide-react';
 
 export const importExportMenu = (t: (key: string) => string): NavItem[] => {
+    let isSubscribed = true;
+    try {
+        const auth = (window as any).page?.props?.auth || {};
+        const activatedPackages: string[] = auth?.user?.activatedPackages || [];
+        const isSuperadmin = auth?.user?.type === 'superadmin';
+        isSubscribed = isSuperadmin || activatedPackages.includes('ImportExport') || activatedPackages.includes('importexport');
+    } catch (e) {}
+
+    if (!isSubscribed) {
+        return [];
+    }
+
     let dashboardHref = '/import-export/dashboard';
     let indexHref = '/settings/import-export';
 
