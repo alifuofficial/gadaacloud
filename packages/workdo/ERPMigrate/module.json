@@ -1,0 +1,11 @@
+{
+    "name": "ERPMigrate",
+    "alias": "ERP Data Migration Studio",
+    "description": "Seamlessly migrate and bridge your data from Odoo, ERPNext, Excel, and CSV into GadaaCloud with automated column mapping, dry-run validations, and 1-click rollback.",
+    "priority": 60,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "package_name": "erpmigrate",
+    "for_admin": false
+}

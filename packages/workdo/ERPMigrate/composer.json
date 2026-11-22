@@ -1,0 +1,17 @@
+{
+    "name": "workdo/erpmigrate",
+    "description": "ERP Data Migration Studio for GadaaCloud (Odoo, ERPNext, Excel, CSV)",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Workdo\\ERPMigrate\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Workdo\\ERPMigrate\\Providers\\ERPMigrateServiceProvider"
+            ]
+        }
+    }
+}

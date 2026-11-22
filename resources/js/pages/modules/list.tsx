@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from "@/components/ui/search-input";
 import NoRecordsFound from '@/components/no-records-found';
-import { Boxes, Package, Power, PowerOff, Shield, DollarSign, X, Save, Settings, Sparkles, Compass } from "lucide-react";
+import { Boxes, Package, Power, PowerOff, Shield, DollarSign, X, Save, Settings, Sparkles, Compass, ArrowRightLeft } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -201,6 +201,12 @@ export default function List() {
                                                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full border border-emerald-200">
                                                                     <Compass className="w-2.5 h-2.5 text-emerald-600" />
                                                                     Container GPS
+                                                                </span>
+                                                            )}
+                                                            {m.module === 'ERPMigrate' && (
+                                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full border border-blue-200">
+                                                                    <ArrowRightLeft className="w-2.5 h-2.5 text-blue-600" />
+                                                                    ERP Bridge
                                                                 </span>
                                                             )}
                                                         </div>
