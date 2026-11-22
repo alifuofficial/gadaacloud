@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Workdo\GadaacloudStudio\Http\Controllers\WorkflowController;
 use Workdo\GadaacloudStudio\Http\Controllers\ApprovalController;
 
-Route::group(['middleware' => ['web', 'auth']], function () {
+Route::group(['middleware' => ['web', 'auth', 'verified', 'PlanModuleCheck:GadaacloudStudio']], function () {
 
     // ── Studio Dashboard ─────────────────────────────────────────────────────
     Route::get('gadaacloud-studio', [WorkflowController::class, 'dashboard'])

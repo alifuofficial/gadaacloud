@@ -45,7 +45,7 @@ class GadaacloudStudioServiceProvider extends ServiceProvider
                         $companyId = (int) creatorId();
                     }
 
-                    if ($companyId) {
+                    if ($companyId && function_exists('module_is_active') && module_is_active('GadaacloudStudio', $companyId)) {
                         \Workdo\GadaacloudStudio\Services\WorkflowService::submit($model, $companyId);
                     }
                 }

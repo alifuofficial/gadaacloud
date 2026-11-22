@@ -18,99 +18,110 @@ use App\Models\User;
 class WorkflowController extends Controller
 {
     /**
-     * Full registry of supported target document models across all modules.
+     * Full registry of supported target document models across modules.
+     * Dynamically filters based on tenant's active plan subscription and packages.
      */
     private function getTargetModels(): array
     {
         $models = [];
 
-        // ── Account / Finance ─────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\SalesInvoice',                  'Sales Invoice',             'finance');
-        $this->addIfClassExists($models, 'App\\Models\\PurchaseInvoice',               'Purchase Invoice',          'finance');
-        $this->addIfClassExists($models, 'App\\Models\\SalesInvoiceReturn',            'Sales Invoice Return',      'finance');
-        $this->addIfClassExists($models, 'App\\Models\\PurchaseReturn',                'Purchase Return',           'finance');
-        $this->addIfClassExists($models, 'App\\Models\\SalesProposal',                 'Sales Proposal',            'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\CustomerPayment',   'Customer Payment Receipt',  'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\VendorPayment',     'Vendor Payment Voucher',    'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\Expense',           'Expense Voucher',           'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\Revenue',           'Revenue Entry',             'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\BankTransfer',      'Bank Account Transfer',     'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\JournalEntry',      'Journal Entry',             'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\CreditNote',        'Credit Note',               'finance');
-        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\DebitNote',         'Debit Note',                'finance');
+        // ── Core Sales & Purchase Invoicing ───────────────────────────────────
+        $this->addIfActive($models, 'App\\Models\\SalesInvoice',                  'Sales Invoice',             'finance');
+        $this->addIfActive($models, 'App\\Models\\PurchaseInvoice',               'Purchase Invoice',          'finance');
+        $this->addIfActive($models, 'App\\Models\\SalesInvoiceReturn',            'Sales Invoice Return',      'finance');
+        $this->addIfActive($models, 'App\\Models\\PurchaseReturn',                'Purchase Return',           'finance');
+        $this->addIfActive($models, 'App\\Models\\SalesProposal',                 'Sales Proposal',            'finance');
+
+        // ── Account / Finance Package ─────────────────────────────────────────
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\CustomerPayment',   'Customer Payment Receipt',  'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\VendorPayment',     'Vendor Payment Voucher',    'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\Expense',           'Expense Voucher',           'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\Revenue',           'Revenue Entry',             'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\BankTransfer',      'Bank Account Transfer',     'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\JournalEntry',      'Journal Entry',             'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\CreditNote',        'Credit Note',               'finance', 'Account');
+        $this->addIfActive($models, 'Workdo\\Account\\Models\\DebitNote',         'Debit Note',                'finance', 'Account');
 
         // ── Inventory / Warehouse & Logistics ─────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\Warehouse',                     'Warehouse',                 'inventory');
-        $this->addIfClassExists($models, 'App\\Models\\Transfer',                      'Stock Transfer / Waybill',  'inventory');
-        $this->addIfClassExists($models, 'App\\Models\\InventoryAdjustment',           'Stock Adjustment',          'inventory');
+        $this->addIfActive($models, 'App\\Models\\Warehouse',                     'Warehouse',                 'inventory');
+        $this->addIfActive($models, 'App\\Models\\Transfer',                      'Stock Transfer / Waybill',  'inventory');
+        $this->addIfActive($models, 'App\\Models\\InventoryAdjustment',           'Stock Adjustment',          'inventory');
 
         // ── Products & Services ───────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\ProductService\\Models\\ProductServiceItem', 'Product / Service Item', 'products');
+        $this->addIfActive($models, 'Workdo\\ProductService\\Models\\ProductServiceItem', 'Product / Service Item', 'products', 'ProductService');
 
         // ── Import & Export / Trade ───────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\TradeLc',                       'Letter of Credit (LC)',     'trade');
-        $this->addIfClassExists($models, 'App\\Models\\TradeShipment',                 'Trade Shipment Logistics',  'trade');
-        $this->addIfClassExists($models, 'App\\Models\\TradeLandedCost',               'Trade Landed Cost Calc',    'trade');
+        $this->addIfActive($models, 'App\\Models\\TradeLc',                       'Letter of Credit (LC)',     'trade', 'ImportExport');
+        $this->addIfActive($models, 'App\\Models\\TradeShipment',                 'Trade Shipment Logistics',  'trade', 'ImportExport');
+        $this->addIfActive($models, 'App\\Models\\TradeLandedCost',               'Trade Landed Cost Calc',    'trade', 'ImportExport');
 
         // ── Quotation ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Quotation\\Models\\SalesQuotation',  'Sales Quotation',           'sales');
+        $this->addIfActive($models, 'Workdo\\Quotation\\Models\\SalesQuotation',  'Sales Quotation',           'sales', 'Quotation');
 
         // ── HRM ───────────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\LeaveApplication',      'Leave Application',         'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Payroll',               'Employee Payroll Batch',    'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Employee',              'Employee Confirmation',     'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Loan',                  'Employee Loan Request',     'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Overtime',              'Overtime Authorization',    'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Resignation',           'Employee Resignation',      'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Termination',           'Employee Clearance/Severance', 'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Promotion',             'Employee Promotion',        'hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\LeaveApplication',      'Leave Application',         'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Payroll',               'Employee Payroll Batch',    'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Employee',              'Employee Confirmation',     'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Loan',                  'Employee Loan Request',     'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Overtime',              'Overtime Authorization',    'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Resignation',           'Employee Resignation',      'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Termination',           'Employee Clearance/Severance', 'hrm', 'Hrm');
+        $this->addIfActive($models, 'Workdo\\Hrm\\Models\\Promotion',             'Employee Promotion',        'hrm', 'Hrm');
 
         // ── Recruitment ───────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\Job',           'Job Requisition',           'recruitment');
-        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\JobPosting',    'Job Vacancy Posting',       'recruitment');
-        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\Offer',         'Job Offer Approval',        'recruitment');
+        $this->addIfActive($models, 'Workdo\\Recruitment\\Models\\Job',           'Job Requisition',           'recruitment', 'Recruitment');
+        $this->addIfActive($models, 'Workdo\\Recruitment\\Models\\JobPosting',    'Job Vacancy Posting',       'recruitment', 'Recruitment');
+        $this->addIfActive($models, 'Workdo\\Recruitment\\Models\\Offer',         'Job Offer Approval',        'recruitment', 'Recruitment');
 
         // ── Training ──────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Training\\Models\\Training',         'Training Program',          'training');
+        $this->addIfActive($models, 'Workdo\\Training\\Models\\Training',         'Training Program',          'training', 'Training');
 
         // ── Contract ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Contract\\Models\\Contract',         'Commercial Contract',       'legal');
+        $this->addIfActive($models, 'Workdo\\Contract\\Models\\Contract',         'Commercial Contract',       'legal', 'Contract');
 
         // ── Lead / CRM ────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Lead\\Models\\Lead',                 'Lead / Opportunity Deal',   'crm');
+        $this->addIfActive($models, 'Workdo\\Lead\\Models\\Lead',                 'Lead / Opportunity Deal',   'crm', 'Lead');
 
         // ── Goal / Performance ────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Goal\\Models\\Goal',                 'Goal / Milestone Target',   'performance');
-        $this->addIfClassExists($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeReview', 'Performance Appraisal', 'performance');
-        $this->addIfClassExists($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeGoal',   'Employee KPI Goal',     'performance');
+        $this->addIfActive($models, 'Workdo\\Goal\\Models\\Goal',                 'Goal / Milestone Target',   'performance', 'Goal');
+        $this->addIfActive($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeReview', 'Performance Appraisal', 'performance', 'Performance');
+        $this->addIfActive($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeGoal',   'Employee KPI Goal',     'performance', 'Performance');
 
         // ── Taskly / Projects ─────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\Project',            'Client Project',            'taskly');
-        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\ProjectTask',        'Milestone Project Task',    'taskly');
+        $this->addIfActive($models, 'Workdo\\Taskly\\Models\\Project',            'Client Project',            'taskly', 'Taskly');
+        $this->addIfActive($models, 'Workdo\\Taskly\\Models\\ProjectTask',        'Milestone Project Task',    'taskly', 'Taskly');
 
         // ── Timesheet ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Timesheet\\Models\\Timesheet',       'Staff Timesheet Log',       'timesheet');
+        $this->addIfActive($models, 'Workdo\\Timesheet\\Models\\Timesheet',       'Staff Timesheet Log',       'timesheet', 'Timesheet');
 
         // ── Support ───────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\HelpdeskTicket',                'Helpdesk Ticket',           'support');
-        $this->addIfClassExists($models, 'Workdo\\SupportTicket\\Models\\Ticket',      'Support Center Ticket',     'support');
+        $this->addIfActive($models, 'App\\Models\\HelpdeskTicket',                'Helpdesk Ticket',           'support');
+        $this->addIfActive($models, 'Workdo\\SupportTicket\\Models\\Ticket',      'Support Center Ticket',     'support', 'SupportTicket');
 
         // ── Budget ────────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\BudgetPlanner\\Models\\Budget',       'Budget Plan Allocation',    'finance');
+        $this->addIfActive($models, 'Workdo\\BudgetPlanner\\Models\\Budget',       'Budget Plan Allocation',    'finance', 'BudgetPlanner');
 
         return $models;
     }
 
     /**
-     * Add model to list only if the class actually exists (module may not be active).
+     * Add model to list only if the class exists and its parent module is active for the current company.
      */
-    private function addIfClassExists(array &$list, string $class, string $name, string $group): void
+    private function addIfActive(array &$list, string $class, string $name, string $group, ?string $requiredModule = null): void
     {
+        if (!class_exists($class)) {
+            return;
+        }
+
+        if ($requiredModule && function_exists('module_is_active') && !module_is_active($requiredModule)) {
+            return;
+        }
+
         $list[] = [
             'class' => $class,
             'name'  => $name,
             'group' => $group,
-            'exists'=> class_exists($class),
+            'exists'=> true,
         ];
     }
 

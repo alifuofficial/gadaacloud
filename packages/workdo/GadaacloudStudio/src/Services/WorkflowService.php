@@ -14,9 +14,14 @@ class WorkflowService
 {
     /**
      * Find an active workflow for a given model class and company.
+     * Enforces SaaS subscription check: only active if tenant is subscribed to GadaacloudStudio.
      */
     public static function getWorkflowForModel(string $modelClass, int $companyId): ?Workflow
     {
+        if (function_exists('module_is_active') && !module_is_active('GadaacloudStudio', $companyId)) {
+            return null;
+        }
+
         return Workflow::where('target_model', $modelClass)
             ->where('is_active', true)
             ->where('created_by', $companyId)
