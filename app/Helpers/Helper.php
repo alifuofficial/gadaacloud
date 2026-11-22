@@ -213,7 +213,6 @@ if (!function_exists('getImageUrlPrefix')) {
 }
 
 // Users Activated Module
-// Users Activated Module
 if (!function_exists('ActivatedModule')) {
     function ActivatedModule($user_id = null)
     {
@@ -237,20 +236,23 @@ if (!function_exists('ActivatedModule')) {
         if (!empty($user)) {
             $available_modules = array_values((new Module())->allEnabled());
 
-            if ($user->type == 'superadmin') {
+            if ($user->type == 'superadmin' || (method_exists($user, 'hasRole') && $user->hasRole('superadmin'))) {
                 $user_active_module = $available_modules;
             } else {
-                $active_module = [];
                 if ($user->type != 'company') {
                     $user = User::find($user->created_by);
                 }
 
                 if ($user) {
-                    $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+                    // Check if company's subscription plan is expired or inactive
+                    $isExpired = false;
+                    if (!empty($user->plan_expire_date) && now()->gt($user->plan_expire_date)) {
+                        $isExpired = true;
+                    }
 
-                    $plan_modules = [];
-                    if (!empty($user->active_plan)) {
+                    if (!empty($user->active_plan) && $user->active_plan != 0 && !$isExpired) {
                         $plan = \App\Models\Plan::find($user->active_plan);
+                        $plan_modules = [];
                         if ($plan && !empty($plan->modules)) {
                             if (is_array($plan->modules)) {
                                 $plan_modules = $plan->modules;
@@ -259,30 +261,64 @@ if (!function_exists('ActivatedModule')) {
                                 $plan_modules = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $plan->modules)));
                             }
                         }
-                        // Subscribed users get access to all installed modules
-                        $plan_modules = array_unique(array_merge($plan_modules, $available_modules));
-                    }
 
-                    // Auto-repair: If user has an active plan but UserActiveModule table lacks entries, sync them.
-                    if (!empty($plan_modules)) {
-                        $missing = array_diff($plan_modules, $db_active);
-                        if (!empty($missing)) {
-                            foreach ($missing as $modName) {
-                                $modName = trim($modName);
-                                if (!empty($modName)) {
-                                    UserActiveModule::firstOrCreate([
-                                        'user_id' => $user->id,
-                                        'module'  => $modName,
-                                    ]);
+                        $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
+
+                        // Auto-repair missing plan modules into UserActiveModule table
+                        if (!empty($plan_modules)) {
+                            $missing = array_diff($plan_modules, $db_active);
+                            if (!empty($missing)) {
+                                foreach ($missing as $modName) {
+                                    $modName = trim($modName);
+                                    if (!empty($modName)) {
+                                        UserActiveModule::firstOrCreate([
+                                            'user_id' => $user->id,
+                                            'module'  => $modName,
+                                        ]);
+                                    }
                                 }
+                                $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
                             }
-                            $db_active = UserActiveModule::where('user_id', $user->id)->pluck('module')->toArray();
                         }
+
+                        // Prune any rogue entries from UserActiveModule that are not in the plan and have no verified add-on order
+                        $extra = array_diff($db_active, $plan_modules);
+                        if (!empty($extra)) {
+                            $purchasedModules = [];
+                            try {
+                                $btPayments = \DB::table('bank_transfer_payments')
+                                    ->where('user_id', $user->id)
+                                    ->where('status', 'approved')
+                                    ->get();
+                                foreach ($btPayments as $bt) {
+                                    $req = json_decode($bt->request ?? '{}', true);
+                                    if (is_string($req)) {
+                                        $req = json_decode($req, true);
+                                    }
+                                    if (!empty($req['user_module_input'])) {
+                                        $purchasedModules = array_merge($purchasedModules, explode(',', $req['user_module_input']));
+                                    }
+                                }
+                            } catch (\Throwable $e) {}
+
+                            $purchasedModules = array_map('trim', array_unique($purchasedModules));
+                            $rogueModules = array_values(array_diff($extra, $purchasedModules));
+                            if (!empty($rogueModules)) {
+                                UserActiveModule::where('user_id', $user->id)->whereIn('module', $rogueModules)->delete();
+                                $db_active = array_values(array_diff($db_active, $rogueModules));
+                            }
+                        }
+
+                        // Entitled modules: Plan modules + any user active add-on modules
+                        $active_module = array_unique(array_merge($plan_modules, $db_active));
+                        $user_active_module = array_values(array_intersect($available_modules, $active_module));
+                    } else {
+                        $user_active_module = [];
                     }
 
-                    $active_module = array_unique(array_merge($plan_modules, $db_active));
-                    $user_active_module = array_values(array_intersect($available_modules, $active_module));
+                    // Always merge base system modules (ProductService, payment gateways)
                     $user_active_module = array_values(array_unique(array_merge($activated_module, $user_active_module)));
+                    $user_active_module = array_values(array_intersect($available_modules, $user_active_module));
                 }
             }
         } else {

@@ -59,38 +59,6 @@ class Plan extends Model
 
     public static function getUserSubscriptionModules($userId = null)
     {
-        $user = $userId ? User::find($userId) : auth()->user();
-
-        if (!$user) {
-            return [];
-        }
-
-        // Super admin has access to all modules
-        if ($user->hasRole('superadmin')) {
-            return (new Module())->allEnabled();
-        }
-
-        $availableModules = [];
-
-        // Get modules from user's active plan
-        if ($user->active_plan) {
-            $plan = self::find($user->active_plan);
-            if ($plan && $plan->modules) {
-                $availableModules = array_merge($availableModules, $plan->modules);
-            }
-        }
-
-        // Get user's individually activated modules
-        $userActiveModules = UserActiveModule::where('user_id', $user->id)
-            ->pluck('module')
-            ->toArray();
-
-        $availableModules = array_merge($availableModules, $userActiveModules);
-
-        // Remove duplicates and ensure modules are actually enabled
-        $enabledModules = (new Module())->allEnabled();
-        $availableModules = array_unique(array_intersect($availableModules, $enabledModules));
-
-        return array_values($availableModules);
+        return ActivatedModule($userId);
     }
 }

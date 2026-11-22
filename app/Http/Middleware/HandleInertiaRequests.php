@@ -154,14 +154,21 @@ class HandleInertiaRequests extends Middleware
             $moduleMap = [
                 'sales-proposals' => 'Lead',
                 'sales-invoices' => 'Account',
+                'sales-return-invoices' => 'Account',
                 'purchase-invoices' => 'Account',
+                'purchase-return-invoices' => 'Account',
                 'warehouses' => 'Account',
                 'transfers' => 'Account',
                 'helpdesk-tickets' => 'SupportTicket',
+                'helpdesk-categories' => 'SupportTicket',
+                'helpdesk-replies' => 'SupportTicket',
                 'support-ticket' => 'SupportTicket',
+                'support-tickets' => 'SupportTicket',
                 'messenger' => 'Messenger',
                 'import-export' => 'ImportExport',
                 'inventory-management' => 'InventoryManagement',
+                'erp-migrate' => 'ERPMigrate',
+                'erp-migration' => 'ERPMigrate',
             ];
 
             // All addon module names (StudlyCase), so we can recognise "sub-module groups"
