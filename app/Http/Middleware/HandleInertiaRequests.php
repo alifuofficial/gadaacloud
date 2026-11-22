@@ -169,6 +169,7 @@ class HandleInertiaRequests extends Middleware
                 'inventory-management' => 'InventoryManagement',
                 'erp-migrate' => 'ERPMigrate',
                 'erp-migration' => 'ERPMigrate',
+                'eims' => 'EIMS',
             ];
 
             // All addon module names (StudlyCase), so we can recognise "sub-module groups"

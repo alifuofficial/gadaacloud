@@ -1,0 +1,11 @@
+{
+    "name": "EIMS",
+    "alias": "Ethiopian E-Invoicing (EIMS Directive 1142)",
+    "description": "Ministry of Revenues (MoR) Directive No. 1142/2026 EIMS Electronic Invoicing System: Real-time clearance, IRN hash generation, fiscal QR code validation, 72-hour offline resiliency queue, and INSA-compliant audit trails.",
+    "priority": 55,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "package_name": "eims",
+    "for_admin": false
+}

@@ -1,0 +1,18 @@
+{
+    "name": "workdo/eims",
+    "description": "Ethiopian E-Invoicing Management System (Directive No. 1142/2026) for GadaaCloud",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Workdo\\EIMS\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Workdo\\EIMS\\Providers\\EimsServiceProvider",
+                "Workdo\\EIMS\\Providers\\EventServiceProvider"
+            ]
+        }
+    }
+}
