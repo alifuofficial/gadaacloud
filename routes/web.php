@@ -56,6 +56,8 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck'])->group(function () {
     Route::get('users/login/history', [UserController::class, 'loginHistory'])->name('users.login-history');
     Route::resource('warehouses', WarehouseController::class);
     Route::resource('transfers', TransferController::class)->except(['edit', 'update']);
+    Route::post('transfers/{transfer}/receive', [TransferController::class, 'receive'])->name('transfers.receive');
+    Route::get('transfers/{transfer}/waybill', [TransferController::class, 'waybill'])->name('transfers.waybill');
 
 
 

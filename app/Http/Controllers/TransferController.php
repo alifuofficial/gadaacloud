@@ -73,17 +73,24 @@ class TransferController extends Controller
             $validated = $request->validated();
 
             $transfer = new Transfer();
+            $transfer->waybill_number = Transfer::generateWaybillNumber();
             $transfer->from_warehouse = $validated['from_warehouse'];
             $transfer->to_warehouse = $validated['to_warehouse'];
             $transfer->product_id = $validated['product_id'];
             $transfer->quantity = $validated['quantity'];
             $transfer->date = $validated['date'];
+            $transfer->status = 'in_transit'; // Goods are in transit on road
+            $transfer->driver_name = $request->driver_name;
+            $transfer->driver_phone = $request->driver_phone;
+            $transfer->vehicle_plate_number = $request->vehicle_plate_number;
+            $transfer->dispatched_at = now();
+            $transfer->notes = $request->notes;
             $transfer->creator_id = Auth::id();
             $transfer->created_by = creatorId();
             $transfer->save();
 
-            // Update warehouse stocks
-            // Decrease from source warehouse
+            // Update warehouse stocks: decrease from source warehouse only
+            // Destination warehouse stock is NOT incremented until goods are physically received
             $fromStock = WarehouseStock::where('product_id', $validated['product_id'])
                 ->where('warehouse_id', $validated['from_warehouse'])
                 ->first();
@@ -93,25 +100,87 @@ class TransferController extends Controller
                 $fromStock->save();
             }
 
-            // Increase in destination warehouse
-            $toStock = WarehouseStock::firstOrCreate(
-                [
-                    'product_id' => $validated['product_id'],
-                    'warehouse_id' => $validated['to_warehouse'],
-                ],
-                ['quantity' => 0]
-            );
-            $toStock->quantity += $validated['quantity'];
-            $toStock->save();
-
             // Dispatch event for packages to handle their fields
             CreateTransfer::dispatch($request, $transfer);
 
-            return back()->with('success', __('The transfer has been created successfully.'));
+            return back()->with('success', __('Shipment dispatched with Waybill :wb.', ['wb' => $transfer->waybill_number]));
         }
         else{
             return back()->with('error', __('Permission denied'));
         }
+    }
+
+    /**
+     * Confirm receipt of goods at destination warehouse (with transit damage/shortage tracking).
+     */
+    public function receive(\Illuminate\Http\Request $request, Transfer $transfer)
+    {
+        if (!Auth::user()->can('edit-transfers') && !Auth::user()->can('manage-transfers')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        if (!Auth::user()->hasRole('superadmin') && $transfer->created_by !== creatorId()) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        if ($transfer->status === 'received') {
+            return back()->with('error', __('This transfer has already been received.'));
+        }
+
+        $receivedQty = (float) $request->input('received_quantity', $transfer->quantity);
+        $damagedQty = (float) $request->input('damaged_quantity', 0);
+        $reason = $request->input('discrepancy_reason');
+
+        // Increase in destination warehouse for actually received undamaged goods
+        $toStock = WarehouseStock::firstOrCreate(
+            [
+                'product_id' => $transfer->product_id,
+                'warehouse_id' => $transfer->to_warehouse,
+            ],
+            ['quantity' => 0]
+        );
+        $toStock->quantity += $receivedQty;
+        $toStock->save();
+
+        $transfer->received_quantity = $receivedQty;
+        $transfer->damaged_quantity = $damagedQty;
+        $transfer->discrepancy_reason = $reason;
+        $transfer->status = $damagedQty > 0 ? 'discrepancy' : 'received';
+        $transfer->received_at = now();
+        $transfer->save();
+
+        $msg = __('Shipment received successfully.');
+        if ($damagedQty > 0) {
+            $msg .= ' ' . __('Transit discrepancy noted: :qty damaged/short.', ['qty' => $damagedQty]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Render / Print Official Ethiopian Inter-Branch Waybill (የጭነት ማስተላለፊያ ደረሰኝ).
+     */
+    public function waybill(Transfer $transfer)
+    {
+        if (!Auth::user()->can('view-transfers')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        if (!Auth::user()->hasRole('superadmin') && $transfer->created_by !== creatorId()) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        $transfer->load(['fromWarehouse', 'toWarehouse', 'product']);
+
+        $settings = getCompanyAllSetting($transfer->created_by);
+        $companyName = $settings['company_name'] ?? config('app.name', 'GadaaCloud');
+        $companyVat = $settings['vat_number'] ?? $settings['tax_number'] ?? 'N/A';
+
+        return response()->view('transfers.waybill', [
+            'transfer' => $transfer,
+            'companyName' => $companyName,
+            'companyVat' => $companyVat,
+        ]);
     }
 
     public function show(Transfer $transfer)
@@ -129,26 +198,33 @@ class TransferController extends Controller
     public function destroy(Transfer $transfer)
     {
         if(Auth::user()->can('delete-transfers')){
-        // Add back to source warehouse
-        $fromStock = WarehouseStock::firstOrCreate(
-            [
-                'product_id' => $transfer->product_id,
-                'warehouse_id' => $transfer->from_warehouse,
-            ],
-            ['quantity' => 0]
-        );
-        $fromStock->quantity += $transfer->quantity;
-        $fromStock->save();
+            if (!Auth::user()->hasRole('superadmin') && $transfer->created_by !== creatorId()) {
+                return back()->with('error', __('Permission denied'));
+            }
 
-        // Remove from destination warehouse
-        $toStock = WarehouseStock::where('product_id', $transfer->product_id)
-            ->where('warehouse_id', $transfer->to_warehouse)
-            ->first();
+            // Restore stock to source warehouse
+            $fromStock = WarehouseStock::firstOrCreate(
+                [
+                    'product_id' => $transfer->product_id,
+                    'warehouse_id' => $transfer->from_warehouse,
+                ],
+                ['quantity' => 0]
+            );
+            $fromStock->quantity += $transfer->quantity;
+            $fromStock->save();
 
-        if ($toStock) {
-            $toStock->quantity = max(0, $toStock->quantity - $transfer->quantity);
-            $toStock->save();
-        }
+            // If the transfer was already received at destination, deduct from destination
+            if ($transfer->status === 'received' || $transfer->status === 'discrepancy') {
+                $toStock = WarehouseStock::where('product_id', $transfer->product_id)
+                    ->where('warehouse_id', $transfer->to_warehouse)
+                    ->first();
+
+                $receivedQty = $transfer->received_quantity ?: $transfer->quantity;
+                if ($toStock) {
+                    $toStock->quantity = max(0, $toStock->quantity - $receivedQty);
+                    $toStock->save();
+                }
+            }
 
             DestroyTransfer::dispatch($transfer);
 

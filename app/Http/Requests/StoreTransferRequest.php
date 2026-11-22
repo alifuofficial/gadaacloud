@@ -34,6 +34,10 @@ class StoreTransferRequest extends FormRequest
                 }
             ],
             'date' => 'required|date',
+            'driver_name' => 'nullable|string|max:100',
+            'driver_phone' => 'nullable|string|max:50',
+            'vehicle_plate_number' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:500',
         ];
     }
 }

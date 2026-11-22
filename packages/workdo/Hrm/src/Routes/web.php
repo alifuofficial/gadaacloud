@@ -114,6 +114,8 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Hrm'])->group(fun
     });
 
     Route::prefix('hrm/employees')->name('hrm.employees.')->group(function () {
+        Route::get('/probation-monitor', [EmployeeController::class, 'probationMonitor'])->name('probation-monitor');
+        Route::post('/{employee}/confirm-probation', [EmployeeController::class, 'confirmProbation'])->name('confirm-probation');
         Route::get('/', [EmployeeController::class, 'index'])->name('index');
         Route::get('/create', [EmployeeController::class, 'create'])->name('create');
         Route::post('/', [EmployeeController::class, 'store'])->name('store');
@@ -169,6 +171,8 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Hrm'])->group(fun
     });
 
     Route::prefix('hrm/terminations')->name('hrm.terminations.')->group(function () {
+        Route::get('/calculate-settlement/{employeeId}', [TerminationController::class, 'calculateStatutorySettlement'])->name('calculate-settlement');
+        Route::get('/{termination}/settlement-voucher', [TerminationController::class, 'settlementVoucher'])->name('settlement-voucher');
         Route::get('/', [TerminationController::class, 'index'])->name('index');
         Route::post('/', [TerminationController::class, 'store'])->name('store');
         Route::get('/{termination}/edit', [TerminationController::class, 'edit'])->name('edit');

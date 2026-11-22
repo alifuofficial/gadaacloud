@@ -15,6 +15,7 @@ use Workdo\Hrm\Models\Designation;
 use Workdo\Hrm\Models\EmployeeDocumentType;
 use Workdo\Hrm\Models\EmployeeDocument;
 use Workdo\Hrm\Models\Shift;
+use Carbon\Carbon;
 use Workdo\Hrm\Events\CreateEmployee;
 use Workdo\Hrm\Events\DestroyEmployee;
 use Workdo\Hrm\Events\UpdateEmployee;
@@ -364,5 +365,107 @@ class EmployeeController extends Controller
         } else {
             return redirect()->back()->with('error', __('Permission denied'));
         }
+    }
+
+    /**
+     * 60-Working-Day Probation Monitor (Article 11, Labour Proclamation No. 1156/2019).
+     */
+    public function probationMonitor(\Illuminate\Http\Request $request)
+    {
+        if (!Auth::user()->can('manage-employees')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        $employees = Employee::with(['user:id,name,email,avatar', 'department:id,name', 'designation:id,name', 'branch:id,name'])
+            ->where('created_by', creatorId())
+            ->where(function($q) {
+                $q->where('employment_type', 'probation')
+                  ->orWhereNull('employment_type')
+                  ->orWhere('date_of_joining', '>=', now()->subDays(120));
+            })
+            ->get();
+
+        $probationList = [];
+        $criticalCount = 0;
+        $expiredCount = 0;
+
+        foreach ($employees as $emp) {
+            $joinDate = $emp->date_of_joining ? Carbon::parse($emp->date_of_joining) : null;
+            if (!$joinDate) {
+                continue;
+            }
+
+            // Calculate working days elapsed excluding Sundays (Ethiopian 6-day work week basis)
+            $today = Carbon::today();
+            $workingDaysElapsed = 0;
+
+            if ($joinDate->lte($today)) {
+                $period = Carbon::parse($joinDate);
+                while ($period->lte($today)) {
+                    if ($period->dayOfWeek !== Carbon::SUNDAY) {
+                        $workingDaysElapsed++;
+                    }
+                    $period->addDay();
+                }
+            }
+
+            $workingDaysRemaining = max(0, 60 - $workingDaysElapsed);
+
+            if ($workingDaysRemaining === 0) {
+                $status = 'expired'; // Automatic permanence under Art. 11(3)
+                $statusLabel = 'Automatically Permanent (60 Days Elapsed) / በሕጉ መሠረት ቋሚ ሆኗል';
+                $expiredCount++;
+            } elseif ($workingDaysRemaining <= 15) {
+                $status = 'critical'; // Notice window closing soon!
+                $statusLabel = 'Critical Review Window (<=15 Days) / አፋጣኝ ውሳኔ የሚሻ';
+                $criticalCount++;
+            } else {
+                $status = 'in_progress';
+                $statusLabel = 'In Probation / በሙከራ ላይ ያለ';
+            }
+
+            $probationList[] = [
+                'id' => $emp->id,
+                'employee_id' => $emp->employee_id,
+                'user' => $emp->user,
+                'department' => $emp->department->name ?? 'N/A',
+                'designation' => $emp->designation->name ?? 'N/A',
+                'branch' => $emp->branch->name ?? 'N/A',
+                'date_of_joining' => $joinDate->format('Y-m-d'),
+                'working_days_elapsed' => $workingDaysElapsed,
+                'working_days_remaining' => $workingDaysRemaining,
+                'status' => $status,
+                'status_label' => $statusLabel,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'total_on_probation' => count($probationList),
+                'critical_actions_required' => $criticalCount,
+                'automatic_permanence_reached' => $expiredCount,
+            ],
+            'employees' => $probationList,
+        ]);
+    }
+
+    /**
+     * Formally confirm an employee as permanent staff upon successful probation.
+     */
+    public function confirmProbation(\Illuminate\Http\Request $request, Employee $employee)
+    {
+        if (!Auth::user()->can('edit-employees')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        if (!Auth::user()->hasRole('superadmin') && $employee->created_by !== creatorId()) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        $employee->employment_type = 'permanent';
+        $employee->save();
+
+        return back()->with('success', __('Employee :name has been confirmed as permanent staff.', ['name' => $employee->user->name ?? $employee->employee_id]));
     }
 }
