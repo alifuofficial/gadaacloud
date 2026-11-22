@@ -24,6 +24,7 @@ export interface SalesInvoice {
     customer_details?: CustomerDetails;
     warehouse?: Warehouse;
     items?: SalesInvoiceItem[];
+    eims_invoice?: any;
 }
 
 export interface SalesInvoiceItem {

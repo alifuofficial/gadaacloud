@@ -52,7 +52,16 @@ export default function View() {
                             <div>
                                 <p className="text-lg text-muted-foreground">#{invoice.invoice_number}</p>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
+                                {invoice.eims_invoice && (
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                        invoice.eims_invoice.status === 'CLEARED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300' :
+                                        invoice.eims_invoice.status === 'PENDING_OFFLINE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300' :
+                                        'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300'
+                                    }`}>
+                                        {invoice.eims_invoice.status === 'CLEARED' ? t('MoR Cleared') : invoice.eims_invoice.status}
+                                    </span>
+                                )}
                                 <span className={getStatusBadgeClasses(invoice.status)}>
                                     {t(invoice.status.toUpperCase())}
                                 </span>
@@ -69,6 +78,11 @@ export default function View() {
                                 <div className="text-sm space-y-1">
                                     <div className="font-medium">{invoice.customer?.name}</div>
                                     <div className="text-muted-foreground">{invoice.customer?.email}</div>
+                                    {invoice.customer_details?.tax_number && (
+                                        <div className="text-xs font-mono text-muted-foreground pt-0.5">
+                                            <span className="font-sans font-semibold text-foreground">TIN:</span> {invoice.customer_details.tax_number}
+                                        </div>
+                                    )}
                                 </div>
                                 {invoice.customer_details?.billing_address && (
                                     <div className="mt-3">

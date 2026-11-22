@@ -74,6 +74,11 @@ class SalesInvoice extends Model
         return $this->hasMany(SalesInvoiceReturn::class, 'original_invoice_id');
     }
 
+    public function eimsInvoice(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\Workdo\EIMS\Models\EimsInvoice::class, 'sales_invoice_id');
+    }
+
     public function isOverdue(): bool
     {
         return $this->due_date < now() && $this->status !== 'paid';

@@ -174,7 +174,7 @@ class SalesInvoiceController extends Controller
                 return redirect()->route('sales-invoices.index')->with('error', __('Permission denied'));
             }
 
-            $salesInvoice->load(['customer', 'customerDetails', 'items.product', 'items.taxes', 'warehouse']);
+            $salesInvoice->load(['customer', 'customerDetails', 'items.product', 'items.taxes', 'warehouse', 'eimsInvoice']);
 
             return Inertia::render('Sales/View', [
                 'invoice' => $salesInvoice
@@ -423,7 +423,7 @@ class SalesInvoiceController extends Controller
     public function print(SalesInvoice $salesInvoice)
     {
         if(Auth::user()->can('print-sales-invoices')){
-            $salesInvoice->load(['customer', 'customerDetails', 'items.product', 'items.taxes', 'warehouse']);
+            $salesInvoice->load(['customer', 'customerDetails', 'items.product', 'items.taxes', 'warehouse', 'eimsInvoice']);
 
             return Inertia::render('Sales/Print', [
                 'invoice' => $salesInvoice

@@ -100,6 +100,9 @@ export default function Print() {
                         <div className="text-sm space-y-1">
                             <p className="font-semibold">{invoice.customer?.name}</p>
                             <p>{invoice.customer?.email}</p>
+                            {invoice.customer_details?.tax_number && (
+                                <p><span className="font-semibold">{t('TIN')}:</span> <span className="font-mono">{invoice.customer_details.tax_number}</span></p>
+                            )}
                             {invoice.customer_details?.billing_address && (
                                 <>
                                     <p>{invoice.customer_details.billing_address.name}</p>
@@ -186,7 +189,36 @@ export default function Print() {
                     </table>
                 </div>
 
-                <div className="flex justify-end mb-4 page-break-inside-avoid">
+                <div className="flex justify-between items-start gap-4 mb-4 page-break-inside-avoid">
+                    {/* Left: Ethiopian MoR (EIMS Directive 1142) Fiscal Clearance Certificate Box */}
+                    {invoice.eims_invoice && invoice.eims_invoice.status === 'CLEARED' ? (
+                        <div className="border border-gray-400 p-3 max-w-sm rounded bg-gray-50/80 flex items-start gap-3">
+                            {invoice.eims_invoice.qr_code_image && (
+                                <div 
+                                    className="w-24 h-24 shrink-0 bg-white p-1 border border-gray-300"
+                                    dangerouslySetInnerHTML={{ __html: invoice.eims_invoice.qr_code_image }}
+                                />
+                            )}
+                            <div className="text-[10px] space-y-0.5 leading-tight font-mono text-gray-800">
+                                <div className="font-bold font-sans text-[11px] text-gray-900">
+                                    ETHIOPIAN MoR (EIMS)
+                                </div>
+                                <div className="text-[9px] text-gray-600 font-sans">Directive No. 1142/2026 Cleared</div>
+                                <div className="break-all pt-1"><span className="font-bold">IRN:</span> {invoice.eims_invoice.irn}</div>
+                                {invoice.eims_invoice.rrn && <div><span className="font-bold">RRN:</span> {invoice.eims_invoice.rrn}</div>}
+                                {invoice.customer_details?.tax_number && <div><span className="font-bold">Buyer TIN:</span> {invoice.customer_details.tax_number}</div>}
+                                {invoice.eims_invoice.cleared_at && <div><span className="font-bold">Date:</span> {new Date(invoice.eims_invoice.cleared_at).toLocaleString()}</div>}
+                            </div>
+                        </div>
+                    ) : invoice.eims_invoice && invoice.eims_invoice.status === 'PENDING_OFFLINE' ? (
+                        <div className="border border-dashed border-amber-500 p-3 max-w-sm rounded bg-amber-50/50 text-[10px] text-amber-900 space-y-1">
+                            <div className="font-bold text-[11px]">Directive 1142 Resiliency Buffer</div>
+                            <p>This invoice was registered offline during network unavailability. It will be cleared with the Ministry of Revenues within the 72-hour statutory window.</p>
+                        </div>
+                    ) : (
+                        <div />
+                    )}
+
                     <div className="w-80 page-break-inside-avoid">
                         <div className="border border-gray-400 p-4 page-break-inside-avoid">
                             <div className="space-y-2">
