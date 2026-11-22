@@ -426,6 +426,7 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Hrm'])->group(fun
         Route::put('/{payroll}', [PayrollController::class, 'update'])->name('update');
         Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->name('destroy');
         Route::post('/{payroll}/run', [PayrollController::class, 'runPayroll'])->name('run');
+        Route::get('/{payroll}/export-mor-tax', [PayrollController::class, 'exportEthiopianTaxDeclaration'])->name('export-mor-tax');
     });
 
     Route::delete('/hrm/payroll-entries/{payrollEntry}', [PayrollController::class, 'destroyEntry'])->name('hrm.payroll-entries.destroy');

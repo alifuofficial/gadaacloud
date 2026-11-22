@@ -65,6 +65,9 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Account'])->group
     Route::prefix('account/bank-transactions')->name('account.bank-transactions.')->group(function () {
         Route::get('/', [BankTransactionController::class, 'index'])->name('index');
         Route::post('/{id}/mark-reconciled', [BankTransactionController::class, 'markReconciled'])->name('mark-reconciled');
+        Route::post('/import-statement', [BankTransactionController::class, 'importStatement'])->name('import-statement');
+        Route::post('/auto-match', [BankTransactionController::class, 'autoMatch'])->name('auto-match');
+        Route::get('/reconciliation-report', [BankTransactionController::class, 'reconciliationReport'])->name('reconciliation-report');
     });
 
     Route::prefix('account/bank-transfers')->name('account.bank-transfers.')->group(function () {

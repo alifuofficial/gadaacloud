@@ -18,6 +18,7 @@ use Workdo\Hrm\Models\LeaveApplication;
 use Workdo\Hrm\Models\Loan;
 use Workdo\Hrm\Models\Overtime;
 use Workdo\Hrm\Models\PayrollEntry;
+use App\Models\User;
 use Workdo\Hrm\Events\CreatePayroll;
 use Workdo\Hrm\Events\UpdatePayroll;
 use Workdo\Hrm\Events\DestroyPayroll;
@@ -287,18 +288,41 @@ class PayrollController extends Controller
         $totalLeaveSalaryDeductions = $unpaidLeaveDeduction + $halfDayDeduction + $absentDayDeduction;
         $grossPay = $totalEarnings - $totalLeaveSalaryDeductions + $overtimeAmount; // overtimeAmount is from attendance
 
-        // Apply Ethiopian Tax System if configured
+        // Apply Ethiopian Tax System if configured or operating in ETB
         $settings = getCompanyAllSetting($payroll->created_by);
-        $useEthiopianTax = ($settings['useEthiopianTax'] ?? 'off') === 'on';
+        $companyCurrency = $settings['defult_currancy'] ?? $settings['site_currency'] ?? 'USD';
+        $useEthiopianTax = ($settings['useEthiopianTax'] ?? 'off') === 'on' || strtoupper($companyCurrency) === 'ETB';
 
         if ($useEthiopianTax) {
-            $employeePension = $basicSalary * 0.07;
-            $employerPension = $basicSalary * 0.11;
-            
-            // Taxable Income = Gross Pay - Employee Pension (7% of Basic Salary)
-            $taxableIncome = max(0, $grossPay - $employeePension);
-            
-            // Progressive tax rates for Employment Income (PIT)
+            $employeePension = round($basicSalary * 0.07, 2);
+            $employerPension = round($basicSalary * 0.11, 2);
+
+            // Separate Transport Allowance under Ethiopian Directive No. 02/2008 & Proclamation No. 979/2016
+            // Transport allowance is tax-exempt up to the lower of 25% of basic salary or 2,200 ETB
+            $transportAllowance = 0;
+            $taxableAllowances = 0;
+            foreach ($allowancesBreakdown as $allowanceName => $allowanceAmt) {
+                if (stripos($allowanceName, 'transport') !== false || stripos($allowanceName, 'የትራንስፖርት') !== false) {
+                    $transportAllowance += (float) $allowanceAmt;
+                } else {
+                    $taxableAllowances += (float) $allowanceAmt;
+                }
+            }
+
+            $transportExemptionCap = min($basicSalary * 0.25, 2200.0);
+            $nonTaxableTransport = min($transportAllowance, $transportExemptionCap);
+            $taxableTransport = max(0, $transportAllowance - $transportExemptionCap);
+
+            // Total Overtime earnings (Attendance OT + Manual OT)
+            $totalOvertimeEarned = $totalManualOvertimes + $overtimeAmount;
+
+            // Adjusted Gross Pay considering unpaid leaves / absence deductions
+            $taxableBaseEarnings = max(0, $basicSalary - $totalLeaveSalaryDeductions);
+
+            // Ethiopian Taxable Income = Basic (after unpaids) + Taxable Transport + Other Allowances + Overtime - 7% Pension
+            $taxableIncome = max(0, ($taxableBaseEarnings + $taxableTransport + $taxableAllowances + $totalOvertimeEarned) - $employeePension);
+
+            // Progressive tax rates for Employment Income (PIT) - Proclamation No. 979/2016
             if ($taxableIncome <= 600) {
                 $incomeTax = 0;
             } elseif ($taxableIncome <= 1650) {
@@ -314,13 +338,20 @@ class PayrollController extends Controller
             } else {
                 $incomeTax = ($taxableIncome * 0.35) - 1500.00;
             }
-            $incomeTax = max(0, $incomeTax);
+            $incomeTax = max(0, round($incomeTax, 2));
 
-            // Add to deductions breakdown and totals
-            $deductionsBreakdown['Pension Contribution (7%)'] = $employeePension;
-            $deductionsBreakdown['Employment Income Tax (PIT)'] = $incomeTax;
-            $deductionsBreakdown['Employer Pension (11% - Cost)'] = $employerPension;
-            
+            // Record Ethiopian breakdown elements
+            $deductionsBreakdown['Employee Pension (7%) / የሰራተኛ ጡረታ'] = $employeePension;
+            $deductionsBreakdown['Income Tax (PIT) / የስራ ግብር'] = $incomeTax;
+            $deductionsBreakdown['Employer Pension (11% Cost) / የአሰሪ ጡረታ'] = $employerPension;
+
+            if ($nonTaxableTransport > 0) {
+                $allowancesBreakdown['Transport (Tax Exempt) / ከቀረጥ ነፃ'] = $nonTaxableTransport;
+                if ($taxableTransport > 0) {
+                    $allowancesBreakdown['Transport (Taxable Excess) / ግብር የሚከፈልበት'] = $taxableTransport;
+                }
+            }
+
             $totalDeductions += $employeePension + $incomeTax;
         }
 
@@ -482,13 +513,34 @@ class PayrollController extends Controller
         $total = 0;
         $totalManualOvertimeHour = 0;
 
+        // Ethiopian standard working hours: 208 hours/month (48 hrs/week standard, Labour Proclamation No. 1156/2019)
+        $standardHourlyRate = ($employee->rate_per_hour && (float) $employee->rate_per_hour > 0)
+            ? (float) $employee->rate_per_hour
+            : round($basicSalary / 208, 2);
+
         foreach ($overtimes as $overtime) {
             $name = $overtime->title ?? 'Manual Overtime';
-            $amount = $overtime->hours * $overtime->rate;
+            $hours = (float) $overtime->hours;
+            $rate = (float) $overtime->rate;
 
+            // If rate is 0 or matches standard base, auto-apply Ethiopian statutory overtime multipliers
+            if ($rate <= 0 || $rate <= $standardHourlyRate) {
+                $lowerTitle = strtolower($name);
+                if (str_contains($lowerTitle, 'holiday') || str_contains($lowerTitle, 'የበዓል')) {
+                    $rate = round($standardHourlyRate * 2.5, 2); // 2.5x Public Holiday
+                } elseif (str_contains($lowerTitle, 'rest') || str_contains($lowerTitle, 'sunday') || str_contains($lowerTitle, 'የእረፍት')) {
+                    $rate = round($standardHourlyRate * 2.0, 2); // 2.0x Rest Day
+                } elseif (str_contains($lowerTitle, 'night') || str_contains($lowerTitle, 'የሌሊት')) {
+                    $rate = round($standardHourlyRate * 1.75, 2); // 1.75x Night (10PM - 6AM)
+                } elseif ($rate <= 0) {
+                    $rate = round($standardHourlyRate * 1.5, 2); // 1.5x Standard Day Overtime (6AM - 10PM)
+                }
+            }
+
+            $amount = $hours * $rate;
             $breakdown[$name] = $amount;
             $total += $amount;
-            $totalManualOvertimeHour += $overtime->hours;
+            $totalManualOvertimeHour += $hours;
         }
 
         return ['breakdown' => $breakdown, 'total' => $total, 'totalManualOvertimeHour' => $totalManualOvertimeHour];
@@ -587,5 +639,87 @@ class PayrollController extends Controller
         } else {
             return redirect()->back()->with('error', __('Permission denied'));
         }
+    }
+
+    /**
+     * Export Ministry of Revenues (MOR) Ethiopian Monthly Tax Declaration CSV.
+     */
+    public function exportEthiopianTaxDeclaration(Payroll $payroll)
+    {
+        if (!$this->checkPayrollAccess($payroll)) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        $payroll->load(['payrollEntries']);
+
+        $filename = "MOR_Tax_Declaration_Payroll_" . $payroll->id . "_" . date('Y-m-d') . ".csv";
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function() use ($payroll) {
+            $handle = fopen('php://output', 'w');
+            // Add UTF-8 BOM for Microsoft Excel compatibility with Amharic/Ge'ez text
+            fputs($handle, "\xEF\xBB\xBF");
+
+            // Header Row according to Ministry of Revenues format
+            fputcsv($handle, [
+                'No.',
+                'Employee ID',
+                'Full Name',
+                'TIN Number',
+                'Basic Salary (ETB)',
+                'Non-Taxable Transport Allowance',
+                'Taxable Allowances',
+                'Overtime Pay',
+                'Gross Pay',
+                'Employee Pension (7%)',
+                'Employer Pension (11%)',
+                'Total Pension (18%)',
+                'Taxable Income',
+                'Employment Income Tax (PIT)',
+                'Total Deductions',
+                'Net Salary Payable (ETB)',
+            ]);
+
+            $i = 1;
+            foreach ($payroll->payrollEntries as $entry) {
+                $employee = Employee::where('user_id', $entry->employee_id)->first();
+                $user = $employee ? User::find($employee->user_id) : User::find($entry->employee_id);
+                $deductions = is_array($entry->deductions_breakdown) ? $entry->deductions_breakdown : (json_decode($entry->deductions_breakdown, true) ?? []);
+                $allowances = is_array($entry->allowances_breakdown) ? $entry->allowances_breakdown : (json_decode($entry->allowances_breakdown, true) ?? []);
+
+                $empPension = $deductions['Employee Pension (7%) / የሰራተኛ ጡረታ'] ?? $deductions['Pension Contribution (7%)'] ?? round($entry->basic_salary * 0.07, 2);
+                $emprPension = $deductions['Employer Pension (11% Cost) / የአሰሪ ጡረታ'] ?? $deductions['Employer Pension (11% - Cost)'] ?? round($entry->basic_salary * 0.11, 2);
+                $pit = $deductions['Income Tax (PIT) / የስራ ግብር'] ?? $deductions['Employment Income Tax (PIT)'] ?? 0;
+                $exemptTransport = $allowances['Transport (Tax Exempt) / ከቀረጥ ነፃ'] ?? 0;
+
+                $taxableAllowances = max(0, $entry->total_allowances - $exemptTransport);
+                $taxableIncome = max(0, $entry->gross_pay - $exemptTransport - $empPension);
+
+                fputcsv($handle, [
+                    $i++,
+                    $employee->employee_id ?? "EMP-{$entry->employee_id}",
+                    $user->name ?? 'N/A',
+                    $employee->tax_payer_id ?? 'N/A',
+                    number_format((float) $entry->basic_salary, 2, '.', ''),
+                    number_format((float) $exemptTransport, 2, '.', ''),
+                    number_format((float) $taxableAllowances, 2, '.', ''),
+                    number_format((float) ($entry->total_manual_overtimes + $entry->attendance_overtime_amount), 2, '.', ''),
+                    number_format((float) $entry->gross_pay, 2, '.', ''),
+                    number_format((float) $empPension, 2, '.', ''),
+                    number_format((float) $emprPension, 2, '.', ''),
+                    number_format((float) ($empPension + $emprPension), 2, '.', ''),
+                    number_format((float) $taxableIncome, 2, '.', ''),
+                    number_format((float) $pit, 2, '.', ''),
+                    number_format((float) ($entry->total_deductions + $entry->total_loans), 2, '.', ''),
+                    number_format((float) $entry->net_pay, 2, '.', ''),
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

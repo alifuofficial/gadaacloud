@@ -11,10 +11,11 @@ class DemoTaxSeeder extends Seeder
     {
         if (!empty($userId)) {
             $taxes = [
-                ['tax_name' => 'GST', 'rate' => 18.00],
-                ['tax_name' => 'VAT', 'rate' => 12.00],
-                ['tax_name' => 'Service Tax', 'rate' => 15.00],
-                ['tax_name' => 'Sales Tax', 'rate' => 8.50],
+                ['tax_name' => 'VAT 15% (የተጨማሪ እሴት ታክስ)', 'rate' => 15.00],
+                ['tax_name' => 'TOT Goods 2% (ተርን ኦቨር ታክስ - ዕቃዎች)', 'rate' => 2.00],
+                ['tax_name' => 'TOT Services 10% (ተርን ኦቨር ታክስ - አገልግሎቶች)', 'rate' => 10.00],
+                ['tax_name' => 'Withholding Tax 2% (የቀነሳ ታክስ)', 'rate' => 2.00],
+                ['tax_name' => 'Withholding Tax 30% (ያለ TIN የቀነሳ ታክስ)', 'rate' => 30.00],
             ];
 
             foreach ($taxes as $tax) {
