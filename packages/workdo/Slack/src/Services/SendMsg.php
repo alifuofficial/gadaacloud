@@ -44,6 +44,8 @@ class SendMsg
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['text' => $msg]));
+                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
 
                     $headers = array();
                     $headers[] = 'Content-Type: application/json';

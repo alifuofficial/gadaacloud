@@ -38,35 +38,59 @@ class MessengerController extends Controller
                 }
 
             
-            $users = $userQuery->select('id', 'name', 'email', 'avatar', 'active_status')
-                ->get()
-                ->map(function ($chatUser) use ($user) {
-                    $lastMessage = Message::where(function ($query) use ($user, $chatUser) {
-                        $query->where('from_id', $user->id)->where('to_id', $chatUser->id);
-                    })->orWhere(function ($query) use ($user, $chatUser) {
-                        $query->where('from_id', $chatUser->id)->where('to_id', $user->id);
-                    })->latest()->first();
-                    
-                    $unreadCount = Message::where('from_id', $chatUser->id)
-                        ->where('to_id', $user->id)
-                        ->where('seen', 0)
-                        ->count();
-                    
-                    // Check if user is online using cache
-                    $cacheKey = "user_online_{$chatUser->id}";
-                    $isOnline = Cache::has($cacheKey);
-                    
-                    return [
-                        'id' => $chatUser->id,
-                        'name' => $chatUser->name,
-                        'email' => $chatUser->email,
-                        'avatar' => $chatUser->avatar,
-                        'last_message' => $lastMessage,
-                        'unread_count' => $unreadCount,
-                        'is_online' => $isOnline,
-                        'last_seen_at' => $chatUser->last_seen_at,
-                    ];
-                });
+            $rawUsers = $userQuery->select('id', 'name', 'email', 'avatar', 'active_status', 'last_seen_at')->get();
+            $userIds = $rawUsers->pluck('id')->toArray();
+
+            // Pre-fetch all unread counts in a single query
+            $unreadCounts = !empty($userIds) ? Message::where('to_id', $user->id)
+                ->whereIn('from_id', $userIds)
+                ->where('seen', 0)
+                ->groupBy('from_id')
+                ->selectRaw('from_id, count(*) as count')
+                ->pluck('count', 'from_id')
+                ->toArray() : [];
+
+            // Pre-fetch latest message for each user in one query
+            $latestMessages = [];
+            if (!empty($userIds)) {
+                $userIdInt = (int)$user->id;
+                $latestMessageIds = Message::where(function ($q) use ($user, $userIds) {
+                        $q->where('from_id', $user->id)->whereIn('to_id', $userIds);
+                    })->orWhere(function ($q) use ($user, $userIds) {
+                        $q->whereIn('from_id', $userIds)->where('to_id', $user->id);
+                    })
+                    ->selectRaw('MAX(id) as id')
+                    ->groupBy(\Illuminate\Support\Facades\DB::raw("CASE WHEN from_id = {$userIdInt} THEN to_id ELSE from_id END"))
+                    ->pluck('id');
+
+                if ($latestMessageIds->isNotEmpty()) {
+                    $messagesCollection = Message::whereIn('id', $latestMessageIds)->get();
+                    foreach ($messagesCollection as $msg) {
+                        $otherId = ($msg->from_id == $user->id) ? $msg->to_id : $msg->from_id;
+                        $latestMessages[$otherId] = $msg;
+                    }
+                }
+            }
+
+            $users = $rawUsers->map(function ($chatUser) use ($user, $unreadCounts, $latestMessages) {
+                $lastMessage = $latestMessages[$chatUser->id] ?? null;
+                $unreadCount = $unreadCounts[$chatUser->id] ?? 0;
+                
+                // Check if user is online using cache
+                $cacheKey = "user_online_{$chatUser->id}";
+                $isOnline = Cache::has($cacheKey);
+                
+                return [
+                    'id' => $chatUser->id,
+                    'name' => $chatUser->name,
+                    'email' => $chatUser->email,
+                    'avatar' => $chatUser->avatar,
+                    'last_message' => $lastMessage,
+                    'unread_count' => $unreadCount,
+                    'is_online' => $isOnline,
+                    'last_seen_at' => $chatUser->last_seen_at,
+                ];
+            });
 
             // Get messages for selected user
             $messages = [];
@@ -256,9 +280,12 @@ class MessengerController extends Controller
                 ->update(['seen' => 1]);
         }
         
-        $formattedMessages = $messages->getCollection()->map(function ($message) {
-            $fromUser = User::find($message->from_id);
-            $toUser = User::find($message->to_id);
+        $currentUser = $user;
+        $otherUser = User::find($userId);
+
+        $formattedMessages = $messages->getCollection()->map(function ($message) use ($currentUser, $otherUser) {
+            $fromUser = ($message->from_id == $currentUser->id) ? $currentUser : $otherUser;
+            $toUser = ($message->to_id == $currentUser->id) ? $currentUser : $otherUser;
             
             return [
                 'id' => $message->id,
@@ -269,18 +296,18 @@ class MessengerController extends Controller
                 'seen' => $message->seen,
                 'created_at' => $message->created_at->toISOString(),
                 'updated_at' => $message->updated_at->toISOString(),
-                'from_user' => [
+                'from_user' => $fromUser ? [
                     'id' => $fromUser->id,
                     'name' => $fromUser->name,
                     'email' => $fromUser->email,
                     'avatar' => $fromUser->avatar,
-                ],
-                'to_user' => [
+                ] : null,
+                'to_user' => $toUser ? [
                     'id' => $toUser->id,
                     'name' => $toUser->name,
                     'email' => $toUser->email,
                     'avatar' => $toUser->avatar,
-                ],
+                ] : null,
             ];
         })->reverse()->values(); // Convert to chronological order (oldest first) for display
         

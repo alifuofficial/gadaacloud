@@ -85,14 +85,23 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $slug = Str::slug($name);
         $originalSlug = $slug;
-        $counter = 1;
 
-        while (static::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
+        $existing = static::where('slug', $slug)
+            ->orWhere('slug', 'like', "{$originalSlug}-%")
+            ->pluck('slug')
+            ->flip()
+            ->toArray();
+
+        if (!isset($existing[$slug])) {
+            return $slug;
+        }
+
+        $counter = 1;
+        while (isset($existing["{$originalSlug}-{$counter}"])) {
             $counter++;
         }
 
-        return $slug;
+        return "{$originalSlug}-{$counter}";
     }
 
     public static $superadmin_activated_module = [
@@ -221,10 +230,27 @@ class User extends Authenticatable implements MustVerifyEmail
             'currencySymbolSpace' => admin_setting('currencySymbolSpace'),
             'currencySymbolPosition' => admin_setting('currencySymbolPosition'),
         ];
-        foreach($company_settings as $key => $value){
-            if (!company_setting($key,$user_id)) {
-                setSetting($key, $value, $user_id);
+        $existingKeys = Setting::where('created_by', $user_id)->pluck('key')->flip()->toArray();
+        $rows = [];
+        $now = now();
+
+        foreach ($company_settings as $key => $value) {
+            if (!isset($existingKeys[$key]) && $value !== null) {
+                $rows[] = [
+                    'key' => $key,
+                    'value' => (string)$value,
+                    'is_public' => 1,
+                    'created_by' => $user_id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
+        }
+
+        if (!empty($rows)) {
+            Setting::insert($rows);
+            \Illuminate\Support\Facades\Cache::forget('company_settings_' . $user_id);
+            \Illuminate\Support\Facades\Cache::forget('company_settings_' . $user_id . '_public');
         }
     }
 

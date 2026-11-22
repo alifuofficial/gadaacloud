@@ -217,6 +217,12 @@ if (!function_exists('getImageUrlPrefix')) {
 if (!function_exists('ActivatedModule')) {
     function ActivatedModule($user_id = null)
     {
+        static $runtimeCache = [];
+        $cacheKey = $user_id ?? (Auth::check() ? Auth::id() : 'guest');
+        if (isset($runtimeCache[$cacheKey])) {
+            return $runtimeCache[$cacheKey];
+        }
+
         $activated_module = user::$superadmin_activated_module;
         $user_active_module = [];
 
@@ -283,6 +289,7 @@ if (!function_exists('ActivatedModule')) {
             $active_module = array_values((new Module())->allEnabledAdmin());
             $user_active_module = $active_module;
         }
+        $runtimeCache[$cacheKey] = $user_active_module;
         return $user_active_module;
     }
 }

@@ -101,37 +101,41 @@ class Module
 
     public function allEnabled(): array
     {
-        try {
-            $packageDirs = File::directories(base_path('packages/workdo'));
-            foreach ($packageDirs as $dir) {
-                $jsonFile = $dir . '/module.json';
-                if (File::exists($jsonFile)) {
-                    $json = json_decode(File::get($jsonFile), true);
-                    if (!empty($json['name'])) {
-                        $modName = $json['name'];
-                        AddOn::firstOrCreate(
-                            ['module' => $modName],
-                            [
-                                'name'          => $json['alias'] ?? $modName,
-                                'monthly_price' => $json['monthly_price'] ?? 0,
-                                'yearly_price'  => $json['yearly_price'] ?? 0,
-                                'package_name'  => $json['package_name'] ?? strtolower($modName),
-                                'is_enable'     => true,
-                                'for_admin'     => $json['for_admin'] ?? false,
-                                'priority'      => $json['priority'] ?? 100,
-                            ]
-                        );
+        return Cache::remember('workdo_all_enabled_modules', now()->addMinutes(60), function () {
+            try {
+                $packageDirs = File::directories(base_path('packages/workdo'));
+                foreach ($packageDirs as $dir) {
+                    $jsonFile = $dir . '/module.json';
+                    if (File::exists($jsonFile)) {
+                        $json = json_decode(File::get($jsonFile), true);
+                        if (!empty($json['name'])) {
+                            $modName = $json['name'];
+                            AddOn::firstOrCreate(
+                                ['module' => $modName],
+                                [
+                                    'name'          => $json['alias'] ?? $modName,
+                                    'monthly_price' => $json['monthly_price'] ?? 0,
+                                    'yearly_price'  => $json['yearly_price'] ?? 0,
+                                    'package_name'  => $json['package_name'] ?? strtolower($modName),
+                                    'is_enable'     => true,
+                                    'for_admin'     => $json['for_admin'] ?? false,
+                                    'priority'      => $json['priority'] ?? 100,
+                                ]
+                            );
+                        }
                     }
                 }
-            }
-        } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {}
 
-        return AddOn::where('is_enable', 1)->orderBy('priority')->pluck('module')->toArray() ?? [];
+            return AddOn::where('is_enable', 1)->orderBy('priority')->pluck('module')->toArray() ?? [];
+        });
     }
 
     public function allEnabledAdmin(): array
     {
-        return AddOn::where('for_admin', 1)->where('is_enable', 1)->orderBy('priority')->pluck('module')->toArray() ?? [];
+        return Cache::remember('workdo_all_enabled_admin_modules', now()->addMinutes(60), function () {
+            return AddOn::where('for_admin', 1)->where('is_enable', 1)->orderBy('priority')->pluck('module')->toArray() ?? [];
+        });
     }
 
     public function getOrdered()
@@ -214,19 +218,27 @@ class Module
 
     public function allModules()
     {
-         $directories = array_map(function ($dir) {
-            return basename($dir);
-        }, $this->getDirectories());
+        return Cache::remember('workdo_all_modules_list', now()->addMinutes(60), function () {
+            $directories = array_map(function ($dir) {
+                return basename($dir);
+            }, $this->getDirectories());
 
-        return $this->moduleArr($directories);
+            return $this->moduleArr($directories);
+        });
     }
 
     public function moduleCacheForget($module = null)
     {
         try {
+            Cache::forget('workdo_all_enabled_modules');
+            Cache::forget('workdo_all_enabled_admin_modules');
+            Cache::forget('workdo_all_modules_list');
+
             if(is_null($module)){
-                Cache::forget($this->addon->module);
-                Cache::forget($this->addon->package_name);
+                if ($this->addon) {
+                    Cache::forget($this->addon->module);
+                    Cache::forget($this->addon->package_name);
+                }
             }
             else{
                 Cache::forget($module);

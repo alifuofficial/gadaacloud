@@ -42,6 +42,13 @@ trait TenantScoped
             $isResolving = true;
             try {
                 if (!Auth::check()) {
+                    if (app()->bound('current_tenant_id')) {
+                        $tenantId = app('current_tenant_id');
+                        if ($tenantId) {
+                            $table = $builder->getQuery()->from;
+                            $builder->where("{$table}.created_by", $tenantId);
+                        }
+                    }
                     return;
                 }
 

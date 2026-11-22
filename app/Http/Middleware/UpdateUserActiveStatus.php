@@ -13,10 +13,16 @@ class UpdateUserActiveStatus
     {
         if (Auth::check()) {
             $user = Auth::user();
-            $user->update(['active_status' => 1]);
+            $cacheKey = "user_online_{$user->id}";
             
-            // Cache user as online for 5 minutes
-            Cache::put("user_online_{$user->id}", true, now()->addMinutes(5));
+            // Only write to the database if the online status is not already cached
+            if (!Cache::has($cacheKey)) {
+                $user->update([
+                    'active_status' => 1,
+                    'last_seen_at' => now(),
+                ]);
+                Cache::put($cacheKey, true, now()->addMinutes(5));
+            }
         }
 
         return $next($request);

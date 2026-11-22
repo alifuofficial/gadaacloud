@@ -1,12 +1,19 @@
 <?php
 
 namespace Workdo\Webhook\Listeners;
+
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Auth;
 use Workdo\Webhook\Models\Webhook;
 use Workdo\Webhook\Models\WebhookModule;
 
-class WebhookEventListener
+class WebhookEventListener implements ShouldQueue
 {
+    use InteractsWithQueue;
+
+    public $tries = 2;
+    public $timeout = 15;
     public function handle($event)
     {
         $companyId = $this->getContextUserId($event);
@@ -89,9 +96,10 @@ class WebhookEventListener
                 'Content-Type: application/json',
                 'User-Agent: Workdo-Webhook/1.0'
             ],
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 10,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false
+            CURLOPT_SSL_VERIFYPEER => true
         ]);
 
         curl_exec($ch);

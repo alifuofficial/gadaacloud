@@ -8,10 +8,11 @@ use App\Models\User;
 use Workdo\Hrm\Models\Branch;
 use Workdo\Hrm\Models\Department;
 use Workdo\Hrm\Models\Designation;
+use App\Traits\TenantScoped;
 
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'employee_id',
