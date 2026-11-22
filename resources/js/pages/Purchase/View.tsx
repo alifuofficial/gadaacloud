@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, FileText, ArrowLeft, Building2, User, Calendar, Package, MapPin, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageButtons } from '@/hooks/usePageButtons';
+import ChatterWidget from '@/components/chatter/ChatterWidget';
 
 interface ViewProps {
     invoice: PurchaseInvoice;
@@ -289,6 +290,9 @@ export default function View() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Universal Document Chatter & Activity Stream */}
+                <ChatterWidget modelType="PurchaseInvoice" modelId={invoice.id} />
             </div>
         </AuthenticatedLayout>
     );

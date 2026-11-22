@@ -11,7 +11,7 @@ return new class extends Migration
         if (!Schema::hasTable('chatter_messages')) {
             Schema::create('chatter_messages', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('created_by')->index();
+                $table->unsignedBigInteger('created_by')->index(); // Tenant Scoped
                 $table->string('model_type', 100)->index();
                 $table->unsignedBigInteger('model_id')->index();
                 $table->unsignedBigInteger('user_id')->index();
@@ -37,23 +37,39 @@ return new class extends Migration
         if (!Schema::hasTable('chatter_activities')) {
             Schema::create('chatter_activities', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('created_by')->index();
+                $table->unsignedBigInteger('created_by')->index(); // Tenant Scoped
                 $table->string('model_type', 100)->index();
                 $table->unsignedBigInteger('model_id')->index();
                 $table->unsignedBigInteger('user_id')->index();
                 $table->unsignedBigInteger('assigned_to')->nullable()->index();
-                $table->string('activity_type', 50)->default('todo');
+                $table->string('activity_type', 50)->default('todo'); // call, email, meeting, todo, review
                 $table->string('title');
                 $table->date('due_date')->nullable();
-                $table->string('status', 20)->default('pending');
+                $table->string('status', 20)->default('pending'); // pending, completed
                 $table->text('notes')->nullable();
+                $table->text('feedback')->nullable();
+                $table->timestamp('completed_at')->nullable();
                 $table->timestamps();
+            });
+        }
+
+        if (!Schema::hasTable('chatter_followers')) {
+            Schema::create('chatter_followers', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('created_by')->index(); // Tenant Scoped
+                $table->string('model_type', 100)->index();
+                $table->unsignedBigInteger('model_id')->index();
+                $table->unsignedBigInteger('user_id')->index();
+                $table->timestamps();
+
+                $table->unique(['created_by', 'model_type', 'model_id', 'user_id'], 'chatter_followers_unique');
             });
         }
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('chatter_followers');
         Schema::dropIfExists('chatter_activities');
         Schema::dropIfExists('chatter_attachments');
         Schema::dropIfExists('chatter_messages');

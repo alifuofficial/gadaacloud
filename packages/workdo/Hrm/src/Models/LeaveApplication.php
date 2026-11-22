@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
 use Workdo\Hrm\Models\LeaveType;
+use Workdo\Chatter\Traits\HasChatter;
 
 class LeaveApplication extends Model
 {
-    use HasFactory;
+    use HasFactory, HasChatter;
 
     protected $fillable = [
         'start_date',

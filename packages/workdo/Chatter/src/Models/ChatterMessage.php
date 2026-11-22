@@ -3,10 +3,13 @@
 namespace Workdo\Chatter\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use App\Models\User;
 
 class ChatterMessage extends Model
 {
+    use TenantScoped;
+
     protected $table = 'chatter_messages';
 
     protected $fillable = [

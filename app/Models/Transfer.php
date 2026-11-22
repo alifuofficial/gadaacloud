@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\TenantScoped;
+use Workdo\Chatter\Traits\HasChatter;
 
 class Transfer extends Model
 {
-    use TenantScoped;
+    use TenantScoped, HasChatter;
     protected $fillable = [
         'waybill_number',
         'from_warehouse',

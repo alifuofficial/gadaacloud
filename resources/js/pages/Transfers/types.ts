@@ -2,6 +2,10 @@ import { PaginatedData, ModalState, AuthContext, CreateProps } from '@/types/com
 
 export interface Transfer {
     id: number;
+    waybill_number?: string | null;
+    status?: string | null;
+    driver_name?: string | null;
+    vehicle_plate_number?: string | null;
     from_warehouse: {
         id: number;
         name: string;
@@ -47,7 +51,11 @@ export interface TransferFilters {
 }
 
 export type PaginatedTransfers = PaginatedData<Transfer>;
-export type TransferModalState = ModalState<Transfer>;
+export interface TransferModalState {
+    isOpen: boolean;
+    mode: '' | 'add' | 'edit' | 'chatter';
+    data: Transfer | null;
+}
 
 export interface WarehouseStock {
     id: number;

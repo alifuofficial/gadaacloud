@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\TenantScoped;
+use Workdo\Chatter\Traits\HasChatter;
 
 class SalesInvoice extends Model
 {
-    use TenantScoped;
+    use TenantScoped, HasChatter;
     protected $fillable = [
         'invoice_number',
         'invoice_date',
