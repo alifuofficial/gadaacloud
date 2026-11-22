@@ -285,6 +285,12 @@ class PlanController extends Controller
     public function destroy(Plan $plan)
     {
         if (Auth::user()->can('delete-plans')) {
+            if (!Auth::user()->hasRole('superadmin')) {
+                return redirect()->route('plans.index')->with('error', __('Permission denied: Only administrators can delete plans.'));
+            }
+            if ($plan->free_plan == 1) {
+                return redirect()->route('plans.index')->with('error', __('The default free plan cannot be deleted.'));
+            }
 
             $plan->delete();
 
@@ -297,6 +303,10 @@ class PlanController extends Controller
 
     public function updateModulePrice(UpdateModulePriceRequest $request)
     {
+        if (!Auth::user()->hasRole('superadmin')) {
+            return back()->with('error', __('Permission denied: Only administrators can update module pricing.'));
+        }
+
         $validated = $request->validated();
 
         $addon = AddOn::where('module', $validated['module'])->first();

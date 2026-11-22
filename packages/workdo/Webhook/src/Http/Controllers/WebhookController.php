@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Workdo\Webhook\Models\Webhook;
 use Workdo\Webhook\Models\WebhookModule;
+use Workdo\Webhook\Listeners\WebhookEventListener;
 
 class WebhookController extends Controller
 {
@@ -55,6 +56,10 @@ class WebhookController extends Controller
             'url' => 'required|url'
         ]);
 
+        if (!WebhookEventListener::isValidWebhookUrl($validated['url'])) {
+            return back()->with('error', __('The webhook URL is invalid or points to a restricted internal network address.'));
+        }
+
         $webhook = Webhook::create([
             'method' => $validated['method'],
             'action' => $validated['action'],
@@ -82,6 +87,10 @@ class WebhookController extends Controller
             'action' => 'required|exists:webhook_modules,id',
             'url' => 'required|url'
         ]);
+
+        if (!WebhookEventListener::isValidWebhookUrl($validated['url'])) {
+            return back()->with('error', __('The webhook URL is invalid or points to a restricted internal network address.'));
+        }
 
         $webhook->update($validated);
 

@@ -66,6 +66,10 @@ class CouponController extends Controller
     public function update(UpdateCouponRequest $request, Coupon $coupon)
     {
         if(Auth::user()->can('edit-coupons')){
+            if (!Auth::user()->hasRole('superadmin') && $coupon->created_by !== creatorId()) {
+                return redirect()->route('coupons.index')->with('error', __('Permission denied: You cannot edit coupons outside your workspace.'));
+            }
+
             $validated = $request->validated();
 
             $coupon->name = $validated['name'] ?? '';
@@ -93,6 +97,10 @@ class CouponController extends Controller
     public function destroy(Coupon $coupon)
     {
         if(Auth::user()->can('delete-coupons')){
+            if (!Auth::user()->hasRole('superadmin') && $coupon->created_by !== creatorId()) {
+                return redirect()->route('coupons.index')->with('error', __('Permission denied: You cannot delete coupons outside your workspace.'));
+            }
+
             $coupon->delete();
 
             return redirect()->route('coupons.index')->with('success', __('The coupon has been deleted.'));
@@ -105,6 +113,10 @@ class CouponController extends Controller
     public function show(Coupon $coupon)
     {
         if(Auth::user()->can('view-coupons')){
+            if (!Auth::user()->hasRole('superadmin') && $coupon->created_by !== creatorId()) {
+                return redirect()->route('coupons.index')->with('error', __('Permission denied: You cannot view coupons outside your workspace.'));
+            }
+
             $usageRecords = UserCoupon::with(['user:id,name,email', 'coupon:id,name,code'])
                 ->where('coupon_id', $coupon->id)
                 ->select('id', 'coupon_id', 'user_id', 'order_id', 'created_at')

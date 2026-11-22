@@ -338,6 +338,15 @@ class ModuleController extends Controller
             throw new \Exception("Unable to open ZIP file: {$file->getClientOriginalName()}");
         }
 
+        // Zip-Slip Protection: Validate all entry paths before extraction
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                $zip->close();
+                throw new \Exception("Suspicious ZIP entry detected: {$entryName}");
+            }
+        }
+
         $tempPath = base_path('packages/workdo/tmp_' . uniqid());
         $zip->extractTo($tempPath);
         $zip->close();
@@ -357,9 +366,9 @@ class ModuleController extends Controller
         }
 
         $moduleData = json_decode(file_get_contents($moduleJsonPath), true);
-        if (!$moduleData) {
+        if (!$moduleData || empty($moduleData['name']) || !preg_match('/^[a-zA-Z0-9_\-]+$/', $moduleData['name'])) {
             $this->deleteDirectory($tempPath);
-            throw new \Exception("Invalid module.json: {$file->getClientOriginalName()}");
+            throw new \Exception("Invalid or malformed module.json: {$file->getClientOriginalName()}");
         }
 
         $extractPath = base_path('packages/workdo/' . $moduleData['name']);
@@ -392,7 +401,7 @@ class ModuleController extends Controller
     private function createDirectory($path)
     {
         if (!is_dir($path)) {
-            mkdir($path, 0777, true);
+            mkdir($path, 0755, true);
             $this->setPermissions($path);
         } else {
             $this->setPermissions($path);
@@ -403,7 +412,7 @@ class ModuleController extends Controller
     private function setPermissions($path)
     {
         if (function_exists('chmod')) {
-            @chmod($path, 0777); // Set permissions if possible
+            @chmod($path, 0755); // Secure directory permissions
         }
     }
 
@@ -428,11 +437,11 @@ class ModuleController extends Controller
             if (is_dir($srcPath)) {
                 // Recursively move subdirectories
                 if (!is_dir($destPath)) {
-                    mkdir($destPath, 0777, true);
+                    mkdir($destPath, 0755, true);
                 }
                 // Check if chmod exists
                 if (function_exists('chmod')) {
-                    @chmod($destPath, 0777); // Set permissions if possible
+                    @chmod($destPath, 0755);
                 }
                 $this->moveExtractedFiles($srcPath, $destPath);
             } else {
@@ -440,7 +449,7 @@ class ModuleController extends Controller
                 rename($srcPath, $destPath);
                 // Check if chmod exists
                 if (function_exists('chmod')) {
-                    @chmod($destPath, 0777); // Set permissions if possible
+                    @chmod($destPath, 0644); // Restrict file permissions
                 }
             }
         }
@@ -472,7 +481,7 @@ class ModuleController extends Controller
         $user = Auth::user();
 
         $oldplan = $user && $user->active_plan ? Plan::where('id', $user->active_plan)->first() : null;
-        $plan = Plan::find($oldplan->id);
+        $plan = $oldplan ? Plan::find($oldplan->id) : null;
         
         $userActiveModules = UserActiveModule::where('user_id', Auth::id())->get();
 

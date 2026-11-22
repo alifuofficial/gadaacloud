@@ -69,7 +69,17 @@ class RoleController extends Controller
             $role->label = $request->label;
             $role->created_by = creatorId();
             $role->save();
-            $role->syncPermissions($request->permissions ?? []);
+
+            $permissionsToSync = $request->permissions ?? [];
+            if (!Auth::user()->hasRole('superadmin')) {
+                $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
+                    ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
+                    ->pluck('name')
+                    ->toArray();
+                $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
+            }
+
+            $role->syncPermissions($permissionsToSync);
             return redirect()->route('roles.index')->with('success', __('The role has been created successfully.'));
         }
         else{
@@ -80,6 +90,13 @@ class RoleController extends Controller
     public function edit(Role $role)
     {
         if(Auth::user()->can('edit-roles')){
+            if (!Auth::user()->hasRole('superadmin') && $role->created_by !== creatorId()) {
+                return redirect()->route('roles.index')->with('error', __('Permission denied: You cannot edit roles outside your workspace.'));
+            }
+            if ($role->editable == 0) {
+                return redirect()->route('roles.index')->with('error', __('This system role cannot be edited.'));
+            }
+
             $hiddenModules = !Auth::user()->hasRole('superadmin') ? \App\Models\User::$company_hidden_modules : [];
             $activeModules = ActivatedModule();
             if (!in_array('GadaaCloudCopilot', $activeModules)) {
@@ -112,11 +129,28 @@ class RoleController extends Controller
     public function update(UpdateRoleRequest $request, Role $role)
     {
         if(Auth::user()->can('edit-roles')){
+            if (!Auth::user()->hasRole('superadmin') && $role->created_by !== creatorId()) {
+                return redirect()->route('roles.index')->with('error', __('Permission denied: You cannot edit roles outside your workspace.'));
+            }
+            if ($role->editable == 0) {
+                return redirect()->route('roles.index')->with('error', __('This system role cannot be edited.'));
+            }
+
             $role->update([
                 'name' => $request->name,
                 'label' => $request->label
             ]);
-            $role->syncPermissions($request->permissions ?? []);
+
+            $permissionsToSync = $request->permissions ?? [];
+            if (!Auth::user()->hasRole('superadmin')) {
+                $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
+                    ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
+                    ->pluck('name')
+                    ->toArray();
+                $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
+            }
+
+            $role->syncPermissions($permissionsToSync);
             return redirect()->route('roles.index')->with('success', __('The role details are updated successfully.'));
         }
         else{
@@ -127,6 +161,9 @@ class RoleController extends Controller
     public function destroy(Role $role)
     {
         if(Auth::user()->can('delete-roles')){
+            if (!Auth::user()->hasRole('superadmin') && $role->created_by !== creatorId()) {
+                return redirect()->route('roles.index')->with('error', __('Permission denied: You cannot delete roles outside your workspace.'));
+            }
             if($role->editable == 0){
                 return redirect()->route('roles.index')->with('error', __('This role is not editable'));
             }

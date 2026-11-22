@@ -8,7 +8,7 @@ class UpdateModulePriceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return auth()->check() && auth()->user()->hasRole('superadmin');
     }
 
     public function rules(): array

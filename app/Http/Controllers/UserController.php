@@ -75,7 +75,14 @@ class UserController extends Controller
             $validated = $request->validated();
             $validated['is_enable_login'] = $request->boolean('is_enable_login', true);
 
-            $role = Role::find($validated['type']);
+            if (Auth::user()->type !== 'superadmin') {
+                $role = Role::where('created_by', creatorId())->where('id', $validated['type'])->first();
+                if (!$role) {
+                    return redirect()->route('users.index')->with('error', __('Invalid role selected for your workspace.'));
+                }
+            } else {
+                $role = Role::find($validated['type']);
+            }
             $enableEmailVerification = admin_setting('enableEmailVerification');
 
             $user = new User();
@@ -167,6 +174,13 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user)
     {
         if(Auth::user()->can('edit-users')){
+            if (!Auth::user()->hasRole('superadmin') && $user->created_by !== creatorId()) {
+                return redirect()->route('users.index')->with('error', __('Permission denied: You cannot edit users outside your workspace.'));
+            }
+            if ($user->type === 'superadmin' && !Auth::user()->hasRole('superadmin')) {
+                return redirect()->route('users.index')->with('error', __('Permission denied.'));
+            }
+
             $validated = $request->validated();
             $validated['is_enable_login'] = $request->boolean('is_enable_login', true);
 
@@ -185,7 +199,10 @@ class UserController extends Controller
 
     public function changePassword(ChangePasswordRequest $request, User $user)
     {
-        if(Auth::user()->can('change-password-users') && $user->created_by == creatorId() ){
+        if(Auth::user()->can('change-password-users') && (Auth::user()->hasRole('superadmin') || $user->created_by == creatorId())){
+            if ($user->type === 'superadmin' && !Auth::user()->hasRole('superadmin')) {
+                return redirect()->route('users.index')->with('error', __('Permission denied.'));
+            }
             $validated = $request->validated();
             $user->password = Hash::make($validated['password']);
             $user->save();
@@ -200,6 +217,16 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         if(Auth::user()->can('delete-users')){
+            if ($user->id === Auth::id()) {
+                return back()->with('error', __('You cannot delete your own account.'));
+            }
+            if ($user->type === 'superadmin' || $user->hasRole('superadmin')) {
+                return back()->with('error', __('Superadmin user cannot be deleted.'));
+            }
+            if (!Auth::user()->hasRole('superadmin') && $user->created_by !== creatorId()) {
+                return back()->with('error', __('Permission denied: You cannot delete users outside your workspace.'));
+            }
+
             $user->delete();
 
             return back()->with('success', __('The user has been deleted.'));

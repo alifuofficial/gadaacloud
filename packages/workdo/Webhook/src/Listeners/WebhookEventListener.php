@@ -78,6 +78,11 @@ class WebhookEventListener implements ShouldQueue
 
     private function sendWebhook($webhook, $event, $config)
     {
+        if (!self::isValidWebhookUrl($webhook->url)) {
+            \Log::warning("SSRF Defense: Blocked webhook request to invalid or internal destination URL: {$webhook->url}");
+            return;
+        }
+
         $data = $this->extractEventData($event, $config);
 
         $payload = [
@@ -123,5 +128,54 @@ class WebhookEventListener implements ShouldQueue
 
         // Fallback to authenticated user
         return Auth::check() ? creatorId() : null;
+    }
+
+    /**
+     * Validate webhook URL against SSRF (loopback, private networks, cloud metadata).
+     */
+    public static function isValidWebhookUrl($url): bool
+    {
+        if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        $parsed = parse_url($url);
+        $scheme = strtolower($parsed['scheme'] ?? '');
+        if (!in_array($scheme, ['http', 'https'])) {
+            return false;
+        }
+
+        $host = strtolower($parsed['host'] ?? '');
+        if (empty($host)) {
+            return false;
+        }
+
+        if (in_array($host, ['localhost', 'ip6-localhost', 'ip6-loopback'])) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $ip = $host;
+        } else {
+            $ip = gethostbyname($host);
+            if ($ip === $host && !filter_var($ip, FILTER_VALIDATE_IP)) {
+                return false;
+            }
+        }
+
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false;
+        }
+
+        if (
+            str_starts_with($ip, '127.') ||
+            str_starts_with($ip, '169.254.') ||
+            str_starts_with($ip, '0.') ||
+            $ip === '::1'
+        ) {
+            return false;
+        }
+
+        return true;
     }
 }
