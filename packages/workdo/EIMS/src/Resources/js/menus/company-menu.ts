@@ -2,18 +2,6 @@ import { NavItem } from '@/types';
 import { ShieldCheck, LayoutGrid, Receipt, CloudOff, Settings, FileText } from 'lucide-react';
 
 export const eimsMenu = (t: (key: string) => string): NavItem[] => {
-    let isSubscribed = true;
-    try {
-        const auth = (window as any).page?.props?.auth || {};
-        const activatedPackages: string[] = auth?.user?.activatedPackages || [];
-        const isSuperadmin = auth?.user?.type === 'superadmin';
-        isSubscribed = isSuperadmin || activatedPackages.includes('EIMS') || activatedPackages.includes('eims');
-    } catch (e) {}
-
-    if (!isSubscribed) {
-        return [];
-    }
-
     let dashboardHref = '/eims';
     let invoicesHref = '/eims/invoices';
     let offlineQueueHref = '/eims/offline-queue';

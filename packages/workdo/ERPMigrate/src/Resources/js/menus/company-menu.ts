@@ -2,18 +2,6 @@ import { NavItem } from '@/types';
 import { ArrowRightLeft, Database, Sparkles, Layers, History } from 'lucide-react';
 
 export const erpMigrateMenu = (t: (key: string) => string): NavItem[] => {
-    let isSubscribed = true;
-    try {
-        const auth = (window as any).page?.props?.auth || {};
-        const activatedPackages: string[] = auth?.user?.activatedPackages || [];
-        const isSuperadmin = auth?.user?.type === 'superadmin';
-        isSubscribed = isSuperadmin || activatedPackages.includes('ERPMigrate') || activatedPackages.includes('erpmigrate');
-    } catch (e) {}
-
-    if (!isSubscribed) {
-        return [];
-    }
-
     let dashboardHref = '/erp-migrate';
     let wizardHref = '/erp-migrate/wizard';
     let connectionsHref = '/erp-migrate/connections';
