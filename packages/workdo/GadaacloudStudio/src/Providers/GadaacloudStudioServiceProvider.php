@@ -22,10 +22,10 @@ class GadaacloudStudioServiceProvider extends ServiceProvider
             $this->loadMigrationsFrom($migrationsPath);
         }
 
-        // Listen for new record creations to trigger workflows automatically
+        // Listen for new record creations to trigger workflows automatically across all modules
         Event::listen('eloquent.created: *', function ($eventName, array $data) {
             $model = $data[0] ?? null;
-            if (!$model) return;
+            if (!$model || !is_object($model)) return;
 
             $modelClass = get_class($model);
 
@@ -36,23 +36,17 @@ class GadaacloudStudioServiceProvider extends ServiceProvider
 
             try {
                 if (Schema::hasTable('workflows')) {
-                    // Check if there is an active workflow for this model class
-                    // This query is naturally scoped by TenantScoped on Workflow model
-                    $workflow = \Workdo\GadaacloudStudio\Models\Workflow::where('target_model', $modelClass)
-                        ->where('is_active', true)
-                        ->first();
+                    $companyId = null;
+                    if (isset($model->created_by) && is_numeric($model->created_by)) {
+                        $companyId = (int) $model->created_by;
+                    } elseif (isset($model->company_id) && is_numeric($model->company_id)) {
+                        $companyId = (int) $model->company_id;
+                    } elseif (\Illuminate\Support\Facades\Auth::check()) {
+                        $companyId = (int) creatorId();
+                    }
 
-                    if ($workflow) {
-                        $firstStep = $workflow->steps()->orderBy('sequence', 'asc')->first();
-                        if ($firstStep) {
-                            \Workdo\GadaacloudStudio\Models\WorkflowRequest::create([
-                                'workflow_id' => $workflow->id,
-                                'model_id' => $model->id,
-                                'current_step_id' => $firstStep->id,
-                                'status' => 'pending',
-                                'created_by' => $model->created_by ?? creatorId(),
-                            ]);
-                        }
+                    if ($companyId) {
+                        \Workdo\GadaacloudStudio\Services\WorkflowService::submit($model, $companyId);
                     }
                 }
             } catch (\Throwable $e) {

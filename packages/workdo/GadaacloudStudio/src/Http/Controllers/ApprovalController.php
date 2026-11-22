@@ -136,6 +136,7 @@ class ApprovalController extends Controller
             $req->status               = 'approved';
             $req->current_step_id      = null;
             $req->delegated_to_user_id = null;
+            \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'approved', $user);
         }
         $req->save();
 
@@ -172,6 +173,8 @@ class ApprovalController extends Controller
         $req->delegated_to_user_id = null;
         $req->save();
 
+        \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'rejected', $user);
+
         return redirect()->back()->with('success', __('Request rejected.'));
     }
 
@@ -189,6 +192,22 @@ class ApprovalController extends Controller
 
         $req  = WorkflowRequest::where('created_by', creatorId())->findOrFail($id);
         $user = Auth::user();
+
+        // Enforce multi-tenant boundary on target delegate
+        $targetUser = User::where('id', $request->delegate_to_user_id)
+            ->where(function ($q) {
+                $q->where('created_by', creatorId())
+                  ->orWhere('id', creatorId());
+            })
+            ->first();
+
+        if (!$targetUser) {
+            return redirect()->back()->with('error', __('Invalid user selected for delegation.'));
+        }
+
+        if ($targetUser->id == $user->id) {
+            return redirect()->back()->with('error', __('You cannot delegate an approval step to yourself.'));
+        }
 
         if ($req->status !== 'pending' || !$req->currentStep) {
             return redirect()->back()->with('error', __('Cannot delegate a non-pending request.'));
@@ -210,14 +229,14 @@ class ApprovalController extends Controller
             'workflow_request_id' => $req->id,
             'workflow_step_id'    => $step->id,
             'delegated_by_user_id'=> $user->id,
-            'delegated_to_user_id'=> $request->delegate_to_user_id,
+            'delegated_to_user_id'=> $targetUser->id,
             'reason'              => $request->reason,
             'valid_from'          => now(),
             'valid_until'         => $request->valid_until,
             'is_active'           => true,
         ]);
 
-        $req->delegated_to_user_id = $request->delegate_to_user_id;
+        $req->delegated_to_user_id = $targetUser->id;
         $req->save();
 
         WorkflowLog::create([
@@ -226,7 +245,7 @@ class ApprovalController extends Controller
             'user_id'             => $user->id,
             'action'              => 'delegated',
             'comment'             => __('Delegated to :name. Reason: :reason', [
-                'name'   => User::find($request->delegate_to_user_id)?->name ?? 'Unknown',
+                'name'   => $targetUser->name,
                 'reason' => $request->reason ?? '—',
             ]),
         ]);
@@ -380,73 +399,94 @@ class ApprovalController extends Controller
         $details   = [];
         $fields    = [];
 
-        // ── Finance / Invoices ────────────────────────────────────────────────
-        if (in_array($baseClass, ['SalesInvoice', 'PurchaseInvoice', 'SalesInvoiceReturn', 'PurchaseReturn'])) {
-            $num = $document->invoice_id ?? $document->order_id ?? $document->id;
+        // ── Finance / Invoices & Proposals ───────────────────────────────────
+        if (in_array($baseClass, ['SalesInvoice', 'PurchaseInvoice', 'SalesInvoiceReturn', 'PurchaseReturn', 'SalesProposal'])) {
+            $num = $document->invoice_id ?? $document->order_id ?? $document->proposal_id ?? $document->id;
             $title = __($baseClass) . ' #' . $num;
-            if (isset($document->total))    $fields[] = ['label' => __('Total'),    'value' => '$' . number_format((float)$document->total, 2)];
-            if (isset($document->status))   $fields[] = ['label' => __('Status'),   'value' => ucfirst($document->status)];
-            if (isset($document->due_date)) $fields[] = ['label' => __('Due Date'), 'value' => $document->due_date];
+            $amt = $document->total_amount ?? $document->amount ?? $document->total ?? null;
+            if ($amt !== null)              $fields[] = ['label' => __('Total Amount'), 'value' => number_format((float)$amt, 2) . ' ETB'];
+            if (isset($document->tax_amount)) $fields[] = ['label' => __('VAT / Tax'),    'value' => number_format((float)$document->tax_amount, 2) . ' ETB'];
+            if (isset($document->status))   $fields[] = ['label' => __('Status'),       'value' => ucfirst($document->status)];
+            if (isset($document->due_date)) $fields[] = ['label' => __('Due Date'),     'value' => $document->due_date];
         }
 
-        // ── Expense ───────────────────────────────────────────────────────────
-        elseif ($baseClass === 'Expense') {
-            $title = __('Expense') . ' #' . $document->id;
-            if (isset($document->amount))   $fields[] = ['label' => __('Amount'),   'value' => '$' . number_format((float)$document->amount, 2)];
-            if (isset($document->category)) $fields[] = ['label' => __('Category'), 'value' => $document->category];
-            if (isset($document->status))   $fields[] = ['label' => __('Status'),   'value' => ucfirst($document->status)];
+        // ── Account Payments, Vouchers & Expenses ─────────────────────────────
+        elseif (in_array($baseClass, ['CustomerPayment', 'VendorPayment', 'Expense', 'Revenue', 'BankTransfer', 'CreditNote', 'DebitNote'])) {
+            $num = $document->voucher_id ?? $document->payment_id ?? $document->id;
+            $title = __($baseClass) . ' #' . $num;
+            $amt = $document->amount ?? $document->total_amount ?? null;
+            if ($amt !== null)              $fields[] = ['label' => __('Amount'),       'value' => number_format((float)$amt, 2) . ' ETB'];
+            if (isset($document->payment_method)) $fields[] = ['label' => __('Method'), 'value' => $document->payment_method];
+            if (isset($document->date))     $fields[] = ['label' => __('Date'),         'value' => $document->date];
+            if (isset($document->status))   $fields[] = ['label' => __('Status'),       'value' => ucfirst($document->status)];
         }
 
-        // ── Payment ───────────────────────────────────────────────────────────
-        elseif ($baseClass === 'Payment') {
-            $title = __('Payment') . ' #' . ($document->payment_id ?? $document->id);
-            if (isset($document->amount)) $fields[] = ['label' => __('Amount'), 'value' => '$' . number_format((float)$document->amount, 2)];
-            if (isset($document->date))   $fields[] = ['label' => __('Date'),   'value' => $document->date];
+        // ── Inventory / Waybill & Transfers ───────────────────────────────────
+        elseif ($baseClass === 'Transfer') {
+            $title = __('Stock Transfer Waybill') . ': ' . ($document->waybill_number ?? '#' . $document->id);
+            if (isset($document->fromWarehouse)) $fields[] = ['label' => __('Origin'),       'value' => $document->fromWarehouse->name ?? '—'];
+            if (isset($document->toWarehouse))   $fields[] = ['label' => __('Destination'),  'value' => $document->toWarehouse->name ?? '—'];
+            if (isset($document->driver_name))   $fields[] = ['label' => __('Driver'),       'value' => $document->driver_name];
+            if (isset($document->vehicle_plate)) $fields[] = ['label' => __('Vehicle Plate'),'value' => $document->vehicle_plate];
+            if (isset($document->status))        $fields[] = ['label' => __('Status'),       'value' => ucfirst($document->status)];
+        }
+
+        // ── International Trade Logistics ─────────────────────────────────────
+        elseif (in_array($baseClass, ['TradeLc', 'TradeShipment', 'TradeLandedCost'])) {
+            $title = __($baseClass) . ': ' . ($document->lc_number ?? $document->tracking_number ?? '#' . $document->id);
+            if (isset($document->lc_amount))   $fields[] = ['label' => __('LC Amount'),   'value' => number_format((float)$document->lc_amount, 2) . ' ' . ($document->currency ?? 'USD')];
+            if (isset($document->issuing_bank))$fields[] = ['label' => __('Issuing Bank'),'value' => $document->issuing_bank];
+            if (isset($document->status))      $fields[] = ['label' => __('Status'),      'value' => ucfirst($document->status)];
         }
 
         // ── Leave Application ─────────────────────────────────────────────────
         elseif ($baseClass === 'LeaveApplication') {
             $leaveType = $document->leaveType?->name ?? __('Leave');
-            $title     = __('Leave Request') . ': ' . $leaveType;
+            $empName   = $document->employee?->name ?? __('Staff');
+            $title     = __('Leave Request') . ': ' . $empName . ' (' . $leaveType . ')';
             $fields[]  = ['label' => __('From'),     'value' => $document->start_date ?? '—'];
             $fields[]  = ['label' => __('To'),       'value' => $document->end_date ?? '—'];
             $fields[]  = ['label' => __('Duration'),  'value' => ($document->total_days ?? '?') . ' ' . __('day(s)')];
             if (isset($document->status)) $fields[] = ['label' => __('Status'), 'value' => ucfirst($document->status)];
         }
 
-        // ── Employee / Payslip ────────────────────────────────────────────────
-        elseif (in_array($baseClass, ['Employee', 'Payslip'])) {
-            $name  = $document->name ?? ($document->employee?->name ?? '#' . $document->id);
-            $title = __($baseClass) . ': ' . $name;
-            if (isset($document->net_salary))   $fields[] = ['label' => __('Net Salary'), 'value' => '$' . number_format((float)$document->net_salary, 2)];
-            if (isset($document->department))   $fields[] = ['label' => __('Department'), 'value' => $document->department];
+        // ── Employee / Payroll / Loans / Overtime ─────────────────────────────
+        elseif (in_array($baseClass, ['Employee', 'Payroll', 'Loan', 'Overtime', 'Resignation', 'Termination', 'Promotion'])) {
+            $empName = $document->employee?->name ?? $document->name ?? '#' . $document->id;
+            $title   = __($baseClass) . ': ' . $empName;
+            if (isset($document->net_salary))    $fields[] = ['label' => __('Net Salary'),  'value' => number_format((float)$document->net_salary, 2) . ' ETB'];
+            if (isset($document->amount))        $fields[] = ['label' => __('Amount'),      'value' => number_format((float)$document->amount, 2) . ' ETB'];
+            if (isset($document->hours))         $fields[] = ['label' => __('Hours'),       'value' => $document->hours . ' hrs'];
+            if (isset($document->status))        $fields[] = ['label' => __('Status'),      'value' => ucfirst($document->status)];
         }
 
-        // ── Contract ─────────────────────────────────────────────────────────
+        // ── Commercial Contracts ──────────────────────────────────────────────
         elseif ($baseClass === 'Contract') {
             $title = __('Contract') . ': ' . ($document->title ?? $document->name ?? '#' . $document->id);
-            if (isset($document->value))      $fields[] = ['label' => __('Value'),    'value' => '$' . number_format((float)$document->value, 2)];
+            $val = $document->value ?? $document->contract_value ?? null;
+            if ($val !== null)                $fields[] = ['label' => __('Value'),    'value' => number_format((float)$val, 2) . ' ETB'];
             if (isset($document->start_date)) $fields[] = ['label' => __('Start'),    'value' => $document->start_date];
             if (isset($document->end_date))   $fields[] = ['label' => __('End'),      'value' => $document->end_date];
             if (isset($document->status))     $fields[] = ['label' => __('Status'),   'value' => ucfirst($document->status)];
         }
 
         // ── Quotation ─────────────────────────────────────────────────────────
-        elseif ($baseClass === 'Quotation') {
-            $title = __('Quotation') . ' #' . ($document->quotation_id ?? $document->id);
-            if (isset($document->total))  $fields[] = ['label' => __('Total'),  'value' => '$' . number_format((float)$document->total, 2)];
-            if (isset($document->status)) $fields[] = ['label' => __('Status'), 'value' => ucfirst($document->status)];
+        elseif (in_array($baseClass, ['Quotation', 'SalesQuotation'])) {
+            $title = __('Sales Quotation') . ' #' . ($document->quotation_id ?? $document->id);
+            $amt = $document->total_amount ?? $document->total ?? null;
+            if ($amt !== null)            $fields[] = ['label' => __('Total Amount'), 'value' => number_format((float)$amt, 2) . ' ETB'];
+            if (isset($document->status)) $fields[] = ['label' => __('Status'),       'value' => ucfirst($document->status)];
         }
 
-        // ── Lead ─────────────────────────────────────────────────────────────
+        // ── Lead / CRM ────────────────────────────────────────────────────────
         elseif ($baseClass === 'Lead') {
             $title = __('Lead') . ': ' . ($document->name ?? '#' . $document->id);
-            if (isset($document->amount)) $fields[] = ['label' => __('Value'),  'value' => '$' . number_format((float)$document->amount, 2)];
+            if (isset($document->amount)) $fields[] = ['label' => __('Value'),  'value' => number_format((float)$document->amount, 2) . ' ETB'];
             if (isset($document->status)) $fields[] = ['label' => __('Status'), 'value' => ucfirst($document->status)];
         }
 
-        // ── Task / Project ────────────────────────────────────────────────────
-        elseif (in_array($baseClass, ['Task', 'Project'])) {
+        // ── Taskly / Projects ─────────────────────────────────────────────────
+        elseif (in_array($baseClass, ['Task', 'Project', 'ProjectTask'])) {
             $title = __($baseClass) . ': ' . ($document->name ?? $document->title ?? '#' . $document->id);
             if (isset($document->due_date))  $fields[] = ['label' => __('Due Date'), 'value' => $document->due_date];
             if (isset($document->priority))  $fields[] = ['label' => __('Priority'), 'value' => ucfirst($document->priority)];
@@ -461,14 +501,14 @@ class ApprovalController extends Controller
             if (isset($document->reason))          $fields[] = ['label' => __('Reason'),    'value' => $document->reason];
         }
 
-        // ── Job Application ───────────────────────────────────────────────────
-        elseif (in_array($baseClass, ['JobApplication', 'JobVacancy'])) {
-            $title = __($baseClass) . ': ' . ($document->name ?? $document->position ?? '#' . $document->id);
+        // ── Recruitment ───────────────────────────────────────────────────────
+        elseif (in_array($baseClass, ['JobApplication', 'JobVacancy', 'Job', 'JobPosting', 'Offer'])) {
+            $title = __($baseClass) . ': ' . ($document->name ?? $document->title ?? $document->position ?? '#' . $document->id);
             if (isset($document->status)) $fields[] = ['label' => __('Status'), 'value' => ucfirst($document->status)];
         }
 
-        // ── Goal / KPI ────────────────────────────────────────────────────────
-        elseif (in_array($baseClass, ['Goal', 'Review'])) {
+        // ── Goal / KPI / Performance ──────────────────────────────────────────
+        elseif (in_array($baseClass, ['Goal', 'Review', 'PerformanceEmployeeReview', 'PerformanceEmployeeGoal'])) {
             $title = __($baseClass) . ': ' . ($document->name ?? $document->title ?? '#' . $document->id);
             if (isset($document->target))    $fields[] = ['label' => __('Target'),    'value' => $document->target];
             if (isset($document->progress))  $fields[] = ['label' => __('Progress'),  'value' => $document->progress . '%'];

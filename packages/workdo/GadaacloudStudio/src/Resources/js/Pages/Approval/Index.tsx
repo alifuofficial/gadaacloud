@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
@@ -189,11 +190,4 @@ export default function ApprovalIndex({ requests, stats }: IndexProps) {
             </Card>
         </AuthenticatedLayout>
     );
-}
-
-function useState<T>(initial: T): [T, (v: T) => void] {
-    // placeholder shim for React useState – real implementation provided at runtime
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [_val, _set] = [] as any;
-    return [_val, _set];
 }

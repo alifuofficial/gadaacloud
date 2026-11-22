@@ -1,9 +1,5 @@
 import { Workflow } from 'lucide-react';
 
-declare global {
-    function route(name: string): string;
-}
-
 export const gadaacloudStudioCompanyMenu = (t: (key: string) => string) => [
     {
         title: t('GadaaCloud Studio'),

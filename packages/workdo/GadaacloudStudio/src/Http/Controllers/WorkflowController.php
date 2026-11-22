@@ -25,65 +25,78 @@ class WorkflowController extends Controller
         $models = [];
 
         // ── Account / Finance ─────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\SalesInvoice',        'Sales Invoice',        'finance');
-        $this->addIfClassExists($models, 'App\\Models\\PurchaseInvoice',     'Purchase Invoice',     'finance');
-        $this->addIfClassExists($models, 'App\\Models\\SalesInvoiceReturn',  'Sales Invoice Return', 'finance');
-        $this->addIfClassExists($models, 'App\\Models\\PurchaseReturn',      'Purchase Return',      'finance');
-        $this->addIfClassExists($models, 'App\\Models\\Payment',             'Payment Receipt',      'finance');
-        $this->addIfClassExists($models, 'App\\Models\\Expense',             'Expense',              'finance');
+        $this->addIfClassExists($models, 'App\\Models\\SalesInvoice',                  'Sales Invoice',             'finance');
+        $this->addIfClassExists($models, 'App\\Models\\PurchaseInvoice',               'Purchase Invoice',          'finance');
+        $this->addIfClassExists($models, 'App\\Models\\SalesInvoiceReturn',            'Sales Invoice Return',      'finance');
+        $this->addIfClassExists($models, 'App\\Models\\PurchaseReturn',                'Purchase Return',           'finance');
+        $this->addIfClassExists($models, 'App\\Models\\SalesProposal',                 'Sales Proposal',            'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\CustomerPayment',   'Customer Payment Receipt',  'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\VendorPayment',     'Vendor Payment Voucher',    'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\Expense',           'Expense Voucher',           'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\Revenue',           'Revenue Entry',             'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\BankTransfer',      'Bank Account Transfer',     'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\JournalEntry',      'Journal Entry',             'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\CreditNote',        'Credit Note',               'finance');
+        $this->addIfClassExists($models, 'Workdo\\Account\\Models\\DebitNote',         'Debit Note',                'finance');
 
-        // ── Inventory / Warehouse ─────────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\Warehouse',           'Warehouse',            'inventory');
-        $this->addIfClassExists($models, 'App\\Models\\Transfer',            'Stock Transfer',       'inventory');
-        $this->addIfClassExists($models, 'App\\Models\\InventoryAdjustment', 'Stock Adjustment',     'inventory');
+        // ── Inventory / Warehouse & Logistics ─────────────────────────────────
+        $this->addIfClassExists($models, 'App\\Models\\Warehouse',                     'Warehouse',                 'inventory');
+        $this->addIfClassExists($models, 'App\\Models\\Transfer',                      'Stock Transfer / Waybill',  'inventory');
+        $this->addIfClassExists($models, 'App\\Models\\InventoryAdjustment',           'Stock Adjustment',          'inventory');
 
         // ── Products & Services ───────────────────────────────────────────────
         $this->addIfClassExists($models, 'Workdo\\ProductService\\Models\\ProductServiceItem', 'Product / Service Item', 'products');
 
         // ── Import & Export / Trade ───────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\ImportExport\\Models\\LetterOfCredit',   'Letter of Credit (LC)',  'trade');
-        $this->addIfClassExists($models, 'Workdo\\ImportExport\\Models\\ShippingDocument', 'Shipping Document',      'trade');
-        $this->addIfClassExists($models, 'Workdo\\ImportExport\\Models\\TradeOperation',   'Trade Operation',        'trade');
+        $this->addIfClassExists($models, 'App\\Models\\TradeLc',                       'Letter of Credit (LC)',     'trade');
+        $this->addIfClassExists($models, 'App\\Models\\TradeShipment',                 'Trade Shipment Logistics',  'trade');
+        $this->addIfClassExists($models, 'App\\Models\\TradeLandedCost',               'Trade Landed Cost Calc',    'trade');
 
         // ── Quotation ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Quotation\\Models\\Quotation', 'Quotation', 'sales');
+        $this->addIfClassExists($models, 'Workdo\\Quotation\\Models\\SalesQuotation',  'Sales Quotation',           'sales');
 
         // ── HRM ───────────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\LeaveApplication',  'Leave Application',   'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\ExpenseClaim',       'Expense Claim (HR)',  'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Payslip',            'Employee Payslip',    'hrm');
-        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Employee',           'Employee Onboarding', 'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\LeaveApplication',      'Leave Application',         'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Payroll',               'Employee Payroll Batch',    'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Employee',              'Employee Confirmation',     'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Loan',                  'Employee Loan Request',     'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Overtime',              'Overtime Authorization',    'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Resignation',           'Employee Resignation',      'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Termination',           'Employee Clearance/Severance', 'hrm');
+        $this->addIfClassExists($models, 'Workdo\\Hrm\\Models\\Promotion',             'Employee Promotion',        'hrm');
 
         // ── Recruitment ───────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\JobApplication', 'Job Application', 'recruitment');
-        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\JobVacancy',     'Job Vacancy',     'recruitment');
+        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\Job',           'Job Requisition',           'recruitment');
+        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\JobPosting',    'Job Vacancy Posting',       'recruitment');
+        $this->addIfClassExists($models, 'Workdo\\Recruitment\\Models\\Offer',         'Job Offer Approval',        'recruitment');
 
         // ── Training ──────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Training\\Models\\Training',   'Training Program',  'training');
-        $this->addIfClassExists($models, 'Workdo\\Training\\Models\\Enrollment', 'Training Enrollment','training');
+        $this->addIfClassExists($models, 'Workdo\\Training\\Models\\Training',         'Training Program',          'training');
 
         // ── Contract ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Contract\\Models\\Contract', 'Contract', 'legal');
+        $this->addIfClassExists($models, 'Workdo\\Contract\\Models\\Contract',         'Commercial Contract',       'legal');
 
         // ── Lead / CRM ────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Lead\\Models\\Lead', 'Lead / Opportunity', 'crm');
+        $this->addIfClassExists($models, 'Workdo\\Lead\\Models\\Lead',                 'Lead / Opportunity Deal',   'crm');
 
-        // ── Goal / KPI ────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Goal\\Models\\Goal',       'Goal / KPI Target', 'performance');
-        $this->addIfClassExists($models, 'Workdo\\Performance\\Models\\Review', 'Performance Review','performance');
+        // ── Goal / Performance ────────────────────────────────────────────────
+        $this->addIfClassExists($models, 'Workdo\\Goal\\Models\\Goal',                 'Goal / Milestone Target',   'performance');
+        $this->addIfClassExists($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeReview', 'Performance Appraisal', 'performance');
+        $this->addIfClassExists($models, 'Workdo\\Performance\\Models\\PerformanceEmployeeGoal',   'Employee KPI Goal',     'performance');
 
-        // ── Taskly ────────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\Task',    'Task',    'taskly');
-        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\Project', 'Project', 'taskly');
+        // ── Taskly / Projects ─────────────────────────────────────────────────
+        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\Project',            'Client Project',            'taskly');
+        $this->addIfClassExists($models, 'Workdo\\Taskly\\Models\\ProjectTask',        'Milestone Project Task',    'taskly');
 
         // ── Timesheet ─────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\Timesheet\\Models\\Timesheet', 'Timesheet Entry', 'timesheet');
+        $this->addIfClassExists($models, 'Workdo\\Timesheet\\Models\\Timesheet',       'Staff Timesheet Log',       'timesheet');
 
         // ── Support ───────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'App\\Models\\HelpdeskTicket', 'Helpdesk Ticket', 'support');
+        $this->addIfClassExists($models, 'App\\Models\\HelpdeskTicket',                'Helpdesk Ticket',           'support');
+        $this->addIfClassExists($models, 'Workdo\\SupportTicket\\Models\\Ticket',      'Support Center Ticket',     'support');
 
         // ── Budget ────────────────────────────────────────────────────────────
-        $this->addIfClassExists($models, 'Workdo\\BudgetPlanner\\Models\\Budget', 'Budget Plan', 'finance');
+        $this->addIfClassExists($models, 'Workdo\\BudgetPlanner\\Models\\Budget',       'Budget Plan Allocation',    'finance');
 
         return $models;
     }
@@ -336,11 +349,12 @@ class WorkflowController extends Controller
             'description'  => $request->description,
         ]);
 
-        $workflow->steps()->delete();
+        $existingStepIds = $workflow->steps->pluck('id')->toArray();
+        $retainedStepIds = [];
 
         foreach ($request->steps as $index => $step) {
-            WorkflowStep::create([
-                'workflow_id'            => $workflow->id,
+            $stepId = !empty($step['id']) ? (int) $step['id'] : null;
+            $stepPayload = [
                 'name'                   => $step['name'],
                 'approver_type'          => $step['approver_type'],
                 'approver_role'          => $step['approver_type'] === 'role' ? $step['approver_role'] : null,
@@ -349,8 +363,45 @@ class WorkflowController extends Controller
                 'condition_field'        => $step['condition_field'] ?? null,
                 'condition_operator'     => $step['condition_operator'] ?? null,
                 'condition_value'        => $step['condition_value'] ?? null,
-                'skip_if_condition_fails'=> $step['skip_if_condition_fails'] ?? false,
-            ]);
+                'skip_if_condition_fails'=> !empty($step['skip_if_condition_fails']),
+            ];
+
+            if ($stepId && in_array($stepId, $existingStepIds)) {
+                $existingStep = WorkflowStep::find($stepId);
+                if ($existingStep) {
+                    $existingStep->update($stepPayload);
+                    $retainedStepIds[] = $existingStep->id;
+                }
+            } else {
+                $stepPayload['workflow_id'] = $workflow->id;
+                $newStep = WorkflowStep::create($stepPayload);
+                $retainedStepIds[] = $newStep->id;
+            }
+        }
+
+        // Only delete steps that were explicitly removed from the workflow definition
+        $stepsToDelete = array_diff($existingStepIds, $retainedStepIds);
+        if (!empty($stepsToDelete)) {
+            // Re-assign or finalize any pending request currently at a deleted step
+            $firstRetainedStep = WorkflowStep::where('workflow_id', $workflow->id)
+                ->whereIn('id', $retainedStepIds)
+                ->orderBy('sequence', 'asc')
+                ->first();
+
+            $pendingAtDeleted = WorkflowRequest::where('workflow_id', $workflow->id)
+                ->whereIn('current_step_id', $stepsToDelete)
+                ->where('status', 'pending')
+                ->get();
+
+            foreach ($pendingAtDeleted as $reqAtDel) {
+                if ($firstRetainedStep) {
+                    $reqAtDel->update(['current_step_id' => $firstRetainedStep->id]);
+                } else {
+                    $reqAtDel->update(['status' => 'approved', 'current_step_id' => null]);
+                }
+            }
+
+            WorkflowStep::whereIn('id', $stepsToDelete)->delete();
         }
 
         return redirect()->route('gadaacloud-studio.workflows.index')
