@@ -219,6 +219,11 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck'])->group(function () {
     Route::post('admin/domains/settings', [DomainController::class, 'updateDynadotSettings'])->name('admin.domains.settings.update');
     Route::post('admin/domains/{id}/toggle-status', [DomainController::class, 'toggleStatus'])->name('admin.domains.status.toggle');
 
+    // Superadmin ImportExport Container Tracking API Setup
+    Route::get('settings/import-export/setup', [ImportExportController::class, 'setup'])->name('settings.import-export.setup');
+    Route::post('settings/import-export/setup', [ImportExportController::class, 'saveSetup'])->name('settings.import-export.setup.save');
+    Route::post('settings/import-export/test-tracking', [ImportExportController::class, 'testTrackingApi'])->name('settings.import-export.test-tracking');
+
     // Trade & IE Operations routes (Gated by Subscription Tier: ImportExport)
     Route::middleware(['PlanModuleCheck:ImportExport'])->group(function () {
         Route::get('import-export/dashboard', [ImportExportController::class, 'dashboard'])->name('import-export.dashboard');
@@ -231,6 +236,7 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck'])->group(function () {
         Route::post('settings/import-export/djibouti', [ImportExportController::class, 'storeDjiboutiContainer'])->name('settings.import-export.djibouti.store');
         Route::post('settings/import-export/ecc', [ImportExportController::class, 'calculateEccDuty'])->name('settings.import-export.ecc.calculate');
         Route::post('settings/import-export/ecx', [ImportExportController::class, 'storeEcxContract'])->name('settings.import-export.ecx.store');
+        Route::get('settings/import-export/track/{containerNumber}', [ImportExportController::class, 'trackContainer'])->name('settings.import-export.track');
     });
 
     // Inventory Management routes

@@ -10,7 +10,9 @@ use App\Models\DjiboutiPortContainer;
 use App\Models\EccCustomsDuty;
 use App\Models\EcxExportContract;
 use App\Models\PurchaseInvoice;
+use App\Models\Setting;
 use App\Models\User;
+use App\Services\ContainerTrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -426,5 +428,116 @@ class ImportExportController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', __('Landed cost booking failed: ') . $e->getMessage());
         }
+    }
+
+    /**
+     * Superadmin Global ImportExport & Container Tracking Setup View
+     */
+    public function setup()
+    {
+        $user = Auth::user();
+        if ($user->type !== 'superadmin' && !(method_exists($user, 'hasRole') && $user->hasRole('superadmin'))) {
+            abort(403, __('Only Superadmin can configure global container tracking API settings.'));
+        }
+
+        $service = app(ContainerTrackingService::class);
+        $settings = $service->getSettings();
+
+        return Inertia::render('settings/import-export-setup', [
+            'trackingSettings' => $settings,
+        ]);
+    }
+
+    /**
+     * Save Superadmin Global ImportExport & Container Tracking Setup
+     */
+    public function saveSetup(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->type !== 'superadmin' && !(method_exists($user, 'hasRole') && $user->hasRole('superadmin'))) {
+            abort(403, __('Only Superadmin can configure global container tracking API settings.'));
+        }
+
+        $request->validate([
+            'provider'         => 'required|string|in:trackingmore,shipsgo,terminal49,sandbox',
+            'apiKey'           => 'nullable|string',
+            'sandboxMode'      => 'required|boolean',
+            'webhookSecret'    => 'nullable|string',
+            'freeDays'         => 'required|integer|min:1|max:60',
+            'dailyPenalty20ft' => 'required|numeric|min:0',
+            'dailyPenalty40ft' => 'required|numeric|min:0',
+        ]);
+
+        $superadminUser = User::where('type', 'superadmin')->first();
+        $superadminId = $superadminUser ? $superadminUser->id : $user->id;
+
+        $fields = [
+            'importexport_container_api_provider'        => $request->provider,
+            'importexport_container_api_key'             => $request->apiKey ?? '',
+            'importexport_container_sandbox_mode'        => $request->sandboxMode ? '1' : '0',
+            'importexport_container_webhook_secret'     => $request->webhookSecret ?? '',
+            'importexport_djibouti_free_days_threshold'  => (string)$request->freeDays,
+            'importexport_demurrage_daily_penalty_20ft'  => (string)$request->dailyPenalty20ft,
+            'importexport_demurrage_daily_penalty_40ft'  => (string)$request->dailyPenalty40ft,
+        ];
+
+        foreach ($fields as $key => $val) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                ['value' => $val, 'is_public' => 0, 'created_by' => $superadminId]
+            );
+        }
+
+        return redirect()->back()->with('success', __('Global Container Tracking API and Djibouti Port Demurrage policies updated successfully.'));
+    }
+
+    /**
+     * Test Container Tracking Connection & Lookup (Superadmin or API check)
+     */
+    public function testTrackingApi(Request $request)
+    {
+        $request->validate([
+            'container_number' => 'required|string',
+            'shipping_line'    => 'nullable|string',
+        ]);
+
+        $service = app(ContainerTrackingService::class);
+        $result = $service->track($request->container_number, $request->shipping_line);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Live Container Tracking Endpoint for Tenants in Dashboard
+     */
+    public function trackContainer(Request $request, $containerNumber)
+    {
+        $service = app(ContainerTrackingService::class);
+        $shippingLine = $request->query('shipping_line');
+
+        // Check if container exists in company's registered Djibouti port containers
+        $companyId = creatorId();
+        $djiboutiRecord = DjiboutiPortContainer::where('created_by', $companyId)
+            ->where('container_number', strtoupper(trim($containerNumber)))
+            ->first();
+
+        if ($djiboutiRecord && empty($shippingLine)) {
+            $shippingLine = $djiboutiRecord->shipping_line;
+        }
+
+        $trackingData = $service->track($containerNumber, $shippingLine);
+
+        // Augment with tenant-specific records if found
+        if ($djiboutiRecord) {
+            $trackingData['tenant_record'] = [
+                'id' => $djiboutiRecord->id,
+                'bl_number' => $djiboutiRecord->bl_number,
+                'dry_port_destination' => $djiboutiRecord->dry_port_destination,
+                'evacuation_status' => $djiboutiRecord->evacuation_status,
+                'arrival_date_djibouti' => $djiboutiRecord->arrival_date_djibouti,
+            ];
+        }
+
+        return response()->json($trackingData);
     }
 }

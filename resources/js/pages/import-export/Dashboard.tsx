@@ -30,7 +30,10 @@ import {
     ExternalLink,
     ShieldCheck,
     Truck,
-    MapPin
+    MapPin,
+    Compass,
+    Radio,
+    Search
 } from "lucide-react";
 import { useState } from "react";
 import axios from "axios";
@@ -79,6 +82,12 @@ export default function IEDashboard({
     const [eccModalOpen, setEccModalOpen] = useState(false);
     const [ecxModalOpen, setEcxModalOpen] = useState(false);
     const [lcModalOpen, setLcModalOpen] = useState(false);
+
+    // Live Container Tracking State
+    const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+    const [trackingData, setTrackingData] = useState<any>(null);
+    const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+    const [quickContainerInput, setQuickContainerInput] = useState('');
 
     // Forex Form State
     const [lcNumber, setLcNumber] = useState('');
@@ -234,6 +243,31 @@ export default function IEDashboard({
             toast.error(err.response?.data?.message || t("Failed to open Letter of Credit"));
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleLiveTrack = async (containerNum: string, shippingLine?: string) => {
+        if (!containerNum || !containerNum.trim()) {
+            toast.error(t("Please enter a valid container number"));
+            return;
+        }
+        setIsTrackingLoading(true);
+        setTrackingModalOpen(true);
+        setTrackingData(null);
+
+        try {
+            const res = await axios.get(`/settings/import-export/track/${encodeURIComponent(containerNum.trim())}`, {
+                params: { shipping_line: shippingLine }
+            });
+            if (res.data && res.data.success) {
+                setTrackingData(res.data);
+            } else {
+                toast.error(res.data?.message || t("Unable to fetch container tracking data"));
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || t("Failed to connect to container tracking API"));
+        } finally {
+            setIsTrackingLoading(false);
         }
     };
 
@@ -501,8 +535,44 @@ export default function IEDashboard({
                                 className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-9 shadow-xs gap-1.5"
                             >
                                 <Plus className="w-4 h-4" />
-                                {t('Track Container')}
+                                {t('Add Container Record')}
                             </Button>
+                        </div>
+
+                        {/* Live Container GPS Radar Search Bar */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border border-emerald-200/80 dark:border-emerald-800/40 rounded-xl shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                    <Compass className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        {t('Live Ocean Container GPS Radar')}
+                                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 dark:text-emerald-300 px-2 py-0.2 rounded-full border border-emerald-300">
+                                            {t('Multi-Carrier GPS')}
+                                        </span>
+                                    </h4>
+                                    <p className="text-[11px] text-slate-500">{t('Track any 20FT/40FT container via MSC, Maersk, CMA CGM, COSCO, or ESLSE through Djibouti.')}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Input
+                                    type="text"
+                                    value={quickContainerInput}
+                                    onChange={(e) => setQuickContainerInput(e.target.value.toUpperCase())}
+                                    placeholder={t('Enter Container # (e.g. MSCU9284710)')}
+                                    className="h-8 text-xs font-mono w-full sm:w-56 bg-white dark:bg-slate-900 border-emerald-300"
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleLiveTrack(quickContainerInput)}
+                                    disabled={!quickContainerInput.trim() || isTrackingLoading}
+                                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5 shrink-0"
+                                >
+                                    <Search className="w-3.5 h-3.5" />
+                                    {t('Track Live')}
+                                </Button>
+                            </div>
                         </div>
 
                         <Card className="border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -516,13 +586,14 @@ export default function IEDashboard({
                                             <th className="p-3 text-center">Days Elapsed</th>
                                             <th className="p-3 text-right">Daily Rate</th>
                                             <th className="p-3 text-center">Demurrage Risk Status</th>
+                                            <th className="p-3 text-center">{t('Live GPS')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
                                         {djiboutiContainers.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="p-6 text-center text-slate-400 font-sans">
-                                                    {t('No containers currently logged at Port of Djibouti. Click "Track Container" to begin monitoring.')}
+                                                <td colSpan={7} className="p-6 text-center text-slate-400 font-sans">
+                                                    {t('No containers currently logged at Port of Djibouti. Click "Add Container Record" or use the GPS radar above.')}
                                                 </td>
                                             </tr>
                                         ) : (
@@ -551,6 +622,17 @@ export default function IEDashboard({
                                                                     ✓ {Math.max(0, freeDaysLimit - daysInPort)} Days Free Remaining
                                                                 </Badge>
                                                             )}
+                                                        </td>
+                                                        <td className="p-3 text-center font-sans">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleLiveTrack(c.container_number, c.shipping_line || c.vessel_name)}
+                                                                className="h-7 px-2 text-xs text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1 font-semibold"
+                                                            >
+                                                                <Compass className="w-3.5 h-3.5 text-emerald-600" />
+                                                                {t('Track GPS')}
+                                                            </Button>
                                                         </td>
                                                     </tr>
                                                 );
@@ -968,6 +1050,158 @@ export default function IEDashboard({
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Live Container GPS Tracking Modal */}
+            <Dialog open={trackingModalOpen} onOpenChange={setTrackingModalOpen}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="border-b pb-3">
+                        <div className="flex items-center justify-between">
+                            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+                                <Compass className="w-5 h-5 text-emerald-600 animate-spin-slow" />
+                                {t('Ocean Container Real-Time Telemetry')}
+                            </DialogTitle>
+                            {trackingData && (
+                                <Badge className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 font-mono text-xs">
+                                    {trackingData.container_number}
+                                </Badge>
+                            )}
+                        </div>
+                        <DialogDescription className="text-xs text-slate-500">
+                            {t('Live milestone updates from origin port across the ocean route to Port of Djibouti (Doraleh) and Modjo dry port.')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {isTrackingLoading ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                            <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
+                            <p className="text-xs font-semibold text-slate-600">{t('Connecting to Ocean Carrier Satellite Telemetry...')}</p>
+                            <span className="text-[11px] text-slate-400 font-mono">{t('Querying vessel IMO and container bay checkpoints...')}</span>
+                        </div>
+                    ) : trackingData ? (
+                        <div className="space-y-4 pt-2">
+                            {/* Vessel & Carrier Header Banner */}
+                            <div className="p-3.5 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-slate-800">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Ship className="w-4 h-4 text-emerald-400" />
+                                        <h4 className="text-sm font-bold text-slate-100">
+                                            {trackingData.vessel?.name || 'Vessel'}
+                                        </h4>
+                                        <span className="text-[11px] font-mono text-slate-400">
+                                            (Voyage: {trackingData.vessel?.voyage || 'V-1'})
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-300">
+                                        Carrier: <strong className="text-emerald-400">{trackingData.carrier?.name}</strong> • IMO: <span className="font-mono text-slate-400">{trackingData.vessel?.imo}</span>
+                                    </p>
+                                </div>
+                                <div className="sm:text-right">
+                                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase">
+                                        {trackingData.status_label}
+                                    </Badge>
+                                    <span className="text-[10px] text-slate-400 block mt-1 font-mono">
+                                        ETA Djibouti: {trackingData.timestamps?.eta_djibouti || 'In Transit'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* 4-Stage Visual Route Stepper */}
+                            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                                <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">{t('Ocean Corridor Journey Progress')}</h5>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 shadow-2xs">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 mx-auto mb-1" />
+                                        <span className="font-bold text-slate-900 dark:text-slate-100 block text-[11px]">{t('1. Origin Port')}</span>
+                                        <span className="text-[10px] text-slate-500 truncate block">{trackingData.route?.origin}</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 shadow-2xs">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 mx-auto mb-1" />
+                                        <span className="font-bold text-slate-900 dark:text-slate-100 block text-[11px]">{t('2. Transshipment')}</span>
+                                        <span className="text-[10px] text-slate-500 truncate block">{trackingData.route?.transshipment}</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-emerald-400 ring-2 ring-emerald-500/20 shadow-2xs">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-600 mx-auto mb-1 animate-ping" />
+                                        <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-[11px]">{t('3. Port of Djibouti')}</span>
+                                        <span className="text-[10px] text-slate-500 truncate block">Doraleh (DCT)</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                                        <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mb-1" />
+                                        <span className="font-bold text-slate-700 dark:text-slate-300 block text-[11px]">{t('4. Inland Dry Port')}</span>
+                                        <span className="text-[10px] text-slate-500 truncate block">{trackingData.tenant_record?.dry_port_destination || 'Modjo Dry Port'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Demurrage Watch Meter */}
+                            <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <div>
+                                        <strong className="text-amber-900 dark:text-amber-300 block">{t('Djibouti Port Free Storage Window')}</strong>
+                                        <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                                            {trackingData.demurrage?.free_days || 8} {t('days total free time')} • {trackingData.demurrage?.days_in_port || 0} {t('days elapsed')}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400 block">
+                                        {trackingData.demurrage?.days_remaining} {t('Free Days Left')}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">
+                                        ${trackingData.demurrage?.daily_rate_usd || 45} USD/day demurrage
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Milestones Event History */}
+                            {trackingData.milestones && trackingData.milestones.length > 0 && (
+                                <div className="space-y-2">
+                                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                                        <Radio className="w-3.5 h-3.5 text-emerald-600" />
+                                        {t('Carrier Event Milestone Log')}
+                                    </h5>
+                                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                                        {trackingData.milestones.map((m: any, idx: number) => (
+                                            <div key={idx} className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                                                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${idx === 0 ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-slate-400'}`} />
+                                                <div className="flex-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <strong className="text-slate-800 dark:text-slate-200">{m.title}</strong>
+                                                        <span className="text-slate-500 font-mono text-[10px]">{m.date}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">{m.description}</p>
+                                                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 block mt-0.5">
+                                                        📍 {m.location}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Provider Attribution & Close */}
+                            <div className="pt-2 border-t flex items-center justify-between text-[11px] text-slate-400">
+                                <span className="font-mono">
+                                    Engine: <strong className="text-slate-600 dark:text-slate-300">{trackingData.provider}</strong>
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setTrackingModalOpen(false)}
+                                    className="h-8 text-xs"
+                                >
+                                    {t('Close')}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                            {t('No telemetry records available for this container.')}
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </AuthenticatedLayout>

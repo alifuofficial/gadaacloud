@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from "@/components/ui/search-input";
 import NoRecordsFound from '@/components/no-records-found';
-import { Boxes, Package, Power, PowerOff, Shield, DollarSign, X, Save, Settings, Sparkles } from "lucide-react";
+import { Boxes, Package, Power, PowerOff, Shield, DollarSign, X, Save, Settings, Sparkles, Compass } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -99,9 +99,11 @@ export default function List() {
     ];
 
     let copilotSetupUrl = '/settings/copilot/setup';
+    let importExportSetupUrl = '/settings/import-export/setup';
     try {
         if (typeof route === 'function') {
             copilotSetupUrl = route('settings.copilot.setup');
+            importExportSetupUrl = route('settings.import-export.setup');
         }
     } catch (e) {}
 
@@ -195,6 +197,12 @@ export default function List() {
                                                                     AI Engine
                                                                 </span>
                                                             )}
+                                                            {m.module === 'ImportExport' && (
+                                                                <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full border border-emerald-200">
+                                                                    <Compass className="w-2.5 h-2.5 text-emerald-600" />
+                                                                    Container GPS
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div className="text-xs text-gray-400 font-mono">{m.module}</div>
                                                     </div>
@@ -254,6 +262,24 @@ export default function List() {
                                                                     </Link>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent><p>{t('Configure Global AI API Key & Token Pricing')}</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+
+                                                    {/* ImportExport Configuration Button for Superadmin */}
+                                                    {m.module === 'ImportExport' && (
+                                                        <TooltipProvider>
+                                                            <Tooltip delayDuration={0}>
+                                                                <TooltipTrigger asChild>
+                                                                    <Link
+                                                                        href={importExportSetupUrl}
+                                                                        className="inline-flex items-center justify-center h-8 px-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs gap-1 shadow-sm transition-colors"
+                                                                    >
+                                                                        <Compass className="h-3.5 w-3.5" />
+                                                                        <span>{t('Tracking Setup')}</span>
+                                                                    </Link>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>{t('Configure Container Tracking API & Djibouti Port Rates')}</p></TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     )}
