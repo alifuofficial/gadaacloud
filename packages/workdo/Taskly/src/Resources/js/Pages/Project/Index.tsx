@@ -682,12 +682,12 @@ export default function Index() {
 
             <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
                 {modalState.mode === 'add' && (
-                    <Create onSuccess={closeModal} users={users} />
+                    <Create onSuccess={closeModal} users={users || []} />
                 )}
                 {modalState.mode === 'edit' && modalState.data && (
                     <EditItem
                         item={modalState.data}
-                        users={users}
+                        users={users || []}
                         onSuccess={closeModal}
                     />
                 )}

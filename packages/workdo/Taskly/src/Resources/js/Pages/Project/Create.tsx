@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,15 +13,15 @@ import { useFormFields } from '@/hooks/useFormFields';
 
 interface CreateProps {
     onSuccess: () => void;
-    users: Array<{
+    users?: Array<{
         id: number;
         name: string;
     }>;
 }
 
-export default function Create({ onSuccess, users }: CreateProps) {
+export default function Create({ onSuccess, users = [] }: CreateProps) {
     const { t } = useTranslation();
-    const pageProps = usePage().props as any;
+    const pageProps = usePage()?.props as any;
     const defaultScope = pageProps?.companyDefaults?.default_project_scope || 'client';
     const defaultInternalCategory = pageProps?.companyDefaults?.default_internal_category || 'opex';
     const defaultCurrency = pageProps?.companyDefaults?.default_currency || 'ETB';
@@ -137,14 +137,15 @@ export default function Create({ onSuccess, users }: CreateProps) {
                             <div>
                                 <Label className="text-xs">{t('Executive Project Sponsor')}</Label>
                                 <Select
-                                    value={data.project_sponsor_id?.toString() || ''}
-                                    onValueChange={(val) => setData('project_sponsor_id', val ? parseInt(val) : '')}
+                                    value={data.project_sponsor_id ? data.project_sponsor_id.toString() : 'none'}
+                                    onValueChange={(val) => setData('project_sponsor_id', val === 'none' ? '' : parseInt(val))}
                                 >
                                     <SelectTrigger className="w-full text-xs">
                                         <SelectValue placeholder={t('Select Sponsor')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {users.map(u => (
+                                        <SelectItem value="none">{t('None / PM Managed')}</SelectItem>
+                                        {(users || []).map(u => (
                                             <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -200,6 +201,7 @@ export default function Create({ onSuccess, users }: CreateProps) {
                                 <SelectItem value="EUR">EUR (Euro)</SelectItem>
                                 <SelectItem value="GBP">GBP (British Pound)</SelectItem>
                                 <SelectItem value="AED">AED (UAE Dirham)</SelectItem>
+                                <SelectItem value="CNY">CNY (Chinese Yuan)</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.currency_code && <p className="text-sm text-red-500 mt-1">{errors.currency_code}</p>}
@@ -230,7 +232,7 @@ export default function Create({ onSuccess, users }: CreateProps) {
                 <div>
                     <Label required>{t('Users')}</Label>
                     <MultiSelectEnhanced
-                        options={users.map(user => ({ value: user.id.toString(), label: user.name }))}
+                        options={(users || []).map(user => ({ value: user.id.toString(), label: user.name }))}
                         value={data.user_ids.map(id => id.toString())}
                         onValueChange={(value) => setData('user_ids', value.map(v => parseInt(v)))}
                         placeholder={t('Select users')}
