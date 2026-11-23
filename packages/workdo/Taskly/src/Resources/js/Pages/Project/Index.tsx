@@ -30,6 +30,8 @@ interface ProjectItem {
     name: string;
     description?: string;
     budget?: number;
+    project_scope?: 'client' | 'internal';
+    internal_category?: string;
     start_date?: string;
     end_date?: string;
     status: 'Ongoing' | 'Onhold' | 'Finished';
@@ -71,6 +73,7 @@ export default function Index() {
     const [filters, setFilters] = useState({
         name: urlParams.get('name') || '',
         status: urlParams.get('status') || '',
+        scope: urlParams.get('scope') || '',
         date: urlParams.get('date') || ''
     });
 
@@ -144,7 +147,7 @@ export default function Index() {
     };
 
     const clearFilters = () => {
-        setFilters({ name: '', status: '', date: '' });
+        setFilters({ name: '', status: '', scope: '', date: '' });
         router.get(route('project.index'), {per_page: perPage, view: viewMode});
     };
 
@@ -168,7 +171,23 @@ export default function Index() {
         {
             key: 'name',
             header: t('Name'),
-            sortable: true
+            sortable: true,
+            render: (name: string, item: ProjectItem) => (
+                <div className="space-y-1">
+                    <span className="font-semibold block text-slate-900">{name}</span>
+                    <div className="flex items-center gap-1.5">
+                        {item.project_scope === 'internal' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                In-House ({item.internal_category?.toUpperCase() || 'OPEX'})
+                            </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                Client Delivery
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )
         },
         {
             key: 'user',
@@ -402,7 +421,7 @@ export default function Index() {
 
                 {showFilters && (
                     <CardContent className="p-6 bg-blue-50/30 border-b">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('Status')}</label>
                                 <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
@@ -413,6 +432,19 @@ export default function Index() {
                                         <SelectItem value="Ongoing">{t('Ongoing')}</SelectItem>
                                         <SelectItem value="Onhold">{t('Onhold')}</SelectItem>
                                         <SelectItem value="Finished">{t('Finished')}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Project Scope')}</label>
+                                <Select value={filters.scope} onValueChange={(value) => setFilters({...filters, scope: value})}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={t('Filter by scope')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t('All Scopes')}</SelectItem>
+                                        <SelectItem value="client">{t('Client Projects')}</SelectItem>
+                                        <SelectItem value="internal">{t('In-House Initiatives')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -472,7 +504,18 @@ export default function Index() {
                                                         <Package className="h-5 w-5 text-primary" />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <h3 className="font-semibold text-sm text-gray-900">{project.name}</h3>
+                                                        <h3 className="font-semibold text-sm text-gray-900 truncate">{project.name}</h3>
+                                                        <div className="mt-0.5">
+                                                            {project.project_scope === 'internal' ? (
+                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+                                                                    In-House ({project.internal_category?.toUpperCase() || 'OPEX'})
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">
+                                                                    Client Delivery
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

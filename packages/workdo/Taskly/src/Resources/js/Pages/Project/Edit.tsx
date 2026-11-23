@@ -14,9 +14,13 @@ import { useFormFields } from '@/hooks/useFormFields';
 interface ProjectItem {
     id: number;
     name: string;
-    user_id: number;
+    user_id?: number;
     description?: string;
     budget?: number;
+    project_scope?: string;
+    internal_category?: string;
+    business_case?: string;
+    target_roi_savings?: string;
     start_date?: string;
     end_date?: string;
     status: 'Ongoing' | 'Onhold' | 'Finished';
@@ -42,6 +46,10 @@ export default function Edit({ item, users, onSuccess }: EditProps) {
         name: item.name,
         description: item.description || '',
         budget: item.budget || 0,
+        project_scope: item.project_scope || 'client',
+        internal_category: item.internal_category || 'opex',
+        business_case: item.business_case || '',
+        target_roi_savings: item.target_roi_savings || '',
         start_date: item.start_date || '',
         end_date: item.end_date || '',
         status: item.status || 'Ongoing',

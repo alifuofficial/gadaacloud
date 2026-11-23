@@ -49,6 +49,11 @@ interface Project {
     budget?: number;
     currency_code?: string;
     project_type?: string;
+    project_scope?: string;
+    internal_category?: string;
+    project_sponsor?: { id: number; name: string };
+    business_case?: string;
+    target_roi_savings?: string;
     share_token?: string;
     user: { id: number; name: string; };
     creator: { id: number; name: string; };
@@ -80,6 +85,11 @@ interface ShowProps {
         budget: number;
         currency?: string;
         project_type?: string;
+        project_scope?: string;
+        internal_category?: string;
+        project_sponsor?: { id: number; name: string };
+        business_case?: string;
+        target_roi_savings?: string;
     };
     evmMetrics?: {
         planned_value: number;
@@ -208,6 +218,10 @@ export default function Show() {
         name: '',
         description: '',
         budget: 0,
+        project_scope: 'client',
+        internal_category: 'opex',
+        business_case: '',
+        target_roi_savings: '',
         start_date: '',
         end_date: '',
         status: 'Ongoing',
@@ -238,6 +252,10 @@ export default function Show() {
                 name: projectData.name || '',
                 description: projectData.description || '',
                 budget: projectData.budget || 0,
+                project_scope: projectData.project_scope || 'client',
+                internal_category: projectData.internal_category || 'opex',
+                business_case: projectData.business_case || '',
+                target_roi_savings: projectData.target_roi_savings || '',
                 start_date: projectData.start_date || '',
                 end_date: projectData.end_date || '',
                 status: projectData.status || 'Ongoing',
@@ -429,7 +447,13 @@ export default function Show() {
             {/* EVM Financial Banner */}
             {evmMetrics && (
                 <div className="mb-6">
-                    <EvmFinancialBanner metrics={evmMetrics} shareUrl={shareUrl} />
+                    <EvmFinancialBanner 
+                        metrics={evmMetrics as any} 
+                        shareUrl={shareUrl || ''} 
+                        projectType={projectStats.project_type || 'general'}
+                        projectScope={projectStats.project_scope || 'client'}
+                        internalCategory={projectStats.internal_category}
+                    />
                 </div>
             )}
 
@@ -638,56 +662,97 @@ export default function Show() {
                     </CardContent>
                 </Card>
 
-                <Card className="md:col-span-3">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-xl">{t('Clients')}</CardTitle>
-                        {auth.user?.permissions?.includes('invite-project-client') && (
-                        <TooltipProvider>
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button size="sm" onClick={() => setIsClientModalOpen(true)}>
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{t('Create')}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        )}
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {project.clients?.map((client) => (
-                                <div key={client.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                    <span className="text-sm">{client.name}</span>
-                                    {auth.user?.permissions?.includes('delete-project-client') && (
-                                        <TooltipProvider>
-                                            <Tooltip delayDuration={0}>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => openDeleteClientDialog(client.id, client.name)}
-                                                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{t('Delete')}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
+                {projectStats.project_scope === 'internal' ? (
+                    <Card className="md:col-span-3 border border-purple-200/70 shadow-sm bg-purple-50/20 dark:bg-purple-950/20">
+                        <CardHeader className="flex flex-row items-center justify-between pb-3 bg-purple-50/50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-900/50">
+                            <CardTitle className="text-base font-bold flex items-center gap-2 text-purple-950 dark:text-purple-200">
+                                <ShieldCheck className="h-5 w-5 text-purple-600" />
+                                {t('Internal Governance')}
+                            </CardTitle>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 uppercase tracking-wider">
+                                {projectStats.internal_category?.toUpperCase() || 'OPEX'}
+                            </span>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <div>
+                                <span className="text-[11px] text-slate-500 font-medium block">{t('Executive Sponsor')}</span>
+                                <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {projectStats.project_sponsor?.name || project.creator?.name || t('Internal PMO')}
+                                </span>
+                            </div>
+                            {projectStats.target_roi_savings && (
+                                <div>
+                                    <span className="text-[11px] text-slate-500 font-medium block">{t('Target Business ROI / Savings')}</span>
+                                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {projectStats.target_roi_savings}
+                                    </span>
                                 </div>
-                            ))}
-                            {(!project.clients || project.clients.length === 0) && (
-                                <p className="text-sm text-gray-500">{t('No clients added yet.')}</p>
                             )}
-                        </div>
-                    </CardContent>
-                </Card>
+                            {projectStats.business_case && (
+                                <div>
+                                    <span className="text-[11px] text-slate-500 font-medium block">{t('Business Objective')}</span>
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
+                                        {projectStats.business_case}
+                                    </p>
+                                </div>
+                            )}
+                            <div className="pt-1 text-[11px] text-purple-700 dark:text-purple-300 bg-purple-100/60 dark:bg-purple-900/40 p-2 rounded-lg">
+                                ℹ️ {t('Internal company initiative. External client sharing & invites are suppressed.')}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card className="md:col-span-3">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-xl">{t('Clients')}</CardTitle>
+                            {auth.user?.permissions?.includes('invite-project-client') && (
+                            <TooltipProvider>
+                                <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                        <Button size="sm" onClick={() => setIsClientModalOpen(true)}>
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{t('Create')}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            )}
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {project.clients?.map((client) => (
+                                    <div key={client.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <span className="text-sm">{client.name}</span>
+                                        {auth.user?.permissions?.includes('delete-project-client') && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={0}>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => openDeleteClientDialog(client.id, client.name)}
+                                                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{t('Delete')}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                    </div>
+                                ))}
+                                {(!project.clients || project.clients.length === 0) && (
+                                    <p className="text-sm text-gray-500">{t('No clients added yet.')}</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card className="md:col-span-3">
                     <CardHeader>
@@ -792,7 +857,7 @@ export default function Show() {
                                         },
                                         {
                                             key: 'approval_status',
-                                            header: t('Gate Approval'),
+                                            header: projectStats.project_scope === 'internal' ? t('Sponsor / PMO Sign-off') : t('Gate Approval'),
                                             render: (_: any, milestone: any) => {
                                                 const status = milestone.approval_status || 'pending';
                                                 return (
@@ -1076,6 +1141,7 @@ export default function Show() {
                     tasks={projectTasks}
                     currency={projectStats.currency || 'ETB'}
                     canApprove={Boolean(auth.user?.permissions?.includes('edit-project') || auth.user?.permissions?.includes('manage-project-timesheet'))}
+                    isInternal={projectStats.project_scope === 'internal'}
                 />
             </TabsContent>
 
@@ -1457,6 +1523,38 @@ export default function Show() {
                                     </SelectContent>
                                 </Select>
                                 <InputError message={editProjectErrors.status} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label>{t('Project Scope')}</Label>
+                                    <Select value={editProjectData.project_scope} onValueChange={(val) => setEditProjectData('project_scope', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="client">{t('Client Delivery')}</SelectItem>
+                                            <SelectItem value="internal">{t('In-House / Internal')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {editProjectData.project_scope === 'internal' && (
+                                    <div>
+                                        <Label>{t('Internal Category')}</Label>
+                                        <Select value={editProjectData.internal_category} onValueChange={(val) => setEditProjectData('internal_category', val)}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="capex">{t('CapEx - Asset Investment')}</SelectItem>
+                                                <SelectItem value="opex">{t('OpEx - Operational Improvement')}</SelectItem>
+                                                <SelectItem value="rd">{t('R&D - Prototyping')}</SelectItem>
+                                                <SelectItem value="maintenance">{t('Infrastructure / Overhaul')}</SelectItem>
+                                                <SelectItem value="strategic">{t('Strategic PMO Initiative')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                             </div>
 
                             <div>

@@ -31,9 +31,10 @@ interface TimesheetsTabProps {
     tasks: Array<{ id: number; title: string }>;
     currency: string;
     canApprove: boolean;
+    isInternal?: boolean;
 }
 
-export function TimesheetsTab({ projectId, timesheets, tasks, currency, canApprove }: TimesheetsTabProps) {
+export function TimesheetsTab({ projectId, timesheets, tasks, currency, canApprove, isInternal = false }: TimesheetsTabProps) {
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
 
     const { data, setData, post, processing, reset, errors } = useForm({
@@ -169,7 +170,9 @@ export function TimesheetsTab({ projectId, timesheets, tasks, currency, canAppro
                             </div>
 
                             <div>
-                                <Label className="text-xs">Hourly Rate ({currency})</Label>
+                                <Label className="text-xs">
+                                    {isInternal ? `Internal Loaded Cost/hr (${currency})` : `Billing Rate (${currency})`}
+                                </Label>
                                 <Input
                                     type="number"
                                     step="1"
@@ -198,7 +201,7 @@ export function TimesheetsTab({ projectId, timesheets, tasks, currency, canAppro
                                         id="billable-toggle"
                                     />
                                     <Label htmlFor="billable-toggle" className="text-xs font-medium cursor-pointer">
-                                        Billable to Client
+                                        {isInternal ? 'Capitalize to Asset / Cost Center' : 'Billable to Client'}
                                     </Label>
                                 </div>
                                 <div className="flex gap-2">

@@ -65,6 +65,7 @@ class ProjectController extends Controller
                 })
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('status'), fn($q) => $q->where('status', request('status')))
+                ->when(request('scope'), fn($q, $s) => $q->where('project_scope', $s))
                 ->when(request('date'), fn($q) => $q->where('start_date', '<=', request('date'))->where('end_date', '>=', request('date')))
 
                 ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
@@ -114,6 +115,11 @@ class ProjectController extends Controller
             $project                = new Project();
             $project->name          = $validated['name'];
             $project->project_type  = $validated['project_type'] ?? 'general';
+            $project->project_scope = $validated['project_scope'] ?? 'client';
+            $project->internal_category = $validated['internal_category'] ?? null;
+            $project->project_sponsor_id = $validated['project_sponsor_id'] ?? null;
+            $project->business_case = $validated['business_case'] ?? null;
+            $project->target_roi_savings = $validated['target_roi_savings'] ?? null;
             $project->currency_code = $validated['currency_code'] ?? 'ETB';
             $project->description   = $validated['description'] ?? null;
             $project->budget        = $validated['budget'] ?? 0;
@@ -146,6 +152,7 @@ class ProjectController extends Controller
             $project->load([
                 'teamMembers:id,name,avatar',
                 'clients:id,name',
+                'projectSponsor:id,name,avatar',
                 'milestones.approver:id,name',
                 'timesheets.user:id,name,avatar',
                 'timesheets.task:id,title',
@@ -250,6 +257,11 @@ class ProjectController extends Controller
                     'budget' => $project->budget,
                     'currency' => $project->currency_code ?? 'ETB',
                     'project_type' => $project->project_type ?? 'general',
+                    'project_scope' => $project->project_scope ?? 'client',
+                    'internal_category' => $project->internal_category,
+                    'project_sponsor' => $project->projectSponsor,
+                    'business_case' => $project->business_case,
+                    'target_roi_savings' => $project->target_roi_savings,
                 ],
                 'evmMetrics' => $evmMetrics,
                 'shareUrl' => $shareUrl,
@@ -272,7 +284,11 @@ class ProjectController extends Controller
     {
         if (Auth::user()->can('edit-project') && $project->created_by == creatorId()) {
             return response()->json([
-                'project' => $project->only(['id', 'name', 'description', 'budget', 'start_date', 'end_date', 'status'])
+                'project' => $project->only([
+                    'id', 'name', 'description', 'budget', 'start_date', 'end_date', 'status',
+                    'project_type', 'project_scope', 'internal_category', 'project_sponsor_id',
+                    'business_case', 'target_roi_savings'
+                ])
             ]);
         } else {
             return response()->json(['error' => 'Permission denied'], 403);
@@ -287,6 +303,11 @@ class ProjectController extends Controller
 
             $project->name          = $validated['name'];
             if (isset($validated['project_type'])) $project->project_type = $validated['project_type'];
+            if (isset($validated['project_scope'])) $project->project_scope = $validated['project_scope'];
+            if (isset($validated['internal_category'])) $project->internal_category = $validated['internal_category'];
+            if (array_key_exists('project_sponsor_id', $validated)) $project->project_sponsor_id = $validated['project_sponsor_id'];
+            if (array_key_exists('business_case', $validated)) $project->business_case = $validated['business_case'];
+            if (array_key_exists('target_roi_savings', $validated)) $project->target_roi_savings = $validated['target_roi_savings'];
             if (isset($validated['currency_code'])) $project->currency_code = $validated['currency_code'];
             $project->description   = $validated['description'] ?? null;
             $project->budget        = $validated['budget'] ?? 0;

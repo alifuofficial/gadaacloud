@@ -16,6 +16,11 @@ class UpdateProjectRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'project_type' => 'nullable|string|in:general,construction,manufacturing,import_export,consulting',
+            'project_scope' => 'nullable|string|in:client,internal',
+            'internal_category' => 'nullable|string|in:capex,opex,rd,maintenance,strategic',
+            'project_sponsor_id' => 'nullable|exists:users,id',
+            'business_case' => 'nullable|string',
+            'target_roi_savings' => 'nullable|string|max:255',
             'currency_code' => 'nullable|string|max:10',
             'description' => 'nullable|string',
             'budget' => 'required|numeric|min:0',

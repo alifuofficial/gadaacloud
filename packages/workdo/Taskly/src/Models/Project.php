@@ -16,6 +16,11 @@ class Project extends Model
     protected $fillable = [
         'name',
         'project_type',
+        'project_scope',
+        'internal_category',
+        'project_sponsor_id',
+        'business_case',
+        'target_roi_savings',
         'description',
         'budget',
         'currency_code',
@@ -31,6 +36,11 @@ class Project extends Model
         'cost_center_id',
         'created_by',
     ];
+
+    public function projectSponsor()
+    {
+        return $this->belongsTo(User::class, 'project_sponsor_id');
+    }
 
     public function teamMembers()
     {

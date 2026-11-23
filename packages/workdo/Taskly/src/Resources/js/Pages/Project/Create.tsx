@@ -24,6 +24,11 @@ export default function Create({ onSuccess, users }: CreateProps) {
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
+        project_scope: 'client', // 'client' or 'internal'
+        internal_category: 'opex',
+        project_sponsor_id: '' as string | number,
+        business_case: '',
+        target_roi_savings: '',
         project_type: 'general',
         currency_code: 'ETB',
         user_ids: [] as number[],
@@ -70,6 +75,90 @@ export default function Create({ onSuccess, users }: CreateProps) {
                         {nameAI.map(field => <div key={field.id}>{field.component}</div>)}
                     </div>
                 </div>
+
+                {/* Project Scope (Client vs In-House) */}
+                <div>
+                    <Label required>{t('Project Nature / Scope')}</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                        <button
+                            type="button"
+                            onClick={() => setData('project_scope', 'client')}
+                            className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1 transition-all ${
+                                data.project_scope === 'client'
+                                    ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm dark:bg-blue-950 dark:border-blue-400 dark:text-blue-200'
+                                    : 'border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-800 dark:hover:bg-slate-900'
+                            }`}
+                        >
+                            <span>🏢 {t('Client-Facing Project')}</span>
+                            <span className="text-[10px] font-normal text-slate-500">{t('External customer, billable delivery')}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setData('project_scope', 'internal')}
+                            className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1 transition-all ${
+                                data.project_scope === 'internal'
+                                    ? 'bg-purple-50 border-purple-600 text-purple-700 shadow-sm dark:bg-purple-950 dark:border-purple-400 dark:text-purple-200'
+                                    : 'border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-800 dark:hover:bg-slate-900'
+                            }`}
+                        >
+                            <span>🏭 {t('In-House / Internal Project')}</span>
+                            <span className="text-[10px] font-normal text-slate-500">{t('CapEx/OpEx, company initiative')}</span>
+                        </button>
+                    </div>
+                    {errors.project_scope && <p className="text-sm text-red-500 mt-1">{errors.project_scope}</p>}
+                </div>
+
+                {/* In-House Specific Fields */}
+                {data.project_scope === 'internal' && (
+                    <div className="p-3.5 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-2xl space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label required className="text-xs">{t('Internal Accounting Class')}</Label>
+                                <Select
+                                    value={data.internal_category}
+                                    onValueChange={(val) => setData('internal_category', val)}
+                                >
+                                    <SelectTrigger className="w-full text-xs">
+                                        <SelectValue placeholder={t('Select Category')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="capex">{t('CapEx - Capital Asset Investment')}</SelectItem>
+                                        <SelectItem value="opex">{t('OpEx - Operational Improvement')}</SelectItem>
+                                        <SelectItem value="rd">{t('R&D - New Product / Prototyping')}</SelectItem>
+                                        <SelectItem value="maintenance">{t('Infrastructure / Overhaul')}</SelectItem>
+                                        <SelectItem value="strategic">{t('Strategic PMO Initiative')}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-xs">{t('Executive Project Sponsor')}</Label>
+                                <Select
+                                    value={data.project_sponsor_id?.toString() || ''}
+                                    onValueChange={(val) => setData('project_sponsor_id', val ? parseInt(val) : '')}
+                                >
+                                    <SelectTrigger className="w-full text-xs">
+                                        <SelectValue placeholder={t('Select Sponsor')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {users.map(u => (
+                                            <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label className="text-xs">{t('Target Business Outcome / ROI')}</Label>
+                            <Input
+                                value={data.target_roi_savings}
+                                onChange={(e) => setData('target_roi_savings', e.target.value)}
+                                placeholder={t('e.g. Save $50,000/yr or reduce delivery time by 30%')}
+                                className="text-xs"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>

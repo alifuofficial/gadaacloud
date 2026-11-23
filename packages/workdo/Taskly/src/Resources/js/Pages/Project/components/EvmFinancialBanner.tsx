@@ -27,9 +27,17 @@ interface EvmBannerProps {
     metrics: EvmMetrics;
     shareUrl?: string;
     projectType?: string;
+    projectScope?: string;
+    internalCategory?: string;
 }
 
-export function EvmFinancialBanner({ metrics, shareUrl = '', projectType = 'general' }: EvmBannerProps) {
+export function EvmFinancialBanner({ 
+    metrics, 
+    shareUrl = '', 
+    projectType = 'general',
+    projectScope = 'client',
+    internalCategory
+}: EvmBannerProps) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -46,6 +54,15 @@ export function EvmFinancialBanner({ metrics, shareUrl = '', projectType = 'gene
                     <Badge variant="outline" className="capitalize text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {projectType} Workspace
                     </Badge>
+                    {projectScope === 'internal' ? (
+                        <Badge className="bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300 text-xs font-semibold uppercase tracking-wider">
+                            In-House / Internal ({internalCategory || 'OpEx'})
+                        </Badge>
+                    ) : (
+                        <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300 text-xs font-semibold">
+                            Client Delivery
+                        </Badge>
+                    )}
                     <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
                     <span className="text-xs text-slate-500 font-mono">
                         Base Currency: <strong>{metrics.currency}</strong>
@@ -62,40 +79,49 @@ export function EvmFinancialBanner({ metrics, shareUrl = '', projectType = 'gene
                     )}
                 </div>
 
-                {/* Client Magic Link Pill */}
+                {/* Scope Action Pill */}
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-full text-xs">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-emerald-800 dark:text-emerald-300 font-medium hidden sm:inline">Client Live Portal:</span>
-                        <code className="text-[11px] text-emerald-900 dark:text-emerald-200 font-mono truncate max-w-[160px]">
-                            {shareUrl}
-                        </code>
-                        <TooltipProvider>
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={handleCopy}
-                                        className="h-6 w-6 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
-                                    >
-                                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{copied ? 'Link Copied!' : 'Copy Client Tracking Link'}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <a
-                            href={shareUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-emerald-700 hover:text-emerald-900 p-1"
-                        >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                    </div>
+                    {projectScope === 'internal' ? (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-full text-xs">
+                            <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <span className="text-purple-900 dark:text-purple-200 font-medium">Internal Cost Center Project</span>
+                        </div>
+                    ) : (
+                        shareUrl && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-full text-xs">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-emerald-800 dark:text-emerald-300 font-medium hidden sm:inline">Client Live Portal:</span>
+                                <code className="text-[11px] text-emerald-900 dark:text-emerald-200 font-mono truncate max-w-[160px]">
+                                    {shareUrl}
+                                </code>
+                                <TooltipProvider>
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                onClick={handleCopy}
+                                                className="h-6 w-6 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
+                                            >
+                                                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{copied ? 'Link Copied!' : 'Copy Client Tracking Link'}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <a
+                                    href={shareUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-emerald-700 hover:text-emerald-900 p-1"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )
+                    )}
                 </div>
             </div>
 
