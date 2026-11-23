@@ -33,10 +33,14 @@ export const projectCompanyMenu = (t: (key: string) => string) => [
             },
             {
                 title: t('System Setup'),
-                href: route('project.task-stages.index'),
+                href: route('project.settings.index'),
                 permission: 'manage-task-stages',
                 order: 20,
-                activePaths: [route('project.bug-stages.index')],
+                activePaths: [
+                    route('project.settings.index'),
+                    route('project.task-stages.index'),
+                    route('project.bug-stages.index')
+                ],
             },
         ],
     },

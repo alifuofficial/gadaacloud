@@ -21,16 +21,20 @@ interface CreateProps {
 
 export default function Create({ onSuccess, users }: CreateProps) {
     const { t } = useTranslation();
+    const pageProps = usePage().props as any;
+    const defaultScope = pageProps?.companyDefaults?.default_project_scope || 'client';
+    const defaultInternalCategory = pageProps?.companyDefaults?.default_internal_category || 'opex';
+    const defaultCurrency = pageProps?.companyDefaults?.default_currency || 'ETB';
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        project_scope: 'client', // 'client' or 'internal'
-        internal_category: 'opex',
+        project_scope: defaultScope, // 'client' or 'internal'
+        internal_category: defaultInternalCategory,
         project_sponsor_id: '' as string | number,
         business_case: '',
         target_roi_savings: '',
         project_type: 'general',
-        currency_code: 'ETB',
+        currency_code: defaultCurrency,
         user_ids: [] as number[],
         description: '',
         budget: 0,

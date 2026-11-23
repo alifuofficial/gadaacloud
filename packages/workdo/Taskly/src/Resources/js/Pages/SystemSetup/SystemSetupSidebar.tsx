@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
-import { Tag, Bug } from "lucide-react";
+import { Tag, Bug, SlidersHorizontal } from "lucide-react";
 
 interface SidebarItem {
     key: string;
@@ -25,6 +25,13 @@ export default function SystemSetupSidebar({ activeItem, onSectionChange }: Syst
 
     const sidebarItems: SidebarItem[] = [
         {
+            key: 'settings',
+            label: t('Project Preferences'),
+            icon: SlidersHorizontal,
+            route: 'project.settings.index',
+            permission: 'manage-project'
+        },
+        {
             key: 'task-stages',
             label: t('Task Stage'),
             icon: Tag,
@@ -41,7 +48,8 @@ export default function SystemSetupSidebar({ activeItem, onSectionChange }: Syst
     ];
 
     const filteredItems = sidebarItems.filter(item =>
-        auth.user?.permissions?.includes(item.permission)
+        auth.user?.permissions?.includes(item.permission) ||
+        (item.key === 'settings' && (auth.user?.permissions?.includes('manage-project') || auth.user?.permissions?.includes('manage-task-stages')))
     );
 
     return (

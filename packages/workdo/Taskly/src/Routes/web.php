@@ -11,6 +11,7 @@ use Workdo\Taskly\Http\Controllers\ProjectReportController;
 use Workdo\Taskly\Http\Controllers\TaskTimesheetController;
 use Workdo\Taskly\Http\Controllers\ProjectWorkspaceController;
 use Workdo\Taskly\Http\Controllers\ProjectMagicLinkController;
+use Workdo\Taskly\Http\Controllers\ProjectSettingsController;
 
 // Public Client Tracking Portal (No Login Required)
 Route::middleware(['web'])->group(function () {
@@ -105,6 +106,9 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Taskly'])->group(
     Route::post('/project/{project}/duplicate', [ProjectController::class, 'duplicate'])->name('project.duplicate');
 
     // Setup routes
+    Route::get('/project-setup/settings', [ProjectSettingsController::class, 'index'])->name('project.settings.index');
+    Route::post('/project-setup/settings', [ProjectSettingsController::class, 'store'])->name('project.settings.store');
+
     Route::get('/project-setup/task-stages', [TaskStageController::class, 'index'])->name('project.task-stages.index');
     Route::post('/project-setup/task-stages/store', [TaskStageController::class, 'store'])->name('project.task-stages.store');
     Route::put('/project-setup/task-stages/reorder', [TaskStageController::class, 'reorder'])->name('project.task-stages.reorder');

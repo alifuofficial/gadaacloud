@@ -152,6 +152,8 @@ export default function Show() {
         logistics,
         projectTasks = []
     } = usePage<ShowProps>().props;
+    const pageProps = usePage().props as any;
+    const companyPreferences = pageProps.companyPreferences || {};
     const videoHubButtons = usePageButtons('projectShowButtons', { project });
     const spreadsheetButtons = usePageButtons('spreadsheetBtn', { module: 'Project', sub_module: project.id });
     const businessProcessMappingButtons = usePageButtons('businessProcessMappingBtn', { module: 'Taskly', submodule: 'Project', id: project.id });
@@ -445,7 +447,7 @@ export default function Show() {
             <Head title={project.name} />
 
             {/* EVM Financial Banner */}
-            {evmMetrics && (
+            {evmMetrics && (companyPreferences.enable_evm !== 'off') && (
                 <div className="mb-6">
                     <EvmFinancialBanner 
                         metrics={evmMetrics as any} 
@@ -463,13 +465,15 @@ export default function Show() {
                         <LayoutDashboard className="h-4 w-4" />
                         <span>{t('Overview & Milestones')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="gantt" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
-                        <GitGraph className="h-4 w-4" />
-                        <span>{t('Gantt & Dependencies')}</span>
-                        <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                            {projectTasks.length}
-                        </span>
-                    </TabsTrigger>
+                    {companyPreferences.enable_gantt_dependencies !== 'off' && (
+                        <TabsTrigger value="gantt" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
+                            <GitGraph className="h-4 w-4" />
+                            <span>{t('Gantt & Dependencies')}</span>
+                            <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                {projectTasks.length}
+                            </span>
+                        </TabsTrigger>
+                    )}
                     <TabsTrigger value="timesheets" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
                         <Clock className="h-4 w-4" />
                         <span>{t('Timesheets & Billable Hours')}</span>
@@ -477,7 +481,7 @@ export default function Show() {
                             {timesheets.length}
                         </span>
                     </TabsTrigger>
-                    {(projectStats.project_type === 'construction' || boqs.length > 0 || siteDiaries.length > 0) && (
+                    {(companyPreferences.enable_construction !== 'off') && (projectStats.project_type === 'construction' || boqs.length > 0 || siteDiaries.length > 0) && (
                         <TabsTrigger value="construction" className="flex items-center gap-2 data-[state=active]:bg-amber-600 data-[state=active]:text-white font-medium shadow-sm">
                             <HardHat className="h-4 w-4" />
                             <span>{t('Construction Workspace (BoQ & Diary)')}</span>
@@ -486,7 +490,7 @@ export default function Show() {
                             </span>
                         </TabsTrigger>
                     )}
-                    {(projectStats.project_type === 'import_export' || !!logistics) && (
+                    {(companyPreferences.enable_logistics !== 'off') && (projectStats.project_type === 'import_export' || !!logistics) && (
                         <TabsTrigger value="logistics" className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white font-medium shadow-sm">
                             <Ship className="h-4 w-4" />
                             <span>{t('Import/Export Pipeline & Demurrage')}</span>

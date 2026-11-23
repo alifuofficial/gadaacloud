@@ -98,9 +98,16 @@ class ProjectController extends Controller
                 return $project;
             });
 
+            $companyDefaults = [
+                'default_project_scope' => company_setting('taskly_default_project_scope') ?: 'client',
+                'default_internal_category' => company_setting('taskly_default_internal_category') ?: 'opex',
+                'default_currency' => company_setting('taskly_default_currency') ?: 'ETB',
+            ];
+
             return Inertia::render('Taskly/Project/Index', [
                 'items' => $items,
                 'users' => $users,
+                'companyDefaults' => $companyDefaults,
             ]);
         } else {
             return back()->with('error', __('Permission denied'));
@@ -115,12 +122,12 @@ class ProjectController extends Controller
             $project                = new Project();
             $project->name          = $validated['name'];
             $project->project_type  = $validated['project_type'] ?? 'general';
-            $project->project_scope = $validated['project_scope'] ?? 'client';
-            $project->internal_category = $validated['internal_category'] ?? null;
+            $project->project_scope = $validated['project_scope'] ?? (company_setting('taskly_default_project_scope') ?: 'client');
+            $project->internal_category = $validated['internal_category'] ?? ($project->project_scope === 'internal' ? (company_setting('taskly_default_internal_category') ?: 'opex') : null);
             $project->project_sponsor_id = $validated['project_sponsor_id'] ?? null;
             $project->business_case = $validated['business_case'] ?? null;
             $project->target_roi_savings = $validated['target_roi_savings'] ?? null;
-            $project->currency_code = $validated['currency_code'] ?? 'ETB';
+            $project->currency_code = $validated['currency_code'] ?? (company_setting('taskly_default_currency') ?: 'ETB');
             $project->description   = $validated['description'] ?? null;
             $project->budget        = $validated['budget'] ?? 0;
             $project->estimated_hrs = $validated['estimated_hrs'] ?? 0;
@@ -274,6 +281,15 @@ class ProjectController extends Controller
                 'chartLines' => $chartLines,
                 'activityLogs' => $activityLogs,
                 'projectFiles' => ProjectFile::where('project_id', $project->id)->get(),
+                'companyPreferences' => [
+                    'enable_evm' => company_setting('taskly_enable_evm') ?? 'on',
+                    'enable_construction' => company_setting('taskly_enable_construction') ?? 'on',
+                    'enable_logistics' => company_setting('taskly_enable_logistics') ?? 'on',
+                    'enable_gantt_dependencies' => company_setting('taskly_enable_gantt_dependencies') ?? 'on',
+                    'enable_milestone_approvals' => company_setting('taskly_enable_milestone_approvals') ?? 'on',
+                    'cpi_warning_threshold' => (float)(company_setting('taskly_cpi_warning_threshold') ?: 0.90),
+                    'spi_warning_threshold' => (float)(company_setting('taskly_spi_warning_threshold') ?: 0.90),
+                ],
             ]);
         } else {
             return back()->with('error', __('Permission denied'));
