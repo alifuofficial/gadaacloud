@@ -71,7 +71,12 @@ class ProjectController extends Controller
                 ->paginate(request('per_page', 10))
                 ->withQueryString();
 
-            $users = User::where('created_by', creatorId())->emp()->get(['id', 'name']);
+            $creatorId = creatorId();
+            $users = User::where('id', $creatorId)
+                ->orWhere(function ($q) use ($creatorId) {
+                    $q->where('created_by', $creatorId)->emp();
+                })
+                ->get(['id', 'name']);
 
             // Transform items to include team_members with avatars and task count
             $items->getCollection()->transform(function ($project) {
@@ -108,8 +113,8 @@ class ProjectController extends Controller
 
             $project                = new Project();
             $project->name          = $validated['name'];
-            $project->description   = $validated['description'];
-            $project->budget        = $validated['budget'];
+            $project->description   = $validated['description'] ?? null;
+            $project->budget        = $validated['budget'] ?? 0;
             $project->start_date    = $validated['start_date'];
             $project->end_date      = $validated['end_date'];
             $project->status        = 'Ongoing';
