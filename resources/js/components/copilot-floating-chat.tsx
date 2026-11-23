@@ -188,27 +188,15 @@ function CopilotFloatingChatInner() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="group relative flex items-center gap-3 bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 text-white p-3 pr-4 rounded-full shadow-xl hover:shadow-emerald-500/20 transition-all hover:scale-105 border border-emerald-400/30"
+                    title={isSuperadmin ? 'Superadmin Copilot' : 'GadaaCloud Copilot'}
+                    aria-label={isSuperadmin ? 'Superadmin Copilot' : 'GadaaCloud Copilot'}
+                    className="group relative flex items-center justify-center w-11 h-11 bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white rounded-full shadow-lg hover:shadow-emerald-500/30 transition-all duration-200 hover:scale-110 active:scale-95 border border-emerald-400/40"
                 >
-                    <div className="relative">
-                        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md">
-                            <Bot className="w-5 h-5 text-emerald-200 group-hover:rotate-12 transition-transform" />
-                        </div>
-                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                        </span>
-                    </div>
-                    <div className="text-left">
-                        <div className="text-xs font-bold tracking-wide text-white flex items-center gap-1">
-                            {isSuperadmin ? 'Superadmin Copilot' : 'GadaaCloud Copilot'}
-                            <Sparkles className="w-3 h-3 text-emerald-300 animate-pulse" />
-                        </div>
-                        <div className="text-[9px] text-emerald-200/80 font-mono flex items-center gap-1">
-                            <Brain className="w-2.5 h-2.5 text-emerald-400" />
-                            Memory Active
-                        </div>
-                    </div>
+                    <Bot className="w-5 h-5 text-emerald-100 group-hover:rotate-12 transition-transform" />
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-slate-950"></span>
+                    </span>
                 </button>
             )}
 
