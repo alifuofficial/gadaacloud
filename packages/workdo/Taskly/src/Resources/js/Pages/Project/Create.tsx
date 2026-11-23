@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MultiSelectEnhanced } from '@/components/ui/multi-select-enhanced';
 import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormFields } from '@/hooks/useFormFields';
 
 interface CreateProps {
@@ -23,7 +24,9 @@ export default function Create({ onSuccess, users }: CreateProps) {
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        user_ids: [],
+        project_type: 'general',
+        currency_code: 'ETB',
+        user_ids: [] as number[],
         description: '',
         budget: 0,
         start_date: '',
@@ -44,7 +47,7 @@ export default function Create({ onSuccess, users }: CreateProps) {
     };
 
     return (
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>{t('Create Project')}</DialogTitle>
             </DialogHeader>
@@ -67,6 +70,49 @@ export default function Create({ onSuccess, users }: CreateProps) {
                         {nameAI.map(field => <div key={field.id}>{field.component}</div>)}
                     </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label required>{t('Industry / Workspace Type')}</Label>
+                        <Select
+                            value={data.project_type}
+                            onValueChange={(val) => setData('project_type', val)}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder={t('Select Type')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="general">{t('General / IT / Agency')}</SelectItem>
+                                <SelectItem value="construction">{t('Construction & Real Estate (BoQ)')}</SelectItem>
+                                <SelectItem value="import_export">{t('Import / Export Logistics (LC & Port)')}</SelectItem>
+                                <SelectItem value="manufacturing">{t('Manufacturing & Assembly')}</SelectItem>
+                                <SelectItem value="consulting">{t('Consulting & Professional Services')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.project_type && <p className="text-sm text-red-500 mt-1">{errors.project_type}</p>}
+                    </div>
+
+                    <div>
+                        <Label required>{t('Currency')}</Label>
+                        <Select
+                            value={data.currency_code}
+                            onValueChange={(val) => setData('currency_code', val)}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder={t('Select Currency')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ETB">ETB (Ethiopian Birr)</SelectItem>
+                                <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                                <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                                <SelectItem value="GBP">GBP (British Pound)</SelectItem>
+                                <SelectItem value="AED">AED (UAE Dirham)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.currency_code && <p className="text-sm text-red-500 mt-1">{errors.currency_code}</p>}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <Label required>{t('Start Date')}</Label>
@@ -87,6 +133,7 @@ export default function Create({ onSuccess, users }: CreateProps) {
                         {errors.end_date && <p className="text-sm text-red-500 mt-1">{errors.end_date}</p>}
                     </div>
                 </div>
+
                 <div>
                     <Label required>{t('Users')}</Label>
                     <MultiSelectEnhanced

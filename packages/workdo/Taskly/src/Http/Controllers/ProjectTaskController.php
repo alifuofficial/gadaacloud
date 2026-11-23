@@ -111,12 +111,19 @@ class ProjectTaskController extends Controller
             $validated = $request->validated();
             $task = new ProjectTask();
             $task->project_id = $validated['project_id'];
-            $task->milestone_id = $validated['milestone_id'];
+            $task->milestone_id = $validated['milestone_id'] ?? null;
             $task->title = $validated['title'];
-            $task->priority = $validated['priority'];
-            $task->assigned_to = is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to'];
-            $task->duration = $validated['duration'];
-            $task->description = $validated['description'];
+            $task->priority = $validated['priority'] ?? 'Medium';
+            $task->assigned_to = isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null;
+            $task->duration = $validated['duration'] ?? null;
+            $task->start_date = $validated['start_date'] ?? null;
+            $task->due_date = $validated['due_date'] ?? null;
+            $task->estimated_hours = $validated['estimated_hours'] ?? 0;
+            $task->progress = $validated['progress'] ?? 0;
+            $task->predecessor_id = $validated['predecessor_id'] ?? null;
+            $task->dependency_type = $validated['dependency_type'] ?? 'finish_to_start';
+            $task->is_critical = !empty($validated['is_critical']);
+            $task->description = $validated['description'] ?? null;
             if (isset($validated['stage_id']) && is_numeric($validated['stage_id'])) {
                 $task->stage_id = (int) $validated['stage_id'];
             } else {
@@ -324,9 +331,16 @@ class ProjectTaskController extends Controller
             $task->title = $validated['title'];
             $task->priority = $validated['priority'] ?? 'Medium';
             $task->assigned_to = isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null;
-            $task->description = $validated['description'];
-            $task->duration = $validated['duration'];
-            $task->stage_id = $validated['stage_id'];
+            $task->description = $validated['description'] ?? null;
+            $task->duration = $validated['duration'] ?? null;
+            if (isset($validated['start_date'])) $task->start_date = $validated['start_date'];
+            if (isset($validated['due_date'])) $task->due_date = $validated['due_date'];
+            if (isset($validated['estimated_hours'])) $task->estimated_hours = $validated['estimated_hours'];
+            if (isset($validated['progress'])) $task->progress = $validated['progress'];
+            if (array_key_exists('predecessor_id', $validated)) $task->predecessor_id = $validated['predecessor_id'];
+            if (isset($validated['dependency_type'])) $task->dependency_type = $validated['dependency_type'];
+            if (isset($validated['is_critical'])) $task->is_critical = (bool) $validated['is_critical'];
+            if (isset($validated['stage_id'])) $task->stage_id = $validated['stage_id'];
             $task->save();
 
             UpdateProjectTask::dispatch($request, $task);

@@ -4,6 +4,7 @@ namespace Workdo\Taskly\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 
 class ProjectMilestone extends Model
 {
@@ -18,6 +19,10 @@ class ProjectMilestone extends Model
         'summary',
         'status',
         'progress',
+        'approved_by',
+        'approved_at',
+        'approval_status',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -27,11 +32,17 @@ class ProjectMilestone extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'progress' => 'integer',
+            'approved_at' => 'datetime',
         ];
     }
 
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

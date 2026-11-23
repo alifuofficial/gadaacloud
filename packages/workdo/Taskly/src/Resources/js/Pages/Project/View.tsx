@@ -18,26 +18,41 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency, formatDate, downloadFile } from '@/utils/helpers';
 import { getImagePath } from '@/utils/helpers';
-import { Plus, Trash2, Edit, FolderKanban, Kanban, List, Bug, CheckSquare, Calendar, Activity, Image, File, FileText, Video, Music, Download, Eye } from "lucide-react";
+import { 
+    Plus, Trash2, Edit, FolderKanban, Kanban, List, Bug, CheckSquare, 
+    Calendar, Activity, Image, File, FileText, Video, Music, Download, Eye,
+    CheckCircle2, XCircle, Clock, GitGraph, HardHat, Ship, LayoutDashboard
+} from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { DataTable } from "@/components/ui/data-table";
 import NoRecordsFound from '@/components/no-records-found';
 import InputError from '@/components/ui/input-error';
 import { LineChart } from '@/components/charts/LineChart';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EvmFinancialBanner from './components/EvmFinancialBanner';
+import GanttDependenciesTab from './components/GanttDependenciesTab';
+import TimesheetsTab from './components/TimesheetsTab';
+import ConstructionWorkspaceTab from './components/ConstructionWorkspaceTab';
+import LogisticsWorkspaceTab from './components/LogisticsWorkspaceTab';
 
 import MediaPicker from "@/components/MediaPicker";
 import axios from 'axios';
 import { useFormFields } from '@/hooks/useFormFields';
 
-
-
 interface Project {
     id: number;
     name: string;
     description?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    budget?: number;
+    currency_code?: string;
+    project_type?: string;
+    share_token?: string;
     user: { id: number; name: string; };
     creator: { id: number; name: string; };
-    team_members: Array<{ id: number; name: string; }>;
+    team_members: Array<{ id: number; name: string; email?: string }>;
     clients: Array<{ id: number; name: string; }>;
     milestones: Array<{
         id: number;
@@ -48,19 +63,43 @@ interface Project {
         summary?: string;
         status: string;
         progress: number;
+        approval_status?: string;
+        approved_by?: number;
+        rejection_reason?: string;
     }>;
 }
 
 interface ShowProps {
     project: Project;
-    teamMembers: Array<{ id: number; name: string; }>;
+    teamMembers: Array<{ id: number; name: string; email?: string }>;
     available_clients: Array<{ id: number; name: string; }>;
     projectStats: {
         taskCount: number;
         bugCount: number;
         daysLeft: number;
         budget: number;
+        currency?: string;
+        project_type?: string;
     };
+    evmMetrics?: {
+        planned_value: number;
+        earned_value: number;
+        actual_cost: number;
+        cpi: number;
+        spi: number;
+        cost_variance: number;
+        schedule_variance: number;
+        eac: number;
+        burn_rate: number;
+        health_status: 'On Track' | 'At Risk' | 'Critical Overrun';
+        currency: string;
+    };
+    shareUrl?: string;
+    timesheets?: any[];
+    boqs?: any[];
+    siteDiaries?: any[];
+    logistics?: any;
+    projectTasks?: any[];
     chartData: Array<{ name: string; [key: string]: any; }>;
     chartLines: Array<{ dataKey: string; color: string; name: string; }>;
     activityLogs: Array<{
@@ -77,6 +116,7 @@ interface ShowProps {
     }>;
     auth: {
         user: {
+            id?: number;
             permissions: string[];
         };
     };
@@ -84,7 +124,24 @@ interface ShowProps {
 
 export default function Show() {
     const { t } = useTranslation();
-    const { project, teamMembers, available_clients, projectStats, chartData, chartLines, activityLogs, projectFiles, auth } = usePage<ShowProps>().props;
+    const { 
+        project, 
+        teamMembers, 
+        available_clients, 
+        projectStats, 
+        chartData, 
+        chartLines, 
+        activityLogs, 
+        projectFiles, 
+        auth,
+        evmMetrics,
+        shareUrl,
+        timesheets = [],
+        boqs = [],
+        siteDiaries = [],
+        logistics,
+        projectTasks = []
+    } = usePage<ShowProps>().props;
     const videoHubButtons = usePageButtons('projectShowButtons', { project });
     const spreadsheetButtons = usePageButtons('spreadsheetBtn', { module: 'Project', sub_module: project.id });
     const businessProcessMappingButtons = usePageButtons('businessProcessMappingBtn', { module: 'Taskly', submodule: 'Project', id: project.id });
@@ -369,7 +426,52 @@ export default function Show() {
         >
             <Head title={project.name} />
 
-            {/* Project Summary */}
+            {/* EVM Financial Banner */}
+            {evmMetrics && (
+                <div className="mb-6">
+                    <EvmFinancialBanner metrics={evmMetrics} shareUrl={shareUrl} />
+                </div>
+            )}
+
+            <Tabs defaultValue="overview" className="w-full space-y-6">
+                <TabsList className="bg-slate-100 p-1.5 rounded-xl flex flex-wrap gap-2 h-auto border border-slate-200">
+                    <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>{t('Overview & Milestones')}</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="gantt" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
+                        <GitGraph className="h-4 w-4" />
+                        <span>{t('Gantt & Dependencies')}</span>
+                        <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                            {projectTasks.length}
+                        </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="timesheets" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-medium">
+                        <Clock className="h-4 w-4" />
+                        <span>{t('Timesheets & Billable Hours')}</span>
+                        <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                            {timesheets.length}
+                        </span>
+                    </TabsTrigger>
+                    {(projectStats.project_type === 'construction' || boqs.length > 0 || siteDiaries.length > 0) && (
+                        <TabsTrigger value="construction" className="flex items-center gap-2 data-[state=active]:bg-amber-600 data-[state=active]:text-white font-medium shadow-sm">
+                            <HardHat className="h-4 w-4" />
+                            <span>{t('Construction Workspace (BoQ & Diary)')}</span>
+                            <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-amber-700/50 text-white">
+                                {boqs.length + siteDiaries.length}
+                            </span>
+                        </TabsTrigger>
+                    )}
+                    {(projectStats.project_type === 'import_export' || !!logistics) && (
+                        <TabsTrigger value="logistics" className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white font-medium shadow-sm">
+                            <Ship className="h-4 w-4" />
+                            <span>{t('Import/Export Pipeline & Demurrage')}</span>
+                        </TabsTrigger>
+                    )}
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-6">
+                    {/* Project Summary */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card className="shadow-sm">
                     <CardHeader className="p-6 border-b bg-gray-50/50">
@@ -689,6 +791,46 @@ export default function Show() {
                                             }
                                         },
                                         {
+                                            key: 'approval_status',
+                                            header: t('Gate Approval'),
+                                            render: (_: any, milestone: any) => {
+                                                const status = milestone.approval_status || 'pending';
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                                                            status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                                                            status === 'rejected' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                                                            'bg-amber-100 text-amber-800 border border-amber-300'
+                                                        }`}>
+                                                            {t(status)}
+                                                        </span>
+                                                        {status === 'pending' && (auth.user?.permissions?.includes('edit-project') || auth.user?.permissions?.includes('approve-project-milestone')) && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                                                    title={t('Approve Stage-Gate')}
+                                                                    onClick={() => router.post(route('project.milestones.approve', milestone.id))}
+                                                                >
+                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                                                    title={t('Reject Stage-Gate')}
+                                                                    onClick={() => router.post(route('project.milestones.reject', milestone.id))}
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                        },
+                                        {
                                             key: 'actions',
                                             header: t('Action'),
                                             render: (_: any, milestone: any) => (
@@ -921,6 +1063,43 @@ export default function Show() {
                     </div>
                 </div>
             </div>
+            </TabsContent>
+
+            <TabsContent value="gantt">
+                <GanttDependenciesTab tasks={projectTasks} />
+            </TabsContent>
+
+            <TabsContent value="timesheets">
+                <TimesheetsTab
+                    projectId={project.id}
+                    timesheets={timesheets}
+                    tasks={projectTasks}
+                    currency={projectStats.currency || 'ETB'}
+                    canApprove={Boolean(auth.user?.permissions?.includes('edit-project') || auth.user?.permissions?.includes('manage-project-timesheet'))}
+                />
+            </TabsContent>
+
+            {(projectStats.project_type === 'construction' || boqs.length > 0 || siteDiaries.length > 0) && (
+                <TabsContent value="construction">
+                    <ConstructionWorkspaceTab
+                        projectId={project.id}
+                        boqs={boqs}
+                        siteDiaries={siteDiaries}
+                        currency={projectStats.currency || 'ETB'}
+                    />
+                </TabsContent>
+            )}
+
+            {(projectStats.project_type === 'import_export' || !!logistics) && (
+                <TabsContent value="logistics">
+                    <LogisticsWorkspaceTab
+                        projectId={project.id}
+                        logistics={logistics}
+                        currency={projectStats.currency || 'ETB'}
+                    />
+                </TabsContent>
+            )}
+            </Tabs>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-md">

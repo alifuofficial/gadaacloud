@@ -113,14 +113,22 @@ class ProjectController extends Controller
 
             $project                = new Project();
             $project->name          = $validated['name'];
+            $project->project_type  = $validated['project_type'] ?? 'general';
+            $project->currency_code = $validated['currency_code'] ?? 'ETB';
             $project->description   = $validated['description'] ?? null;
             $project->budget        = $validated['budget'] ?? 0;
+            $project->estimated_hrs = $validated['estimated_hrs'] ?? 0;
             $project->start_date    = $validated['start_date'];
             $project->end_date      = $validated['end_date'];
+            $project->branch_id     = $validated['branch_id'] ?? null;
+            $project->department_id = $validated['department_id'] ?? null;
+            $project->cost_center_id= $validated['cost_center_id'] ?? null;
             $project->status        = 'Ongoing';
             $project->creator_id    = Auth::id();
             $project->created_by    = creatorId();
             $project->save();
+
+            $project->ensureShareToken();
 
             $project->teamMembers()->sync($validated['user_ids']);
 
@@ -135,7 +143,20 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         if (Auth::user()->can('view-project') && $project->created_by == creatorId()) {
-            $project->load(['teamMembers:id,name', 'clients:id,name', 'milestones']);
+            $project->load([
+                'teamMembers:id,name,avatar',
+                'clients:id,name',
+                'milestones.approver:id,name',
+                'timesheets.user:id,name,avatar',
+                'timesheets.task:id,title',
+                'boqs',
+                'siteDiaries.loggedBy:id,name',
+                'logistics'
+            ]);
+
+            $evmMetrics = $project->getEvmMetrics();
+            $shareUrl = url('/p/track/' . $project->ensureShareToken());
+            $tasksWithDeps = $project->tasks()->with(['stage:id,name,color', 'predecessor:id,title'])->get();
 
             if(!Auth::user()->can('manage-any-project') && $project->creator_id != Auth::id())
             {
@@ -226,8 +247,17 @@ class ProjectController extends Controller
                     'taskCount' => $taskCount,
                     'bugCount' => $bugCount,
                     'daysLeft' => $daysLeft,
-                    'budget' => $project->budget
+                    'budget' => $project->budget,
+                    'currency' => $project->currency_code ?? 'ETB',
+                    'project_type' => $project->project_type ?? 'general',
                 ],
+                'evmMetrics' => $evmMetrics,
+                'shareUrl' => $shareUrl,
+                'timesheets' => $project->timesheets,
+                'boqs' => $project->boqs,
+                'siteDiaries' => $project->siteDiaries,
+                'logistics' => $project->logistics,
+                'projectTasks' => $tasksWithDeps,
                 'chartData' => $chartData,
                 'chartLines' => $chartLines,
                 'activityLogs' => $activityLogs,
@@ -255,12 +285,19 @@ class ProjectController extends Controller
         if (Auth::user()->can('edit-project')) {
             $validated = $request->validated();
 
-            $project->name         = $validated['name'];
-            $project->description  = $validated['description'];
-            $project->budget       = $validated['budget'];
-            $project->start_date   = $validated['start_date'];
-            $project->end_date     = $validated['end_date'];
-            $project->status       = $validated['status'] ?? $project->status;
+            $project->name          = $validated['name'];
+            if (isset($validated['project_type'])) $project->project_type = $validated['project_type'];
+            if (isset($validated['currency_code'])) $project->currency_code = $validated['currency_code'];
+            $project->description   = $validated['description'] ?? null;
+            $project->budget        = $validated['budget'] ?? 0;
+            if (isset($validated['estimated_hrs'])) $project->estimated_hrs = $validated['estimated_hrs'];
+            $project->start_date    = $validated['start_date'];
+            $project->end_date      = $validated['end_date'];
+            if (isset($validated['branch_id'])) $project->branch_id = $validated['branch_id'];
+            if (isset($validated['department_id'])) $project->department_id = $validated['department_id'];
+            if (isset($validated['cost_center_id'])) $project->cost_center_id = $validated['cost_center_id'];
+            if (isset($validated['status'])) $project->status = $validated['status'];
+            if (isset($validated['is_client_visible'])) $project->is_client_visible = (bool) $validated['is_client_visible'];
             $project->save();
 
             UpdateProject::dispatch($request, $project);

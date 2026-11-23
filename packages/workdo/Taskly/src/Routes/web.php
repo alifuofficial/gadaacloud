@@ -8,6 +8,15 @@ use Workdo\Taskly\Http\Controllers\TaskStageController;
 use Workdo\Taskly\Http\Controllers\BugStageController;
 use Workdo\Taskly\Http\Controllers\ProjectBugController;
 use Workdo\Taskly\Http\Controllers\ProjectReportController;
+use Workdo\Taskly\Http\Controllers\TaskTimesheetController;
+use Workdo\Taskly\Http\Controllers\ProjectWorkspaceController;
+use Workdo\Taskly\Http\Controllers\ProjectMagicLinkController;
+
+// Public Client Tracking Portal (No Login Required)
+Route::middleware(['web'])->group(function () {
+    Route::get('/p/track/{token}', [ProjectMagicLinkController::class, 'track'])->name('project.public.track');
+    Route::post('/p/track/{token}/approve/{milestone}', [ProjectMagicLinkController::class, 'clientApproveMilestone'])->name('project.public.approve-milestone');
+});
 
 // API Routes for other packages
 Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Taskly'])->prefix('api/taskly')->name('api.taskly.')->group(function () {
@@ -33,6 +42,7 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Taskly'])->group(
     // Project report routes
     Route::get('/project-report', [ProjectReportController::class, 'index'])->name('project.report.index');
     Route::get('/project-report/{id}', [ProjectReportController::class, 'show'])->name('project.report.show');
+
     // Task comments and subtasks
     Route::get('/project/tasks/{task}/comments', [ProjectTaskController::class, 'getComments'])->name('project.tasks.comments.index');
     Route::post('/project/tasks/{task}/comments', [ProjectTaskController::class, 'storeComment'])->name('project.tasks.comments.store');
@@ -59,6 +69,25 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Taskly'])->group(
     // Project files
     Route::post('/project/{project}/files', [ProjectController::class, 'storeFiles'])->name('project.files.store');
     Route::delete('/project/files/{file}', [ProjectController::class, 'deleteFile'])->name('project.files.delete');
+
+    // Project timesheets (Phase 1)
+    Route::post('/project/{project}/timesheets', [TaskTimesheetController::class, 'store'])->name('project.timesheets.store');
+    Route::post('/project/timesheets/{timesheet}/approve', [TaskTimesheetController::class, 'approve'])->name('project.timesheets.approve');
+    Route::delete('/project/timesheets/{timesheet}', [TaskTimesheetController::class, 'destroy'])->name('project.timesheets.destroy');
+
+    // Construction Workspace: BoQ & Site Diary (Phase 3)
+    Route::post('/project/{project}/boqs', [ProjectWorkspaceController::class, 'storeBoq'])->name('project.boqs.store');
+    Route::put('/project/boqs/{boq}', [ProjectWorkspaceController::class, 'updateBoq'])->name('project.boqs.update');
+    Route::delete('/project/boqs/{boq}', [ProjectWorkspaceController::class, 'destroyBoq'])->name('project.boqs.destroy');
+    Route::post('/project/{project}/site-diaries', [ProjectWorkspaceController::class, 'storeSiteDiary'])->name('project.site-diaries.store');
+    Route::delete('/project/site-diaries/{diary}', [ProjectWorkspaceController::class, 'destroySiteDiary'])->name('project.site-diaries.destroy');
+
+    // Import/Export Workspace: Logistics & Demurrage (Phase 3)
+    Route::post('/project/{project}/logistics', [ProjectWorkspaceController::class, 'updateLogistics'])->name('project.logistics.update');
+
+    // Stage-Gate Milestone Approvals (Phase 2)
+    Route::post('/project/milestones/{milestone}/approve', [ProjectWorkspaceController::class, 'approveMilestone'])->name('project.milestones.approve');
+    Route::post('/project/milestones/{milestone}/reject', [ProjectWorkspaceController::class, 'rejectMilestone'])->name('project.milestones.reject');
 
     // Project routes - must come after task and bug routes
     Route::get('/project/{project}', [ProjectController::class, 'show'])->name('project.show');
