@@ -146,18 +146,24 @@ class Project extends Model
 
         // Planned Value (PV) based on elapsed time vs total duration
         $plannedValue = $bac;
-        if ($this->start_date && $this->end_date && $this->end_date->greaterThan($this->start_date)) {
-            $totalDays = max(1, $this->start_date->diffInDays($this->end_date));
-            $now = now()->startOfDay();
-            if ($now->lessThanOrEqualTo($this->start_date)) {
-                $plannedPercent = 0;
-            } elseif ($now->greaterThanOrEqualTo($this->end_date)) {
-                $plannedPercent = 100;
-            } else {
-                $elapsedDays = $this->start_date->diffInDays($now);
-                $plannedPercent = min(100, round(($elapsedDays / $totalDays) * 100));
+        try {
+            $startDate = $this->start_date ? \Carbon\Carbon::parse($this->start_date) : null;
+            $endDate = $this->end_date ? \Carbon\Carbon::parse($this->end_date) : null;
+            if ($startDate && $endDate && $endDate->greaterThan($startDate)) {
+                $totalDays = max(1, $startDate->diffInDays($endDate));
+                $now = now()->startOfDay();
+                if ($now->lessThanOrEqualTo($startDate)) {
+                    $plannedPercent = 0;
+                } elseif ($now->greaterThanOrEqualTo($endDate)) {
+                    $plannedPercent = 100;
+                } else {
+                    $elapsedDays = $startDate->diffInDays($now);
+                    $plannedPercent = min(100, round(($elapsedDays / $totalDays) * 100));
+                }
+                $plannedValue = round($bac * ($plannedPercent / 100), 2);
             }
-            $plannedValue = round($bac * ($plannedPercent / 100), 2);
+        } catch (\Throwable $e) {
+            $plannedValue = $bac;
         }
 
         // Cost Variance (CV) = EV - AC
