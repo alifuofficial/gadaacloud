@@ -43,11 +43,13 @@ class ModuleController extends Controller
         $packagesPath = base_path('packages/workdo');
         if (File::exists($packagesPath)) {
             $directories = File::directories($packagesPath);
+            $discoveredModules = [];
             foreach ($directories as $directory) {
                 $moduleJsonPath = "{$directory}/module.json";
                 if (File::exists($moduleJsonPath)) {
                     $moduleData = json_decode(File::get($moduleJsonPath), true);
                     if ($moduleData && isset($moduleData['name'])) {
+                        $discoveredModules[] = $moduleData['name'];
                         $addon = AddOn::where('module', $moduleData['name'])->first();
                         if (!$addon) {
                             $addon = new AddOn;
@@ -64,6 +66,9 @@ class ModuleController extends Controller
                     }
                 }
             }
+
+            // Self-healing: prune any orphaned add-on records whose physical package directory no longer exists on disk
+            AddOn::whereNotIn('module', $discoveredModules)->delete();
         }
 
         $addons = AddOn::orderBy('priority', 'asc')
