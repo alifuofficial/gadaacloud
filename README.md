@@ -51,52 +51,48 @@ By fusing **Laravel 12** on the backend with **React 18, TypeScript, and Inertia
 
 GadaaCloud operates on an event-driven, modular package architecture (`packages/workdo/*`). Each business domain is encapsulated with dedicated controllers, Eloquent models, migrations, and React components.
 
-```mermaid
-flowchart TD
-    subgraph Client ["Client Tier (Browser SPA)"]
-        UI["React 18 + TypeScript + Radix UI"]
-        Tailwind["TailwindCSS Design System"]
-        InertiaClient["Inertia.js Protocol"]
-        UI --> InertiaClient
-    end
-
-    subgraph Server ["Server Tier (Laravel 12 Application)"]
-        InertiaAdapter["Inertia Laravel Adapter"]
-        Router["Dynamic Route Dispatcher"]
-        Auth["Sanctum Auth & Spatie RBAC"]
-        Copilot["GadaaCloud AI Copilot"]
-        Events["Domain Event Bus & Queue Workers"]
-        
-        InertiaClient <==> InertiaAdapter
-        InertiaAdapter --> Router
-        Router --> Auth
-        Auth --> Copilot
-        Auth --> Events
-    end
-
-    subgraph Modules ["WorkDo Package Engine (packages/workdo/*)"]
-        direction TB
-        EIMS["EIMS (MoR E-Invoicing)"]
-        Taskly["Taskly PPM (EVM, BoQ, Logistics)"]
-        Finance["Account & DoubleEntry Bookkeeping"]
-        Supply["Inventory & Import/Export LC"]
-        HR["HRM, Payroll & Performance"]
-        GeEz["Ethiopian Ge'ez Calendar"]
-        Studio["GadaaCloud Studio (Approval BPMN)"]
-    end
-
-    subgraph Data ["Persistence & Services"]
-        DB[("MySQL 8.0+ / MariaDB")]
-        Cache["Redis / File Cache"]
-        S3["AWS S3 / Local Media Library"]
-        Pusher["Pusher / Laravel Echo (WebSockets)"]
-    end
-
-    Events --> Modules
-    Modules --> DB
-    Modules --> Cache
-    Modules --> S3
-    Events --> Pusher
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                CLIENT TIER (Browser SPA)                                │
+│   React 18  │  TypeScript 5  │  TailwindCSS  │  Radix UI Primitives  │  Recharts & TipTap │
+└────────────────────────────────────────────┬────────────────────────────────────────────┘
+                                             │  Inertia.js Protocol (Zero REST Overhead)
+┌────────────────────────────────────────────▼────────────────────────────────────────────┐
+│                        APPLICATION SERVER (Laravel 12 / PHP 8.2+)                       │
+│                                                                                         │
+│   ┌────────────────────────────────┐            ┌──────────────────────────────────┐   │
+│   │   Kernel & Security Gateway    │            │   GadaaCloud Copilot (AI Engine) │   │
+│   │   • Dynamic Route Dispatcher   │            │   • Persistent Multi-Turn Memory │   │
+│   │   • Sanctum Token Auth & 2FA   │───────────►│   • Operational Intelligence     │   │
+│   │   • Spatie Multi-Tenant RBAC   │            │   • Predictive Financial Insights│   │
+│   └───────────────┬────────────────┘            └──────────────────────────────────┘   │
+│                   │                                                                     │
+│                   ▼                                                                     │
+│   ┌────────────────────────────────────────────────────────────────────────────────┐   │
+│   │                   WorkDo Modular Engine (packages/workdo/*)                    │   │
+│   │                                                                                │   │
+│   │   🇪🇹 Regulatory & Local      💼 Projects & Portfolios      📈 Financial Suite   │   │
+│   │   • EIMS (MoR Directive 1142)  • Taskly PPM (EVM Banner)   • Account Ledgers   │   │
+│   │   • Ethiopian Ge'ez Calendar   • Critical Path Gantt (FS)  • Double-Entry      │   │
+│   │                                • BoQ & Site Diaries        • Budget Planner    │   │
+│   │   📦 Supply Chain & Trade      • Port Demurrage Clocks     • CBE/Telebirr Bank │   │
+│   │   • Inventory & Adjustments    • CapEx / OpEx In-House       Reconciliation    │   │
+│   │   • Import/Export LC Pipeline  • Public Tracking Portal                        │   │
+│   │                                                                                │   │
+│   │   👥 People & Workforce        🤝 CRM & Engagements        ⚙️ Platform Studio   │   │
+│   │   • HRM, Payroll & Leave       • Lead Pipeline & CRM       • GadaaCloud Studio │   │
+│   │   • Recruitment & Training     • Support Ticket System     • Document Chatter  │   │
+│   │   • Performance (KPI) Appraisals• Dynamic Form Builder     • Webhooks & Comms  │   │
+│   └───────────────────────────────────────┬────────────────────────────────────────┘   │
+└───────────────────────────────────────────┼─────────────────────────────────────────────┘
+                                            │
+               ┌────────────────────────────┼────────────────────────────┐
+               ▼                            ▼                            ▼
+┌──────────────────────────────┐┌──────────────────────┐┌────────────────────────────────┐
+│       Database Layer         ││   Real-time Engine   ││         Storage Tier           │
+│   MySQL 8.0+ / MariaDB 10.4+ ││   Pusher / WebSockets││   AWS S3 / Local Media Library │
+│   Strict Multi-Tenant Scoping││   Laravel Echo Broadcast│   Spatie Media / Flysystem   │
+└──────────────────────────────┘└──────────────────────┘└────────────────────────────────┘
 ```
 
 ---
