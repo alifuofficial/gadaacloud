@@ -43,7 +43,7 @@ class DemoOrderSeeder extends Seeder
                     'currency' => $faker->randomElement(['USD', 'EUR', 'GBP']),
                     'txn_id' => $faker->uuid,
                     'payment_status' => $faker->randomElement(['succeeded']),
-                    'payment_type' => $faker->randomElement(['Stripe', 'Paypal', 'Bank Transfer']),
+                    'payment_type' => $faker->randomElement(['Bank Transfer', 'Direct Deposit', 'Cash']),
                     'receipt' => $faker->optional()->url,
                     'created_by' => $userId,
                     'created_at' => $createdAt,

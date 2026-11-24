@@ -40,7 +40,7 @@ class DemoBankTransferSeeder extends Seeder
                     'transaction_id' => $faker->uuid
                 ]),
                 'status' => $faker->randomElement(['pending', 'approved', 'rejected']),
-                'type' => $faker->randomElement(['Bank Transfer', 'Stripe', 'Paypal']),
+                'type' => $faker->randomElement(['Bank Transfer', 'Bank Deposit', 'Electronic Transfer']),
                 'price' => $faker->randomFloat(2, 10, 500),
                 'price_currency' => $faker->randomElement(['USD', 'EUR', 'GBP']),
                 'attachment' => $faker->optional()->imageUrl(640, 480, 'business'),
