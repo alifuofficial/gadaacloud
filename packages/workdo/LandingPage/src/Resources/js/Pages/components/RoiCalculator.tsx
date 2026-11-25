@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, ArrowRight, TrendingUp, Clock, ShieldCheck, DollarSign, Check } from 'lucide-react';
+import { Calculator, ArrowRight, TrendingUp, Clock, ShieldCheck, DatabaseBackup, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { CloudTopologyPattern, SecurityHexPattern } from './CloudSecurityPatterns';
 
 interface RoiCalculatorProps {
     colors: {
@@ -44,26 +45,25 @@ export default function RoiCalculator({ colors, grad, onStartTrial }: RoiCalcula
     };
 
     return (
-        <section id="roi-calculator" className="py-20 sm:py-28 bg-slate-50/70 border-y border-slate-200/60 relative overflow-hidden">
-            {/* Ambient subtle glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#00A76F]/5 rounded-full blur-3xl pointer-events-none" />
+        <section id="roi-calculator" className="py-10 sm:py-14 bg-slate-50/70 border-y border-slate-200/60 relative overflow-hidden">
+            <CloudTopologyPattern className="absolute inset-0 opacity-60" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="max-w-3xl mx-auto text-center mb-16 space-y-4">
-                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-[#00A76F] border border-emerald-100">
+                <div className="max-w-3xl mx-auto text-center mb-7 space-y-2.5">
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-[#00A76F] border border-emerald-100">
                         <Calculator className="h-3.5 w-3.5" /> Interactive ROI Simulator
                     </span>
-                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
                         Calculate your Birr savings with GadaaCloud.
                     </h2>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                        Adjust the sliders to match your business size and see the immediate time, labor, and compliance savings you unlock.
+                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                        Adjust the sliders to match your business size and see the immediate cloud efficiency and compliance savings you unlock.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center max-w-6xl mx-auto">
                     {/* Left Column: Interactive Input Sliders (7 Cols) */}
-                    <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xl space-y-8">
+                    <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xl space-y-6">
                         {/* Slider 1: Employees */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
@@ -156,13 +156,14 @@ export default function RoiCalculator({ colors, grad, onStartTrial }: RoiCalcula
                     </div>
 
                     {/* Right Column: Dynamic Result Card (5 Cols) */}
-                    <div className="lg:col-span-5 bg-gradient-to-br from-[#031B13] via-[#042A1D] to-[#022C22] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-emerald-500/20 space-y-6 flex flex-col justify-between">
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between border-b border-emerald-800/40 pb-4">
-                                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                                    Projected Annual Value
+                    <div className="lg:col-span-5 bg-gradient-to-br from-[#031B13] via-[#042A1D] to-[#022C22] text-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-emerald-500/20 space-y-5 flex flex-col justify-between relative overflow-hidden">
+                        <SecurityHexPattern className="absolute inset-0 opacity-70" />
+                        <div className="space-y-4 relative z-10">
+                            <div className="flex items-center justify-between border-b border-emerald-800/40 pb-3">
+                                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                    <DatabaseBackup className="h-3.5 w-3.5 text-[#34D399]" /> Projected Annual Value
                                 </span>
-                                <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#34D399] border border-emerald-500/30">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#34D399] border border-emerald-500/30">
                                     {calculations.roiMultiplier}x ROI
                                 </span>
                             </div>

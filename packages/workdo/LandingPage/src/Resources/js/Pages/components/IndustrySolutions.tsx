@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
     Coffee, Building2, Boxes, ShoppingBag, 
-    Globe, Users, ArrowRight, Check 
+    Globe, Users, ArrowRight, Check, GlobeLock, ShieldCheck
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SecurityHexPattern } from './CloudSecurityPatterns';
 
 interface IndustrySolutionsProps {
     colors: {
@@ -79,23 +80,23 @@ export default function IndustrySolutions({ colors, grad }: IndustrySolutionsPro
     const CurrentIcon = current.icon;
 
     return (
-        <section id="industries" className="py-20 sm:py-28 bg-slate-50/60 border-t border-slate-200/60 relative overflow-hidden">
+        <section id="industries" className="py-10 sm:py-14 bg-slate-50/60 border-t border-slate-200/60 relative overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="max-w-3xl mx-auto text-center mb-16 space-y-4">
-                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-[#00A76F] border border-emerald-100">
+                <div className="max-w-3xl mx-auto text-center mb-7 space-y-2.5">
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-[#00A76F] border border-emerald-100">
                         <Building2 className="h-3.5 w-3.5" /> Sector Solutions
                     </span>
-                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
                         Purpose-built for Ethiopia's economic pillars.
                     </h2>
-                    <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                        Pre-configured workflows tailored to the exact regulatory and operational demands of key Ethiopian industries.
+                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                        Pre-configured workflows tailored to the regulatory and operational demands of key Ethiopian industries.
                     </p>
                 </div>
 
                 {/* Industry Tab Navigation Chips */}
-                <div className="flex flex-wrap justify-center gap-2 mb-10 max-w-4xl mx-auto">
+                <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-4xl mx-auto">
                     {industries.map((ind, idx) => {
                         const Icon = ind.icon;
                         const isSelected = selectedIndustry === idx;
@@ -117,23 +118,23 @@ export default function IndustrySolutions({ colors, grad }: IndustrySolutionsPro
                 </div>
 
                 {/* Active Industry Showcase Card */}
-                <div className="max-w-5xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border border-emerald-100 shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-7 space-y-5 text-left">
+                <div className="max-w-5xl mx-auto bg-white rounded-3xl p-6 sm:p-8 border border-emerald-100 shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div className="lg:col-span-7 space-y-3.5 text-left">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-[#00A76F]">
-                                <CurrentIcon className="h-6 w-6" />
+                            <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center text-[#00A76F]">
+                                <CurrentIcon className="h-5 w-5" />
                             </div>
                             <div>
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#00A76F] block">
                                     {current.badge}
                                 </span>
-                                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                                     {current.title}
                                 </h3>
                             </div>
                         </div>
 
-                        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+                        <p className="text-sm text-slate-700 leading-relaxed font-medium">
                             {current.tagline}
                         </p>
 
@@ -141,9 +142,9 @@ export default function IndustrySolutions({ colors, grad }: IndustrySolutionsPro
                             {current.description}
                         </p>
 
-                        <div className="space-y-2.5 pt-2">
+                        <div className="space-y-2 pt-1">
                             {current.metrics.map((m, i) => (
-                                <div key={i} className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
+                                <div key={i} className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                                     <div className="w-4 h-4 rounded-full bg-emerald-100 text-[#00A76F] flex items-center justify-center flex-shrink-0">
                                         <Check className="h-3 w-3 stroke-[3]" />
                                     </div>
@@ -153,23 +154,31 @@ export default function IndustrySolutions({ colors, grad }: IndustrySolutionsPro
                         </div>
                     </div>
 
-                    <div className="lg:col-span-5 bg-gradient-to-br from-[#031B13] to-[#042A1D] text-white rounded-2xl p-6 sm:p-8 space-y-5 text-left shadow-lg border border-emerald-500/20">
-                        <div className="flex items-center justify-between border-b border-emerald-800/40 pb-3">
-                            <span className="text-xs font-bold text-white">Pre-Configured Template</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#34D399]">Ready in 5 Mins</span>
-                        </div>
-                        <div className="space-y-3 text-xs">
-                            <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/20 space-y-1">
-                                <span className="text-slate-400 text-[10px] block font-bold">Chart of Accounts</span>
-                                <span className="font-bold text-white block">Pre-Mapped to Ethiopian Tax Schedule</span>
+                    <div className="lg:col-span-5 bg-gradient-to-br from-[#031B13] to-[#042A1D] text-white rounded-2xl p-6 space-y-4 text-left shadow-lg border border-emerald-500/20 relative overflow-hidden">
+                        <SecurityHexPattern className="absolute inset-0 opacity-70" />
+                        <div className="relative z-10 space-y-3.5">
+                            <div className="flex items-center justify-between border-b border-emerald-800/40 pb-2.5">
+                                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                    <GlobeLock className="h-3.5 w-3.5 text-[#34D399]" />
+                                    Secured Cloud Template
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#34D399]">Ready in 5 Mins</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/20 space-y-1">
-                                <span className="text-slate-400 text-[10px] block font-bold">Fiscal Invoicing</span>
-                                <span className="font-bold text-[#34D399] block">MoR Directive 1142 Ready</span>
-                            </div>
-                            <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/20 space-y-1">
-                                <span className="text-slate-400 text-[10px] block font-bold">Local Currency</span>
-                                <span className="font-bold text-white block">ETB Base with Dual USD/EUR Sheet</span>
+                            <div className="space-y-2.5 text-xs">
+                                <div className="p-2.5 rounded-xl bg-emerald-950/75 border border-emerald-500/20 space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-bold">Chart of Accounts</span>
+                                    <span className="font-bold text-white block">Pre-Mapped to Ethiopian Tax Schedule</span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-emerald-950/75 border border-emerald-500/20 space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-bold">Fiscal Invoicing</span>
+                                    <span className="font-bold text-[#34D399] flex items-center gap-1">
+                                        <ShieldCheck className="h-3.5 w-3.5" /> MoR Directive 1142 Ready
+                                    </span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-emerald-950/75 border border-emerald-500/20 space-y-0.5">
+                                    <span className="text-slate-400 text-[10px] block font-bold">Local Currency</span>
+                                    <span className="font-bold text-white block">ETB Base with Dual USD/EUR Sheet</span>
+                                </div>
                             </div>
                         </div>
                     </div>
