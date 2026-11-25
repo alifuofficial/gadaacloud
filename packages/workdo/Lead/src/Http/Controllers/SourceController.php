@@ -63,8 +63,7 @@ class SourceController extends Controller
 
     public function update(UpdateSourceRequest $request, Source $source)
     {
-       
-        if(Auth::user()->can('edit-sources')){
+        if(Auth::user()->can('edit-sources') && (int)$source->created_by === (int)creatorId()){
             $validated = $request->validated();
 
             $source->name = $validated['name'];
@@ -82,7 +81,7 @@ class SourceController extends Controller
 
     public function destroy(Source $source)
     {
-        if(Auth::user()->can('delete-sources')){
+        if(Auth::user()->can('delete-sources') && (int)$source->created_by === (int)creatorId()){
             DestroySource::dispatch($source);
             $source->delete();
 

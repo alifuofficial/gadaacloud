@@ -70,7 +70,7 @@ class LeadStageController extends Controller
 
     public function update(UpdateLeadStageRequest $request, LeadStage $leadstage)
     {
-        if(Auth::user()->can('edit-lead-stages')){
+        if(Auth::user()->can('edit-lead-stages') && (int)$leadstage->created_by === (int)creatorId()){
             $validated = $request->validated();
 
             $oldPipelineId = $leadstage->pipeline_id;

@@ -49,9 +49,12 @@ use Workdo\Lead\Events\DestroyDealCall;
 use Workdo\Lead\Events\DealAddEmail;
 use Workdo\Lead\Models\Source;
 use \Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Workdo\Lead\Services\LeadErpIntegrationService;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class DealController extends Controller
 {
+    use LeadControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-deals')) {
@@ -99,8 +102,16 @@ class DealController extends Controller
                 })
                 ->when(request('stage_id'), fn($q) => $q->where('stage_id', request('stage_id')))
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, function ($q) {
+                    return $this->applySafeSort($q, [
+                        'name' => 'name',
+                        'price' => 'price',
+                        'status' => 'status',
+                        'order' => 'order',
+                        'created_at' => 'created_at',
+                    ], 'latest');
+                })
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $pipelines = Pipeline::where('created_by', creatorId())->get(['id', 'name']);
@@ -261,13 +272,16 @@ class DealController extends Controller
 
     public function update(UpdateDealRequest $request, Deal $deal)
     {
-        if (Auth::user()->can('edit-deals')) {
+        if (Auth::user()->can('edit-deals') && $this->assertBelongsToTenant($deal)) {
             $validated = $request->validated();
             $deal->name        = $validated['name'];
             $deal->price       = $validated['price'];
             $deal->pipeline_id = $validated['pipeline_id'];
             $deal->stage_id    = $validated['stage_id'];
             $deal->phone       = $validated['phone'];
+            $deal->tin_number  = $validated['tin_number'] ?? $deal->tin_number;
+            $deal->vat_number  = $validated['vat_number'] ?? $deal->vat_number;
+            $deal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $deal->ethiopian_fiscal_year;
             $deal->sources     = isset($validated['sources']) && !empty($validated['sources']) ? array_filter($validated['sources']) : null;
             $deal->products    = isset($validated['products']) && !empty($validated['products']) ? array_filter($validated['products']) : null;
             $deal->notes       = $validated['notes'] ?? '';
@@ -800,5 +814,44 @@ class DealController extends Controller
         $user->save();
 
         return response()->json(['success' => true]);
+    }
+
+    public function convertToQuotation(Deal $deal)
+    {
+        if (Auth::user()->can('edit-deals') && $this->assertBelongsToTenant($deal)) {
+            try {
+                app(LeadErpIntegrationService::class)->convertDealToQuotation($deal);
+                return back()->with('success', __('Deal converted to Quotation successfully.'));
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        }
+        return back()->with('error', __('Permission denied'));
+    }
+
+    public function convertToContract(Deal $deal)
+    {
+        if (Auth::user()->can('edit-deals') && $this->assertBelongsToTenant($deal)) {
+            try {
+                app(LeadErpIntegrationService::class)->convertDealToContract($deal);
+                return back()->with('success', __('Deal converted to Contract successfully.'));
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        }
+        return back()->with('error', __('Permission denied'));
+    }
+
+    public function convertToProject(Deal $deal)
+    {
+        if (Auth::user()->can('edit-deals') && $this->assertBelongsToTenant($deal)) {
+            try {
+                app(LeadErpIntegrationService::class)->convertDealToProject($deal);
+                return back()->with('success', __('Deal converted to Project successfully.'));
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        }
+        return back()->with('error', __('Permission denied'));
     }
 }

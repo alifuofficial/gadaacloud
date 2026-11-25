@@ -46,6 +46,12 @@ export interface Deal {
     notes?: string;
     labels?: any;
     phone?: string;
+    tin_number?: string;
+    vat_number?: string;
+    ethiopian_fiscal_year?: string;
+    quotation_id?: number;
+    contract_id?: number;
+    project_id?: number;
     permissions?: string[];
     status: string;
     is_active: boolean;

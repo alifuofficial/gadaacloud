@@ -90,7 +90,7 @@ class PipelineController extends Controller
 
     public function update(UpdatePipelineRequest $request, Pipeline $pipeline)
     {
-        if(Auth::user()->can('edit-pipelines')){
+        if(Auth::user()->can('edit-pipelines') && (int)$pipeline->created_by === (int)creatorId()){
             $validated = $request->validated();
             $pipeline->name = $validated['name'];
 

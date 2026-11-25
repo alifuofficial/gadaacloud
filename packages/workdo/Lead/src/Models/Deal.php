@@ -2,6 +2,7 @@
 
 namespace Workdo\Lead\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Lead\Models\Pipeline;
@@ -11,7 +12,7 @@ use App\Models\User;
 
 class Deal extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',
@@ -23,7 +24,13 @@ class Deal extends Model
         'notes',
         'labels',
         'phone',
+        'tin_number',
+        'vat_number',
         'status',
+        'ethiopian_fiscal_year',
+        'quotation_id',
+        'contract_id',
+        'project_id',
         'is_active',
         'order',
         'creator_id',

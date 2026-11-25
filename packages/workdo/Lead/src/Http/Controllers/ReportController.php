@@ -15,9 +15,11 @@ use App\Models\User;
 use Carbon\Carbon;
 use Workdo\Lead\Models\ClientDeal;
 use Workdo\Lead\Models\DealStage;
+use Workdo\Lead\Traits\LeadDateHelpers;
 
 class ReportController extends Controller
 {
+    use LeadDateHelpers;
     public function index()
     {
         if(Auth::user()->can('view-reports')){
@@ -38,8 +40,14 @@ class ReportController extends Controller
             // Monthly Leads (Bar Chart)
             $monthlyLeads = $this->getMonthlyLeads();
             
-            // Staff Leads (Bar Chart with date filter)
-            $staffLeads = $this->getStaffLeads($request->from_date, $request->to_date);
+            // Staff Leads (Bar Chart with date filter & Ethiopian calendar support)
+            $dates = $this->resolveLeadDateRange(
+                $request->from_date,
+                $request->to_date,
+                $request->ethiopian_fiscal_year,
+                $request->ethiopian_quarter
+            );
+            $staffLeads = $this->getStaffLeads($dates['from_date'], $dates['to_date']);
             
             // Pipeline Leads (Bar Chart)
             $pipelineLeads = $this->getPipelineLeads();
@@ -86,7 +94,7 @@ class ReportController extends Controller
         if (empty($data) && !$isDemo) {
             $data = [
                 ['name' => 'Monday', 'value' => 0],
-                ['name' => 'Tuesday', 'value' => 1],
+                ['name' => 'Tuesday', 'value' => 0],
                 ['name' => 'Wednesday', 'value' => 0],
                 ['name' => 'Thursday', 'value' => 0],
                 ['name' => 'Friday', 'value' => 0],
@@ -350,7 +358,7 @@ class ReportController extends Controller
         if (empty($data) && !$isDemo) {
             $data = [
                 ['name' => 'Monday', 'value' => 0],
-                ['name' => 'Tuesday', 'value' => 1],
+                ['name' => 'Tuesday', 'value' => 0],
                 ['name' => 'Wednesday', 'value' => 0],
                 ['name' => 'Thursday', 'value' => 0],
                 ['name' => 'Friday', 'value' => 0],

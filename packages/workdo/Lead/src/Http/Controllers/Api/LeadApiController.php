@@ -15,18 +15,19 @@ use Workdo\Lead\Models\LeadStage;
 use Workdo\Lead\Models\Pipeline;
 use Workdo\Lead\Models\Source;
 use Workdo\Lead\Models\UserLead;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 use Workdo\ProductService\Models\ProductServiceItem;
 
 class LeadApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, LeadControllerHelpers;
 
     public function index(Request $request)
     {
         try {
             if (Auth::user()->can('manage-leads')) {
                 $validator = Validator::make($request->all(), [
-                    'pipeline_id' => 'required|integer|exists:pipelines,id'
+                    'pipeline_id' => ['required', 'integer', LeadControllerHelpers::tenantExists('pipelines', 'id')]
                 ]);
 
                 if ($validator->fails()) {

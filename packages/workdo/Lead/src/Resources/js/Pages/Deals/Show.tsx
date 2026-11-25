@@ -31,7 +31,13 @@ interface DealShowProps {
 }
 
 export default function Show() {
-    const { deal, availableUsers, availableProducts, availableSources, availableClients } = usePage<DealShowProps>().props;
+    const {
+        deal,
+        availableUsers = [],
+        availableProducts = [],
+        availableSources = [],
+        availableClients = [],
+    } = usePage<DealShowProps>().props;
     const { t } = useTranslation();
     const [activeSection, setActiveSection] = useState('general');
     const [currentDeal, setCurrentDeal] = useState(deal);
@@ -136,7 +142,34 @@ export default function Show() {
             pageTitle={t('Deal Details')}
             backUrl={route('lead.deals.index')}
             pageActions={
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {!currentDeal?.quotation_id && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.post(route('lead.deals.convert-quotation', currentDeal.id))}
+                        >
+                            {t('Create Quotation')}
+                        </Button>
+                    )}
+                    {!currentDeal?.contract_id && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.post(route('lead.deals.convert-contract', currentDeal.id))}
+                        >
+                            {t('Create Contract')}
+                        </Button>
+                    )}
+                    {!currentDeal?.project_id && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.post(route('lead.deals.convert-project', currentDeal.id))}
+                        >
+                            {t('Create Project')}
+                        </Button>
+                    )}
                     {videoHubButtons && videoHubButtons.length > 0 && (
                         <div className="flex items-center gap-2">
                             {videoHubButtons.map((button, index) => (

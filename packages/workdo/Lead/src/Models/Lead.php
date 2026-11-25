@@ -3,16 +3,18 @@
 namespace Workdo\Lead\Models;
 
 use App\Models\User;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\ProductService\Models\ProductServiceItem;
 
 class Lead extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',
+        'company_name',
         'email',
         'subject',
         'user_id',
@@ -24,9 +26,12 @@ class Lead extends Model
         'labels',
         'order',
         'phone',
+        'tin_number',
+        'vat_number',
         'is_active',
         'is_converted',
         'date',
+        'ethiopian_fiscal_year',
         'creator_id',
         'created_by',
     ];

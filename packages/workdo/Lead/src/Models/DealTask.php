@@ -2,11 +2,13 @@
 
 namespace Workdo\Lead\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DealTask extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'deal_id',
         'name',

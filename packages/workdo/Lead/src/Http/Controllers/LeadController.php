@@ -58,9 +58,12 @@ use Workdo\Lead\Events\LeadConvertDeal;
 use Workdo\Lead\Models\Source;
 use App\Events\CreateUser;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Workdo\Lead\Services\LeadErpIntegrationService;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class LeadController extends Controller
 {
+    use LeadControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-leads')) {
@@ -117,8 +120,17 @@ class LeadController extends Controller
                 ->when(request('stage_id') && request('stage_id') !== '', fn($q) => $q->where('stage_id', request('stage_id')))
                 ->when(request('date_from'), fn($q) => $q->whereDate('date', '>=', request('date_from')))
                 ->when(request('date_to'), fn($q) => $q->whereDate('date', '<=', request('date_to')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, function ($q) {
+                    return $this->applySafeSort($q, [
+                        'name' => 'name',
+                        'email' => 'email',
+                        'subject' => 'subject',
+                        'date' => 'date',
+                        'order' => 'order',
+                        'created_at' => 'created_at',
+                    ], 'latest');
+                })
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $users = User::where('created_by', '=', creatorId())
@@ -344,17 +356,21 @@ class LeadController extends Controller
 
     public function update(UpdateLeadRequest $request, Lead $lead)
     {
-        if (Auth::user()->can('edit-leads')) {
+        if (Auth::user()->can('edit-leads') && $this->assertBelongsToTenant($lead)) {
             $validated = $request->validated();
             $validated['is_active'] = $request->boolean('is_active', true);
 
 
             $lead->name        = $validated['name'];
+            $lead->company_name = $validated['company_name'] ?? $lead->company_name;
             $lead->email       = $validated['email'];
             $lead->subject     = $validated['subject'];
             $lead->user_id     = $validated['user_id'];
             $lead->phone       = $validated['phone'];
+            $lead->tin_number  = $validated['tin_number'] ?? $lead->tin_number;
+            $lead->vat_number  = $validated['vat_number'] ?? $lead->vat_number;
             $lead->date        = $validated['date'];
+            $lead->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $lead->ethiopian_fiscal_year;
             $lead->pipeline_id = $validated['pipeline_id'] ?? $lead->pipeline_id;
             $lead->stage_id    = $validated['stage_id'] ?? $lead->stage_id;
             $lead->sources     = array_key_exists('sources', $validated) ? (is_array($validated['sources']) ? (empty($validated['sources']) ? null : implode(',', array_filter($validated['sources']))) : ($validated['sources'] ?? $lead->sources)) : $lead->sources;
@@ -373,7 +389,7 @@ class LeadController extends Controller
 
     public function destroy(Lead $lead)
     {
-        if (Auth::user()->can('delete-leads')) {
+        if (Auth::user()->can('delete-leads') && $this->assertBelongsToTenant($lead)) {
             DestroyLead::dispatch($lead);
 
             LeadActivityLog::where('lead_id', '=', $lead->id)->delete();
@@ -438,8 +454,7 @@ class LeadController extends Controller
 
     public function assignUsers(AssignUsersRequest $request, Lead $lead)
     {
-        
-        if (Auth::user()->can('create-lead-users')) {
+        if (Auth::user()->can('create-lead-users') && $this->assertBelongsToTenant($lead)) {
             $lead->load(['pipeline', 'stage']);
 
             $existingUserIds = UserLead::where('lead_id', $lead->id)->pluck('user_id')->toArray();
@@ -862,7 +877,7 @@ class LeadController extends Controller
 
     public function convertToDeal(ConvertToDealRequest $request, Lead $lead)
     {
-        if (Auth::user()->can('edit-leads')) {
+        if (Auth::user()->can('edit-leads') && $this->assertBelongsToTenant($lead)) {
             $validated = $request->validated();
 
             $creatorId = creatorId();
@@ -943,10 +958,23 @@ class LeadController extends Controller
             $deal->products    = in_array('products', $request->is_transfer ?? []) ? $lead->products : null;
             $deal->notes       = in_array('notes', $request->is_transfer ?? []) ? $lead->notes : null;
             $deal->labels      = $lead->labels;
+            $deal->phone       = $lead->phone;
+            $deal->tin_number  = $request->tin_number ?? $lead->tin_number;
+            $deal->vat_number  = $request->vat_number ?? $lead->vat_number;
+            $deal->ethiopian_fiscal_year = $lead->ethiopian_fiscal_year;
             $deal->status      = 'Active';
             $deal->creator_id  = Auth::id();
             $deal->created_by  = $lead->created_by;
             $deal->save();
+
+            // Sync client User into Account\Customer for Order-to-Cash AR & MoR EIMS readiness
+            app(LeadErpIntegrationService::class)->syncClientToAccountCustomer($client, [
+                'company_name' => $lead->company_name ?? $client->name,
+                'phone' => $lead->phone,
+                'tin_number' => $deal->tin_number,
+                'vat_number' => $deal->vat_number,
+                'notes' => $deal->notes,
+            ]);
 
             ClientDeal::create([
                 'deal_id' => $deal->id,

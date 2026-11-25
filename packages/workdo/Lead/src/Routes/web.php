@@ -79,6 +79,9 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Lead'])->group(fu
     Route::post('crm/deals/save-default-pipeline', [DealController::class, 'saveDefaultPipeline'])->name('lead.deals.save-default-pipeline');
     Route::post('crm/deals/order', [DealController::class, 'order'])->name('lead.deals.order');
     Route::post('crm/deals/{deal}/change-status', [DealController::class, 'changeStatus'])->name('lead.deals.change-status');
+    Route::post('crm/deals/{deal}/convert-quotation', [DealController::class, 'convertToQuotation'])->name('lead.deals.convert-quotation');
+    Route::post('crm/deals/{deal}/convert-contract', [DealController::class, 'convertToContract'])->name('lead.deals.convert-contract');
+    Route::post('crm/deals/{deal}/convert-project', [DealController::class, 'convertToProject'])->name('lead.deals.convert-project');
     Route::patch('crm/deals/{deal}/labels', [DealController::class, 'updateLabels'])->name('lead.deals.update-labels');
     Route::post('crm/deals/{deal}/assign-users', [DealController::class, 'assignUsers'])->name('lead.deals.assign-users');
     Route::delete('crm/deals/{deal}/users/{user}', [DealController::class, 'removeUser'])->name('lead.deals.remove-user');

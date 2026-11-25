@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class StoreLeadRequest extends FormRequest
 {
@@ -15,11 +16,15 @@ class StoreLeadRequest extends FormRequest
     {
         return [
             'name' => 'required|max:100',
+            'company_name' => 'nullable|string|max:150',
             'email' => 'required|email',
-            'subject' => 'required|max:200',            
-            'phone' => 'nullable|string|regex:/^\+\d{1,3}\d{9,13}$/',
+            'subject' => 'required|max:200',
+            'phone' => LeadControllerHelpers::phoneRule(),
+            'tin_number' => 'nullable|string|max:50',
+            'vat_number' => 'nullable|string|max:50',
             'date' => 'nullable|date',
-            'user_id' => 'required|exists:users,id',
+            'ethiopian_fiscal_year' => 'nullable|string|max:30',
+            'user_id' => ['required', 'integer', LeadControllerHelpers::tenantExists('users', 'id')],
         ];
     }
 }
