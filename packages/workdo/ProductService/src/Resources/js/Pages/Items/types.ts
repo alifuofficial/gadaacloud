@@ -14,7 +14,7 @@ export interface Item {
     purchase_price?: number;
     quantity?: number;
     type?: string;
-    inventory_type?: 'standard' | 'serialized';
+    inventory_type?: 'standard' | 'serialized' | 'batch';
     category?: Category;
     unit_relation?: {
         unit_name: string;
@@ -36,7 +36,7 @@ export interface ItemFormData {
     image?: string;
     warehouse_id?: string;
     type?: string;
-    inventory_type?: 'standard' | 'serialized';
+    inventory_type?: 'standard' | 'serialized' | 'batch';
 }
 
 export interface Tax {

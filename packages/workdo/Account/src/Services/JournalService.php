@@ -1841,4 +1841,97 @@ class JournalService
         return $journalEntry;
     }
 
+    /**
+     * Post accounting journal entry for an approved physical stock adjustment or transit shrinkage.
+     * Subtraction: Dr: COGS / Shrinkage (5100), Cr: Inventory Asset (1200)
+     * Addition:    Dr: Inventory Asset (1200), Cr: COGS / Shrinkage (5100)
+     */
+    public function createInventoryAdjustmentJournal($adjustment)
+    {
+        $companyId = $adjustment->created_by ?? creatorId();
+        $unitCost = floatval($adjustment->unit_cost ?? 0);
+
+        if ($unitCost <= 0 && $adjustment->product) {
+            $unitCost = floatval($adjustment->product->purchase_price ?? 0);
+        }
+
+        $totalValue = round(floatval($adjustment->quantity) * $unitCost, 2);
+        if ($totalValue <= 0.01) {
+            return null;
+        }
+
+        $inventoryAccount = ChartOfAccount::where('account_code', '1200')->where('created_by', $companyId)->first();
+        $cogsAccount = ChartOfAccount::where('account_code', '5100')->where('created_by', $companyId)->first();
+
+        if (!$inventoryAccount || !$cogsAccount) {
+            return null;
+        }
+
+        $this->validateBalance($totalValue, $totalValue);
+
+        $isSubtraction = $adjustment->adjustment_type === 'subtraction';
+        $actorId = $adjustment->creator_id ?? Auth::id() ?? $companyId;
+
+        $journalEntry = JournalEntry::create([
+            'journal_date'   => now()->toDateString(),
+            'entry_type'     => 'automatic',
+            'reference_type' => 'inventory_adjustment',
+            'reference_id'   => $adjustment->id,
+            'description'    => sprintf(
+                'Inventory %s (#%d): %s',
+                $isSubtraction ? 'Write-Off / Shrinkage' : 'Stocktake Gain',
+                $adjustment->id,
+                $adjustment->reason
+            ),
+            'total_debit'    => $totalValue,
+            'total_credit'   => $totalValue,
+            'status'         => 'posted',
+            'creator_id'     => $actorId,
+            'created_by'     => $companyId,
+        ]);
+
+        if ($isSubtraction) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id'       => $cogsAccount->id,
+                'description'      => 'Inventory shrinkage / adjustment write-off',
+                'debit_amount'     => $totalValue,
+                'credit_amount'    => 0,
+                'creator_id'       => $actorId,
+                'created_by'       => $companyId,
+            ]);
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id'       => $inventoryAccount->id,
+                'description'      => 'Inventory asset reduction',
+                'debit_amount'     => 0,
+                'credit_amount'    => $totalValue,
+                'creator_id'       => $actorId,
+                'created_by'       => $companyId,
+            ]);
+        } else {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id'       => $inventoryAccount->id,
+                'description'      => 'Inventory stocktake gain',
+                'debit_amount'     => $totalValue,
+                'credit_amount'    => 0,
+                'creator_id'       => $actorId,
+                'created_by'       => $companyId,
+            ]);
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id'       => $cogsAccount->id,
+                'description'      => 'Inventory adjustment offset',
+                'debit_amount'     => 0,
+                'credit_amount'    => $totalValue,
+                'creator_id'       => $actorId,
+                'created_by'       => $companyId,
+            ]);
+        }
+
+        $this->updateAccountBalances($journalEntry);
+        return $journalEntry;
+    }
+
 }

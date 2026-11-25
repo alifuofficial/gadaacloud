@@ -156,19 +156,22 @@ export default function Create() {
                                         {data.type !== 'service' && (
                                             <div>
                                                 <Label htmlFor="inventory_type">{t('Inventory Tracking')}</Label>
-                                                <Select value={data.inventory_type || 'standard'} onValueChange={(value) => setData('inventory_type', value as 'standard' | 'serialized')}>
+                                                <Select value={data.inventory_type || 'standard'} onValueChange={(value) => setData('inventory_type', value as 'standard' | 'serialized' | 'batch')}>
                                                     <SelectTrigger id="inventory_type">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="standard">{t('Standard (Bulk Quantity)')}</SelectItem>
                                                         <SelectItem value="serialized">{t('Serialized (Chassis / Serial Tracking)')}</SelectItem>
+                                                        <SelectItem value="batch">{t('Batch / Lot & Expiry Tracking')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <p className="text-xs text-muted-foreground mt-1">
                                                     {data.inventory_type === 'serialized'
                                                         ? t('Each unit is tracked by its unique serial/chassis number.')
-                                                        : t('Stock is tracked as a total quantity count.')}
+                                                        : data.inventory_type === 'batch'
+                                                            ? t('Stock is tracked by lot/batch number, ECX grade, and expiry date (FEFO).')
+                                                            : t('Stock is tracked as a total quantity count.')}
                                                 </p>
                                                 <InputError message={errors.inventory_type} />
                                             </div>

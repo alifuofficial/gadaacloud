@@ -29,7 +29,7 @@ class StoreProductServiceItemRequest extends FormRequest
             'images.*' => 'string',
             'warehouse_id' => 'nullable|exists:warehouses,id|required_unless:type,service',
             'type' => 'nullable|string|max:255',
-            'inventory_type' => 'nullable|string|in:standard,serialized',
+            'inventory_type' => 'nullable|string|in:standard,serialized,batch',
         ];
     }
 }

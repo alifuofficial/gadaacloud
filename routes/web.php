@@ -239,12 +239,7 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck'])->group(function () {
         Route::get('settings/import-export/track/{containerNumber}', [ImportExportController::class, 'trackContainer'])->name('settings.import-export.track');
     });
 
-    // Inventory Management routes
-    Route::get('settings/inventory', [InventoryController::class, 'index'])->name('settings.inventory.index');
-    Route::post('settings/inventory/adjustment', [InventoryController::class, 'storeAdjustment'])->name('settings.inventory.adjustment.store');
-    Route::post('settings/inventory/reorder', [InventoryController::class, 'storeReorderRule'])->name('settings.inventory.reorder.store');
-    Route::post('settings/inventory/serials', [InventoryController::class, 'storeSerials'])->name('settings.inventory.serials.store');
-    Route::get('settings/inventory/serials', [InventoryController::class, 'getProductSerials'])->name('settings.inventory.serials.get');
+    // Inventory Management routes moved to packages/workdo/InventoryManagement/src/Routes/web.php (gated by PlanModuleCheck:InventoryManagement)
 });
 
 Route::get('/translations/{locale}', [TranslationController::class, 'getTranslations'])->name('languages.translations');

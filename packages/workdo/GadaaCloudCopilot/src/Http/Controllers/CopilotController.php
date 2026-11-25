@@ -606,6 +606,59 @@ class CopilotController extends Controller
                     $reply .= "🔒 **Permission Access Notice**: You do not have permissions (`manage-import-export`) to view import & export trade operations.";
                 }
             }
+            elseif (str_contains($prompt, 'inventory') || str_contains($prompt, 'stock') || str_contains($prompt, 'warehouse') || str_contains($prompt, 'serial') || str_contains($prompt, 'batch') || str_contains($prompt, 'lot') || str_contains($prompt, 'expir') || str_contains($prompt, 'reorder') || str_contains($prompt, 'ክምችት') || str_contains($prompt, 'መጋዘን')) {
+                if (in_array('company', $userRoles) || in_array('manage-inventory-management', $userPermissions) || in_array('manage-warehouses', $userPermissions)) {
+                    $reply .= "• 📦 **Inventory & Warehouse Intelligence (Live Stock & Valuation)**:\n";
+
+                    if (Schema::hasTable('warehouse_stocks') && Schema::hasTable('warehouses')) {
+                        $stocks = DB::table('warehouse_stocks')
+                            ->join('warehouses', 'warehouse_stocks.warehouse_id', '=', 'warehouses.id')
+                            ->join('product_service_items', 'warehouse_stocks.product_id', '=', 'product_service_items.id')
+                            ->where('warehouses.created_by', $companyId)
+                            ->select(
+                                'warehouse_stocks.quantity',
+                                'warehouse_stocks.unit_cost',
+                                'warehouse_stocks.total_value',
+                                'product_service_items.purchase_price',
+                                'product_service_items.name as product_name',
+                                'warehouses.name as warehouse_name'
+                            )
+                            ->get();
+
+                        $totalUnits = $stocks->sum(fn($s) => max(0, floatval($s->quantity)));
+                        $totalValue = $stocks->sum(function ($s) {
+                            $tv = floatval($s->total_value ?? 0);
+                            if ($tv > 0) return $tv;
+                            $cost = floatval($s->unit_cost ?? 0) > 0 ? floatval($s->unit_cost) : floatval($s->purchase_price ?? 0);
+                            return max(0, floatval($s->quantity)) * $cost;
+                        });
+
+                        $reply .= "  - **Tracked Warehouse Lines**: " . $stocks->count() . " SKU-Warehouse Entries\n";
+                        $reply .= "  - **Total Physical Units On-Hand**: " . number_format($totalUnits, 2) . " Units\n";
+                        $reply .= "  - **Estimated Inventory Valuation**: " . number_format($totalValue, 2) . " ETB\n";
+
+                        $lowItems = $stocks->filter(fn($s) => floatval($s->quantity) <= 5)->take(5);
+                        if ($lowItems->count() > 0) {
+                            $reply .= "  - ⚠️ **Low Stock Watchlist (<= 5 units)**:\n";
+                            foreach ($lowItems as $li) {
+                                $reply .= "    • `{$li->product_name}` @ {$li->warehouse_name}: **{$li->quantity}** left\n";
+                            }
+                        }
+                    }
+
+                    if (Schema::hasTable('inventory_batches')) {
+                        $expiringCount = DB::table('inventory_batches')
+                            ->where('created_by', $companyId)
+                            ->where('status', 'active')
+                            ->whereNotNull('expiry_date')
+                            ->where('expiry_date', '<=', now()->addDays(30)->toDateString())
+                            ->count();
+                        $reply .= "  - **Batches Expiring Within 30 Days**: {$expiringCount} Active Lots\n";
+                    }
+                } else {
+                    $reply .= "🔒 **Permission Access Notice**: You do not have permissions (`manage-inventory-management` or `manage-warehouses`) to view inventory telemetry.";
+                }
+            }
             elseif (str_contains($prompt, 'tax') || str_contains($prompt, 'vat') || str_contains($prompt, 'pension') || str_contains($prompt, 'mor')) {
                 if (in_array('company', $userRoles) || in_array('manage-account', $userPermissions) || in_array('manage-account-reports', $userPermissions)) {
                     $basicSal = DB::table('employees')->where('created_by', $companyId)->sum('basic_salary') ?? 0;

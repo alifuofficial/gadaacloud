@@ -110,11 +110,29 @@ class ProductServiceItemController extends Controller
 
             // Create warehouse stock entry if warehouse and quantity are provided
             if (isset($validated['warehouse_id']) && $validated['warehouse_id'] !== 'none' && isset($validated['quantity'])) {
-                WarehouseStock::create([
-                    'product_id' => $item->id,
-                    'warehouse_id' => $validated['warehouse_id'],
-                    'quantity' => $validated['quantity'] ?? 0,
-                ]);
+                $qty = floatval($validated['quantity'] ?? 0);
+                $cost = floatval($item->purchase_price ?? 0);
+                $createStock = function () use ($item, $validated, $qty, $cost) {
+                    WarehouseStock::create([
+                        'product_id'   => $item->id,
+                        'warehouse_id' => $validated['warehouse_id'],
+                        'quantity'     => $qty,
+                        'unit_cost'    => $cost,
+                        'total_value'  => round($qty * $cost, 4),
+                    ]);
+                };
+
+                if (class_exists('App\\Services\\InventoryAuditContext')) {
+                    \App\Services\InventoryAuditContext::run(
+                        'initial_stock',
+                        'ProductServiceItem',
+                        (int) $item->id,
+                        $createStock,
+                        'Initial item stock setup'
+                    );
+                } else {
+                    $createStock();
+                }
             }
 
             // Dispatch event for packages to handle their fields

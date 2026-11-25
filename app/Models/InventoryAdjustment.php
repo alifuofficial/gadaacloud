@@ -19,12 +19,16 @@ class InventoryAdjustment extends Model
         'product_id',
         'adjustment_type',
         'quantity',
+        'unit_cost',
         'reason',
+        'status',
+        'workflow_request_id',
         'creator_id'
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:4',
+        'quantity'  => 'decimal:4',
+        'unit_cost' => 'decimal:4',
     ];
 
     public function user(): BelongsTo

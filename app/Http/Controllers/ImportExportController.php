@@ -376,6 +376,8 @@ class ImportExportController extends Controller
             'bank_fees'         => 'required|numeric|min:0',
             'currency'          => 'required|string|max:10',
             'allocation_method' => 'required|in:value,quantity',
+            'warehouse_id'      => 'nullable|exists:warehouses,id',
+            'product_id'        => 'nullable|exists:product_service_items,id',
         ]);
 
         $companyId = creatorId();
@@ -420,6 +422,18 @@ class ImportExportController extends Controller
             }
 
             $landedCost->save();
+
+            // Capitalize landed cost into WarehouseStock valuation if target warehouse & product were specified
+            if ($request->filled('warehouse_id') && $request->filled('product_id') && class_exists(\App\Services\InventoryService::class)) {
+                \App\Services\InventoryService::capitalizeLandedCost(
+                    companyId: (int) $companyId,
+                    warehouseId: (int) $request->warehouse_id,
+                    productId: (int) $request->product_id,
+                    addedTotalCost: $totalCost,
+                    landedCostId: (int) $landedCost->id
+                );
+            }
+
             DB::commit();
 
             return redirect()->back()->with('success', __('Landed cost recorded and capitalized in DoubleEntry journal entries successfully.'));

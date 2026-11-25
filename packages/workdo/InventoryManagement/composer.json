@@ -1,0 +1,17 @@
+{
+    "name": "workdo/inventory-management",
+    "description": "Enterprise Inventory Management, Stock Valuation, Serial/Batch Tracking, Reorder Automation & Accounting Integration for GadaaCloud ERP",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Workdo\\InventoryManagement\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Workdo\\InventoryManagement\\Providers\\InventoryManagementServiceProvider"
+            ]
+        }
+    }
+}

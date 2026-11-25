@@ -22,31 +22,48 @@ interface CreateProps {
     vendors: Array<{id: number; name: string; email: string}>;
     products: Array<{id: number; name: string; sku: string; purchase_price: number; unit: string; type: string; taxes: Array<{id: number; tax_name: string; rate: number}>}>;
     warehouses: Array<{id: number; name: string; address: string}>;
+    prefill?: { warehouse_id?: string; vendor_id?: string; product_id?: number; quantity?: number };
     modules?: {recurringinvoicebill?: boolean};
     [key: string]: any;
 }
 
 export default function Create() {
     const { t } = useTranslation();
-    const { vendors, products, warehouses, modules } = usePage<CreateProps>().props;
+    const { vendors, products, warehouses, prefill, modules } = usePage<CreateProps>().props;
+
+    const prefilledProduct = prefill?.product_id
+        ? (products || []).find((p) => p.id === prefill.product_id)
+        : undefined;
+    const prefillQty = prefill?.quantity && prefill.quantity > 0 ? prefill.quantity : 1;
+    const prefillPrice = prefilledProduct ? Number(prefilledProduct.purchase_price || 0) : 0;
+    const prefillTaxPct = prefilledProduct && (prefilledProduct.taxes || []).length > 0
+        ? prefilledProduct.taxes.reduce((sum, tx) => sum + Number(tx.rate || 0), 0)
+        : 0;
+    const prefillSubtotal = prefillQty * prefillPrice;
+    const prefillTaxAmt = (prefillSubtotal * prefillTaxPct) / 100;
 
     const { data, setData, post, processing, errors } = useForm({
         invoice_date: new Date().toISOString().split('T')[0],
         due_date: '',
-        vendor_id: '',
-        warehouse_id: '',
+        vendor_id: prefill?.vendor_id || '',
+        warehouse_id: prefill?.warehouse_id || '',
         payment_terms: '',
-        notes: '',
+        notes: prefilledProduct ? `Auto-replenishment order for low-stock item: ${prefilledProduct.name}` : '',
         sync_to_google_calendar: false,
         items: [{
-            product_id: 0,
-            quantity: 1,
-            unit_price: 0,
+            product_id: prefilledProduct ? prefilledProduct.id : 0,
+            quantity: prefillQty,
+            unit_price: prefillPrice,
             discount_percentage: 0,
             discount_amount: 0,
-            tax_percentage: 0,
-            tax_amount: 0,
-            total_amount: 0
+            tax_percentage: prefillTaxPct,
+            tax_amount: prefillTaxAmt,
+            total_amount: prefillSubtotal + prefillTaxAmt,
+            taxes: (prefilledProduct?.taxes || []).map((tx) => ({
+                id: tx.id,
+                tax_name: tx.tax_name,
+                tax_rate: tx.rate,
+            }))
         }] as PurchaseInvoiceItem[]
     });
 

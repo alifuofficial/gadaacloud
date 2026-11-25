@@ -19,8 +19,10 @@ class InventoryAuditLog extends Model
         'product_id',
         'action_type',
         'reference_id',
+        'reference_type',
         'qty_delta',
         'final_qty',
+        'notes',
         'creator_id'
     ];
 

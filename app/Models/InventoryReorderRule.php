@@ -18,11 +18,14 @@ class InventoryReorderRule extends Model
         'creator_id',
         'warehouse_id',
         'product_id',
-        'min_stock_level'
+        'min_stock_level',
+        'reorder_qty',
+        'preferred_vendor_id'
     ];
 
     protected $casts = [
         'min_stock_level' => 'decimal:4',
+        'reorder_qty'     => 'decimal:4',
     ];
 
     public function user(): BelongsTo
@@ -38,5 +41,10 @@ class InventoryReorderRule extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(ProductServiceItem::class, 'product_id');
+    }
+
+    public function preferredVendor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'preferred_vendor_id');
     }
 }

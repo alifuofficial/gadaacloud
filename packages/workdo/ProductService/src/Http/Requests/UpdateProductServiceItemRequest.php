@@ -28,7 +28,7 @@ class UpdateProductServiceItemRequest extends FormRequest
             'images' => 'nullable|array',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'type' => 'nullable|string|max:255',
-            'inventory_type' => 'nullable|string|in:standard,serialized',
+            'inventory_type' => 'nullable|string|in:standard,serialized,batch',
         ];
     }
 }

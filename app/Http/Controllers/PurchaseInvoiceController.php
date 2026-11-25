@@ -137,10 +137,18 @@ class PurchaseInvoiceController extends Controller
 
             $warehouses = Warehouse::where('is_active', true)->select('id', 'name', 'address')->where('created_by', creatorId())->get();
 
+            $prefill = [
+                'warehouse_id' => request('warehouse_id') ? (string) request('warehouse_id') : '',
+                'vendor_id'    => request('vendor_id') ? (string) request('vendor_id') : '',
+                'product_id'   => request('product_id') ? (int) request('product_id') : 0,
+                'quantity'     => request('quantity') ? floatval(request('quantity')) : 1,
+            ];
+
             return Inertia::render('Purchase/Create', [
                 'vendors' => $vendors,
                 'products' => $products,
                 'warehouses' => $warehouses,
+                'prefill' => $prefill,
                 'modules' => [
                     'recurringinvoicebill' => module_is_active('RecurringInvoiceBill')
                 ]
