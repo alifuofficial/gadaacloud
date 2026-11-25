@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreOvertimeRequest extends FormRequest
@@ -14,7 +16,7 @@ class StoreOvertimeRequest extends FormRequest
     public function rules()
     {
         return [
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => ['required', HrmControllerHelpers::tenantExists('employees', 'id')],
             'title' => 'required|string|max:255',
             'total_days' => 'required|integer|min:1',
             'hours' => 'required|numeric|min:0',

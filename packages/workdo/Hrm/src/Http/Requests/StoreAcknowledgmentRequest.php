@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAcknowledgmentRequest extends FormRequest
@@ -14,8 +16,8 @@ class StoreAcknowledgmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_id' => 'required|exists:users,id',
-            'document_id' => 'required|exists:hrm_documents,id',
+            'employee_id' => ['required', HrmControllerHelpers::tenantExists('users', 'id')],
+            'document_id' => ['required', HrmControllerHelpers::tenantExists('hrm_documents', 'id')],
             'acknowledgment_note' => 'nullable|string'
         ];
     }

@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Announcement;
 use Workdo\Hrm\Http\Requests\StoreAnnouncementRequest;
 use Workdo\Hrm\Http\Requests\UpdateAnnouncementRequest;
@@ -16,6 +18,7 @@ use Workdo\Hrm\Events\UpdateAnnouncement;
 
 class AnnouncementController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-announcements')) {
@@ -48,8 +51,8 @@ class AnnouncementController extends Controller
                 })
                 ->when(request('priority') !== null && request('priority') !== '', fn($q) => $q->where('priority', request('priority')))
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Announcements/Index', [

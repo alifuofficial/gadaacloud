@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\LeaveApplication;
 use Workdo\Hrm\Http\Requests\StoreLeaveApplicationRequest;
 use Workdo\Hrm\Http\Requests\UpdateLeaveApplicationRequest;
@@ -20,6 +22,7 @@ use Workdo\Hrm\Models\Holiday;
 
 class LeaveApplicationController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-leave-applications')) {
@@ -51,8 +54,8 @@ class LeaveApplicationController extends Controller
                 ->when(request('leave_type_id'), fn($q) => $q->where('leave_type_id', request('leave_type_id')))
                 ->when(request('start_date'), fn($q) => $q->whereDate('start_date', '>=', request('start_date')))
                 ->when(request('end_date'), fn($q) => $q->whereDate('end_date', '<=', request('end_date')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/LeaveApplications/Index', [
@@ -126,14 +129,20 @@ class LeaveApplicationController extends Controller
                 return redirect()->back()->with('error', __('Leave cannot be created exclusively on non-working days or holidays.'));
             }
 
-            $currentYear = (int) \Carbon\Carbon::parse($validated['start_date'])->year;
-
-            // Calculate used leaves for this employee, leave type and current year
-            $usedLeaves = LeaveApplication::where('employee_id', $validated['employee_id'])
+            // Calculate used leaves for this employee, leave type and current fiscal/calendar year
+            $usedLeavesQuery = LeaveApplication::where('employee_id', $validated['employee_id'])
                 ->where('leave_type_id', $validated['leave_type_id'])
-                ->whereIn('status', ['approved', 'pending'])
-                ->whereYear('start_date', $currentYear)
-                ->sum('total_days');
+                ->whereIn('status', ['approved', 'pending']);
+
+            if (function_exists('ethiopian_calendar_active') && ethiopian_calendar_active() && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)) {
+                $ethSvc = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
+                $ethFy = $ethSvc->getCurrentFiscalYear($validated['start_date']);
+                $fyRange = $ethSvc->getFiscalYearRange($ethFy);
+                $usedLeaves = $usedLeavesQuery->whereBetween('start_date', [$fyRange['start_date'], $fyRange['end_date']])->sum('total_days');
+            } else {
+                $currentYear = (int) \Carbon\Carbon::parse($validated['start_date'])->year;
+                $usedLeaves = $usedLeavesQuery->whereYear('start_date', $currentYear)->sum('total_days');
+            }
 
             // Check for overlapping leave applications
             $overlappingLeave = LeaveApplication::where('employee_id', $validated['employee_id'])

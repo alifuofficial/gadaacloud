@@ -2,12 +2,15 @@
 
 namespace Workdo\Hrm\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 
 class EmployeeDocument extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'user_id',
         'document_type_id',

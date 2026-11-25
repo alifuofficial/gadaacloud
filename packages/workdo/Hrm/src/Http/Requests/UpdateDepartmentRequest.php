@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateDepartmentRequest extends FormRequest
@@ -15,7 +17,7 @@ class UpdateDepartmentRequest extends FormRequest
     {
         return [
             'department_name' => 'required|max:100',
-            'branch_id' => 'required|exists:branches,id'
+            'branch_id' => ['required', HrmControllerHelpers::tenantExists('branches', 'id')]
         ];
     }
 }

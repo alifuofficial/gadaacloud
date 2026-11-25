@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateResignationRequest extends FormRequest
@@ -14,7 +16,7 @@ class UpdateResignationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_id' => 'required|exists:users,id',
+            'employee_id' => ['required', HrmControllerHelpers::tenantExists('users', 'id')],
             'last_working_date' => 'required|date',
             'reason' => 'required|string|max:255',
             'description' => 'nullable|string',

@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use App\Models\User;
 use Workdo\Hrm\Models\HrmDocument;
 use Workdo\Hrm\Http\Requests\StoreHrmDocumentRequest;
@@ -16,6 +18,7 @@ use Workdo\Hrm\Events\UpdateDocument;
 
 class HrmDocumentController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-hrm-documents')){
@@ -33,8 +36,8 @@ class HrmDocumentController extends Controller
                     $q->where('title', 'like', '%' . request('title') . '%');
                 })
                 ->when(request('document_category_id') && request('document_category_id') !== '', fn($q) => $q->where('document_category_id', request('document_category_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/HrmDocuments/Index', [

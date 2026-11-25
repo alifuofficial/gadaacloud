@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ use Workdo\Hrm\Services\EthiopianPayrollService;
 
 class PayrollController extends Controller
 {
+    use HrmControllerHelpers;
     public function __construct(private EthiopianPayrollService $ethiopianPayrollService)
     {
     }
@@ -136,8 +139,8 @@ class PayrollController extends Controller
                 })
                 ->when(request('payroll_frequency'), fn ($q) => $q->where('payroll_frequency', request('payroll_frequency')))
                 ->when(request('status'), fn ($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn ($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn ($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Payrolls/Index', [

@@ -2,11 +2,14 @@
 
 namespace Workdo\Hrm\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AnnouncementDepartment extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'announcement_id',
         'department_id',

@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTerminationRequest extends FormRequest
@@ -14,8 +16,8 @@ class StoreTerminationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_id' => 'required|exists:users,id',
-            'termination_type_id' => 'required|exists:termination_types,id',
+            'employee_id' => ['required', HrmControllerHelpers::tenantExists('users', 'id')],
+            'termination_type_id' => ['required', HrmControllerHelpers::tenantExists('termination_types', 'id')],
             'notice_date' => 'required|date|before:termination_date',
             'termination_date' => 'required|date',
             'reason' => 'required|max:255',

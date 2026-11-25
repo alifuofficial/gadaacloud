@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Event;
 use Workdo\Hrm\Http\Requests\StoreEventRequest;
 use Workdo\Hrm\Http\Requests\UpdateEventRequest;
@@ -19,6 +21,7 @@ use Workdo\Hrm\Events\UpdateEvent;
 
 class EventController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-events')) {
@@ -52,8 +55,8 @@ class EventController extends Controller
                 })
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
                 ->when(request('event_type_id') !== null && request('event_type_id') !== '', fn($q) => $q->where('event_type_id', request('event_type_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Events/Index', [

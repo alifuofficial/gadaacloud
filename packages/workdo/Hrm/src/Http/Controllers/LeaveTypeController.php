@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\LeaveType;
 use Workdo\Hrm\Http\Requests\StoreLeaveTypeRequest;
 use Workdo\Hrm\Http\Requests\UpdateLeaveTypeRequest;
@@ -15,6 +17,7 @@ use Workdo\Hrm\Events\UpdateLeaveType;
 
 class LeaveTypeController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-leave-types')){
@@ -38,8 +41,8 @@ class LeaveTypeController extends Controller
                     $q->where('is_paid', request('is_paid'));
                 })
 
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/LeaveTypes/Index', [

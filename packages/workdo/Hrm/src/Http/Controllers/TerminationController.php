@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Termination;
 use Workdo\Hrm\Http\Requests\StoreTerminationRequest;
 use Workdo\Hrm\Http\Requests\UpdateTerminationRequest;
@@ -20,6 +22,7 @@ use Workdo\Hrm\Events\UpdateTerminationStatus;
 
 class TerminationController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-terminations')) {
@@ -40,8 +43,8 @@ class TerminationController extends Controller
                     });
                 })
                 ->when(request('employee_id') && request('employee_id') !== 'all', fn($q) => $q->where('employee_id', request('employee_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Terminations/Index', [

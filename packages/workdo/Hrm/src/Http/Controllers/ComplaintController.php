@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Complaint;
 use Workdo\Hrm\Models\ComplaintType;
 use Workdo\Hrm\Http\Requests\StoreComplaintRequest;
@@ -17,6 +19,7 @@ use Workdo\Hrm\Events\UpdateComplaint;
 
 class ComplaintController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-complaints')) {
@@ -42,8 +45,8 @@ class ComplaintController extends Controller
                 ->when(request('employee_id') && request('employee_id') !== 'all', fn($q) => $q->where('employee_id', request('employee_id')))
                 ->when(request('complaint_type_id') && request('complaint_type_id') !== 'all', fn($q) => $q->where('complaint_type_id', request('complaint_type_id')))
                 ->when(request('status') && request('status') !== 'all', fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Complaints/Index', [

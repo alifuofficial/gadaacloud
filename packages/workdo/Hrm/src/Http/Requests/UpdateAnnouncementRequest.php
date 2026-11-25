@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAnnouncementRequest extends FormRequest
@@ -15,9 +17,9 @@ class UpdateAnnouncementRequest extends FormRequest
     {
         return [
             'title' => 'required|string|max:255',
-            'announcement_category_id' => 'nullable|exists:announcement_categories,id',
+            'announcement_category_id' => ['nullable', HrmControllerHelpers::tenantExists('announcement_categories', 'id')],
             'departments' => 'required|array',
-            'departments.*' => 'exists:departments,id',
+            'departments.*' => [HrmControllerHelpers::tenantExists('departments', 'id')],
             'description' => 'required',
             'priority' => 'required',
             'start_date' => 'required|date|after_or_equal:today',

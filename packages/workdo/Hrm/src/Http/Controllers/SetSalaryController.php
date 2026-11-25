@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -18,6 +20,7 @@ use Illuminate\Http\Request;
 
 class SetSalaryController extends Controller
 {
+    use HrmControllerHelpers;
     private function checkEmployeeAccess(Employee $employee)
     {
         if(Auth::user()->can('manage-any-set-salary')) {
@@ -47,8 +50,8 @@ class SetSalaryController extends Controller
                     })->orWhere('employee_id', 'like', '%' . request('search') . '%');
                 })
                 ->when(request('employee_id'), fn($q) => $q->where('id', request('employee_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/SetSalary/Index', [

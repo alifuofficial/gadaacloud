@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreDesignationRequest extends FormRequest
@@ -15,8 +17,8 @@ class StoreDesignationRequest extends FormRequest
     {
         return [
             'designation_name' => 'required|max:100',
-            'branch_id' => 'required|exists:branches,id',
-            'department_id' => 'required|exists:departments,id'
+            'branch_id' => ['required', HrmControllerHelpers::tenantExists('branches', 'id')],
+            'department_id' => ['required', HrmControllerHelpers::tenantExists('departments', 'id')]
         ];
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateLoanRequest extends FormRequest
@@ -15,7 +17,7 @@ class UpdateLoanRequest extends FormRequest
     {
         return [
             'title' => 'required|string|max:255',
-            'loan_type_id' => 'required|exists:loan_types,id',
+            'loan_type_id' => ['required', HrmControllerHelpers::tenantExists('loan_types', 'id')],
             'type' => 'required|in:fixed,percentage',
             'amount' => 'required|numeric|min:0',
             'start_date' => 'required|date',

@@ -63,7 +63,7 @@ class BranchController extends Controller
 
     public function update(UpdateBranchRequest $request, Branch $branch)
     {
-        if (Auth::user()->can('edit-branches')) {
+        if (Auth::user()->can('edit-branches') && (int) $branch->created_by === (int) creatorId()) {
             $validated = $request->validated();
             $branch->branch_name = $validated['branch_name'];
             $branch->save();
@@ -78,7 +78,7 @@ class BranchController extends Controller
 
     public function destroy(Branch $branch)
     {
-        if (Auth::user()->can('delete-branches')) {
+        if (Auth::user()->can('delete-branches') && (int) $branch->created_by === (int) creatorId()) {
             DestroyBranch::dispatch($branch);
             $branch->delete();
 

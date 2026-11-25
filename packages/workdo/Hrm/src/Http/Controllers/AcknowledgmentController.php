@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Acknowledgment;
 use Workdo\Hrm\Http\Requests\StoreAcknowledgmentRequest;
 use Workdo\Hrm\Http\Requests\UpdateAcknowledgmentRequest;
@@ -19,6 +21,7 @@ use Workdo\Hrm\Events\UpdateAcknowledgment;
 
 class AcknowledgmentController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-acknowledgments')) {
@@ -46,8 +49,8 @@ class AcknowledgmentController extends Controller
                 ->when(request('employee_id') && request('employee_id') !== '', fn($q) => $q->where('employee_id', request('employee_id')))
                 ->when(request('document_id') && request('document_id') !== '', fn($q) => $q->where('document_id', request('document_id')))
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Acknowledgments/Index', [

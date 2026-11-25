@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Employee;
 use Workdo\Hrm\Http\Requests\StoreEmployeeRequest;
 use Workdo\Hrm\Http\Requests\UpdateEmployeeRequest;
@@ -22,6 +24,7 @@ use Workdo\Hrm\Events\UpdateEmployee;
 
 class EmployeeController extends Controller
 {
+    use HrmControllerHelpers;
     private function checkEmployeeAccess(Employee $employee)
     {
         if(Auth::user()->can('manage-any-employees')) {
@@ -57,8 +60,8 @@ class EmployeeController extends Controller
                 ->when(request('department_id') && request('department_id') !== 'all', fn($q) => $q->where('department_id', request('department_id')))
                 ->when(request('employment_type') !== null && request('employment_type') !== '', fn($q) => $q->where('employment_type', request('employment_type')))
                 ->when(request('gender') !== null && request('gender') !== '', fn($q) => $q->where('gender', request('gender')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Employees/Index', [

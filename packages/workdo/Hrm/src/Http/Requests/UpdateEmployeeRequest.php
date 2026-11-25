@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateEmployeeRequest extends FormRequest
@@ -43,7 +45,7 @@ class UpdateEmployeeRequest extends FormRequest
         return [
             'date_of_birth' => 'required|date',
             'gender' => 'required',
-            'shift_id' => 'nullable|exists:shifts,id',
+            'shift_id' => ['nullable', HrmControllerHelpers::tenantExists('shifts', 'id')],
             'date_of_joining' => 'required|date',
             'employment_type' => 'required',
             'address_line_1' => 'required|max:255',
@@ -67,12 +69,12 @@ class UpdateEmployeeRequest extends FormRequest
             'hours_per_day' => 'required|numeric|min:0|max:24',
             'days_per_week' => 'required|numeric|min:0|max:7',
             'rate_per_hour' => 'required|numeric|min:0',
-            'branch_id' => 'required|exists:branches,id',
-            'department_id' => 'required|exists:departments,id',
-            'designation_id' => 'required|exists:designations,id',
-            'manager_id' => 'nullable|exists:employees,id',
+            'branch_id' => ['required', HrmControllerHelpers::tenantExists('branches', 'id')],
+            'department_id' => ['required', HrmControllerHelpers::tenantExists('departments', 'id')],
+            'designation_id' => ['required', HrmControllerHelpers::tenantExists('designations', 'id')],
+            'manager_id' => ['nullable', HrmControllerHelpers::tenantExists('employees', 'id')],
             'documents' => 'nullable|array',
-            'documents.*.document_type_id' => 'nullable|exists:employee_document_types,id',
+            'documents.*.document_type_id' => ['nullable', HrmControllerHelpers::tenantExists('employee_document_types', 'id')],
             'documents.*.file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048',
         ];
     }

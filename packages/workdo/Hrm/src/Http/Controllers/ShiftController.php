@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Controllers;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Workdo\Hrm\Models\Shift;
 use Workdo\Hrm\Http\Requests\StoreShiftRequest;
 use Workdo\Hrm\Http\Requests\UpdateShiftRequest;
@@ -15,6 +17,7 @@ use Workdo\Hrm\Events\DestroyShift;
 
 class ShiftController extends Controller
 {
+    use HrmControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-shifts')) {
@@ -36,8 +39,8 @@ class ShiftController extends Controller
                     });
                 })
                 ->when(request('creator_id') && request('creator_id') !== '', fn($q) => $q->where('creator_id', request('creator_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Hrm/Shifts/Index', [

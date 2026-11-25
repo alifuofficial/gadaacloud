@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Hrm\Models\Branch;
@@ -9,7 +11,7 @@ use Workdo\Hrm\Models\Department;
 
 class Designation extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'designation_name',

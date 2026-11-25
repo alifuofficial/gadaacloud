@@ -2,6 +2,8 @@
 
 namespace Workdo\Hrm\Http\Requests;
 
+
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreHrmDocumentRequest extends FormRequest
@@ -15,7 +17,7 @@ class StoreHrmDocumentRequest extends FormRequest
     {
         return [
             'title' => 'required|string|max:255',
-            'document_category_id' => 'required|exists:document_categories,id',
+            'document_category_id' => ['required', HrmControllerHelpers::tenantExists('document_categories', 'id')],
             'description' => 'nullable|string',
             'document' => 'required|string',
         ];
