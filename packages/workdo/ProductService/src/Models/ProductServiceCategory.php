@@ -2,12 +2,13 @@
 
 namespace Workdo\ProductService\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductServiceCategory extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',
@@ -15,6 +16,4 @@ class ProductServiceCategory extends Model
         'creator_id',
         'created_by',
     ];
-
-
 }

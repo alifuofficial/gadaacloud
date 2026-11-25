@@ -80,16 +80,56 @@ class JournalService
             'created_by' => creatorId()
         ]);
 
-        // Credit: Sales Revenue
-        JournalEntryItem::create([
-            'journal_entry_id' => $journalEntry->id,
-            'account_id' => $salesAccount->id,
-            'description' => 'Product sales',
-            'debit_amount' => 0,
-            'credit_amount' => $salesInvoice->subtotal - $salesInvoice->discount_amount,
-            'creator_id' => Auth::id(),
-            'created_by' => creatorId()
-        ]);
+        // Credit: Sales Revenue (split per-item custom GL account when configured, fallback to 4100)
+        $netRevenue = round((float) $salesInvoice->subtotal - (float) $salesInvoice->discount_amount, 2);
+        $salesInvoice->loadMissing('items.product');
+        $revenueBuckets = [];
+        $allocatedSum = 0.0;
+
+        foreach ($salesInvoice->items as $invItem) {
+            $customAccId = $invItem->product->sale_chartaccount_id ?? null;
+            $validAccId = $customAccId
+                ? ChartOfAccount::where('created_by', creatorId())->where('id', $customAccId)->value('id')
+                : null;
+            $targetAccountId = $validAccId ?: $salesAccount->id;
+            $lineNet = round(max(0, ((float) $invItem->quantity * (float) $invItem->unit_price) - (float) ($invItem->discount_amount ?? 0)), 2);
+            $revenueBuckets[$targetAccountId] = ($revenueBuckets[$targetAccountId] ?? 0.0) + $lineNet;
+            $allocatedSum += $lineNet;
+        }
+
+        if (count($revenueBuckets) <= 1 || $allocatedSum <= 0) {
+            $onlyAccountId = count($revenueBuckets) === 1 ? (int) array_key_first($revenueBuckets) : $salesAccount->id;
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $onlyAccountId,
+                'description' => 'Product sales',
+                'debit_amount' => 0,
+                'credit_amount' => $netRevenue,
+                'creator_id' => Auth::id(),
+                'created_by' => creatorId()
+            ]);
+        } else {
+            // Reconcile any invoice-level discount/rounding variance cleanly into the default bucket
+            $variance = round($netRevenue - $allocatedSum, 2);
+            if (abs($variance) > 0.001) {
+                $firstKey = array_key_first($revenueBuckets);
+                $revenueBuckets[$firstKey] = round($revenueBuckets[$firstKey] + $variance, 2);
+            }
+            foreach ($revenueBuckets as $accId => $amount) {
+                if (abs($amount) < 0.01) {
+                    continue;
+                }
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journalEntry->id,
+                    'account_id' => $accId,
+                    'description' => 'Product sales',
+                    'debit_amount' => 0,
+                    'credit_amount' => $amount,
+                    'creator_id' => Auth::id(),
+                    'created_by' => creatorId()
+                ]);
+            }
+        }
 
         // Credit: Tax Payable (if tax exists)
         if ($salesInvoice->tax_amount > 0) {
@@ -1168,22 +1208,44 @@ class JournalService
         $salesInvoice->load('items.product');
         $totalCost = 0;
 
+        $this->validateAccounts(['5100', '1200']);
+
+        $cogsAccount = ChartOfAccount::where('account_code', '5100')->where('created_by', creatorId())->first();
+        $inventoryAccount = ChartOfAccount::where('account_code', '1200')->where('created_by', creatorId())->first();
+
+        $cogsBuckets = [];
+        $invBuckets = [];
+
         foreach ($salesInvoice->items as $item) {
             if (!$item->product) {
                 continue;
             }
-            $costPrice = $item->product->purchase_price ?? 0;
-            $totalCost += $item->quantity * $costPrice;
+            $costPrice = (float) ($item->product->purchase_price ?? 0);
+            $lineCost = round((float) $item->quantity * $costPrice, 2);
+            if ($lineCost <= 0) {
+                continue;
+            }
+            $totalCost += $lineCost;
+
+            $customCogsId = $item->product->expense_chartaccount_id ?? null;
+            $validCogsId = $customCogsId
+                ? ChartOfAccount::where('created_by', creatorId())->where('id', $customCogsId)->value('id')
+                : null;
+            $targetCogsId = $validCogsId ?: $cogsAccount->id;
+
+            $customInvId = $item->product->inventory_chartaccount_id ?? null;
+            $validInvId = $customInvId
+                ? ChartOfAccount::where('created_by', creatorId())->where('id', $customInvId)->value('id')
+                : null;
+            $targetInvId = $validInvId ?: $inventoryAccount->id;
+
+            $cogsBuckets[$targetCogsId] = ($cogsBuckets[$targetCogsId] ?? 0.0) + $lineCost;
+            $invBuckets[$targetInvId] = ($invBuckets[$targetInvId] ?? 0.0) + $lineCost;
         }
 
         if ($totalCost <= 0.01) {
             return null;
         }
-
-        $this->validateAccounts(['5100', '1200']);
-
-        $cogsAccount = ChartOfAccount::where('account_code', '5100')->where('created_by', creatorId())->first();
-        $inventoryAccount = ChartOfAccount::where('account_code', '1200')->where('created_by', creatorId())->first();
 
         $this->validateBalance($totalCost, $totalCost);
 
@@ -1200,25 +1262,29 @@ class JournalService
             'created_by' => creatorId()
         ]);
 
-        JournalEntryItem::create([
-            'journal_entry_id' => $journalEntry->id,
-            'account_id' => $cogsAccount->id,
-            'description' => 'Cost of goods sold',
-            'debit_amount' => $totalCost,
-            'credit_amount' => 0,
-            'creator_id' => Auth::id(),
-            'created_by' => creatorId()
-        ]);
+        foreach ($cogsBuckets as $accId => $amount) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $accId,
+                'description' => 'Cost of goods sold',
+                'debit_amount' => round($amount, 2),
+                'credit_amount' => 0,
+                'creator_id' => Auth::id(),
+                'created_by' => creatorId()
+            ]);
+        }
 
-        JournalEntryItem::create([
-            'journal_entry_id' => $journalEntry->id,
-            'account_id' => $inventoryAccount->id,
-            'description' => 'Inventory reduction',
-            'debit_amount' => 0,
-            'credit_amount' => $totalCost,
-            'creator_id' => Auth::id(),
-            'created_by' => creatorId()
-        ]);
+        foreach ($invBuckets as $accId => $amount) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $accId,
+                'description' => 'Inventory reduction',
+                'debit_amount' => 0,
+                'credit_amount' => round($amount, 2),
+                'creator_id' => Auth::id(),
+                'created_by' => creatorId()
+            ]);
+        }
 
         $this->updateAccountBalances($journalEntry);
         return $journalEntry;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PerPageSelector } from '@/components/ui/per-page-selector';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Package, Edit, Trash2, Eye, Image, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Plus, Package, Edit, Trash2, Eye, Image, Download, Upload, FileSpreadsheet, Power } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
@@ -20,6 +22,11 @@ import NoRecordsFound from '@/components/no-records-found';
 import { formatCurrency, getImagePath } from '@/utils/helpers';
 import { Item, ItemsIndexProps, ItemFilters } from './types';
 import { usePageButtons } from '@/hooks/usePageButtons';
+
+const formatQty = (value?: number): string => {
+    const num = Number(value || 0);
+    return Number.isFinite(num) ? num.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '0';
+};
 
 export default function Index() {
     const { t } = useTranslation();
@@ -32,16 +39,33 @@ export default function Index() {
     const [filters, setFilters] = useState<ItemFilters>({
         name: urlParams.get('name') || '',
         type: urlParams.get('type') || '',
-        category_id: urlParams.get('category_id') || ''
+        category_id: urlParams.get('category_id') || '',
+        is_active: urlParams.get('is_active') || ''
     });
 
     const [perPage] = useState(urlParams.get('per_page') || '10');
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
     const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
 
-
     const [viewMode, setViewMode] = useState<'list' | 'grid'>(urlParams.get('view') as 'list' | 'grid' || 'list');
     const [showFilters, setShowFilters] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImportSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const file = fileInputRef.current?.files?.[0];
+        if (!file) return;
+        setImporting(true);
+        router.post(route('product-service.items.import'), { file } as any, {
+            forceFormData: true,
+            onFinish: () => {
+                setImporting(false);
+                setImportOpen(false);
+            },
+        });
+    };
 
     const pageButtons = usePageButtons('googleDriveBtn', { module: 'Products', settingKey: 'GoogleDrive Products' });
     const oneDriveButtons = usePageButtons('oneDriveBtn', { module: 'Products', settingKey: 'OneDrive Products' });
@@ -70,7 +94,7 @@ export default function Index() {
     };
 
     const clearFilters = () => {
-        setFilters({ name: '', type: '', category_id: '' });
+        setFilters({ name: '', type: '', category_id: '', is_active: '' });
         router.get(route('product-service.items.index'), {per_page: perPage, view: viewMode});
     };
 
@@ -156,16 +180,33 @@ export default function Index() {
             key: 'total_quantity',
             header: t('Quantity'),
             sortable: false,
-            render: (value: number) => Math.floor(value) || 0
+            render: (value: number, item: Item) => {
+                const isLow = item.type !== 'service' && Number(item.reorder_level || 0) > 0 && Number(value || 0) <= Number(item.reorder_level || 0);
+                return (
+                    <span className={isLow ? 'font-semibold text-amber-600' : ''}>
+                        {item.type === 'service' ? '-' : formatQty(value)}
+                    </span>
+                );
+            }
         },
         {
             key: 'type',
             header: t('Type'),
             sortable: true,
             render: (value: string) => (
-                <span className="px-2 py-1 rounded-full text-sm bg-green-100 text-green-800 capitalize">
+                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 capitalize">
                     {t(value)}
                 </span>
+            )
+        },
+        {
+            key: 'is_active',
+            header: t('Status'),
+            sortable: true,
+            render: (value: boolean) => (
+                <Badge variant={value === false ? 'secondary' : 'outline'} className={value === false ? 'text-muted-foreground' : 'border-emerald-300 text-emerald-700 bg-emerald-50'}>
+                    {value === false ? t('Archived') : t('Active')}
+                </Badge>
             )
         },
         ...(auth.user?.permissions?.some((p: string) => ['view-product-service-item', 'edit-product-service-item', 'delete-product-service-item'].includes(p)) ? [{
@@ -195,6 +236,23 @@ export default function Index() {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{t('Edit')}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                        {auth.user?.permissions?.includes('edit-product-service-item') && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => router.post(route('product-service.items.toggle-status', item.id), {}, { preserveScroll: true })}
+                                        className={`h-8 w-8 p-0 ${item.is_active === false ? 'text-emerald-600' : 'text-amber-600'}`}
+                                    >
+                                        <Power className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{item.is_active === false ? t('Activate') : t('Archive')}</p>
                                 </TooltipContent>
                             </Tooltip>
                         )}
@@ -243,6 +301,30 @@ export default function Index() {
                         {hubspotButtons.map((button) => (
                             <div key={button.id}>{button.component}</div>
                         ))}
+                        {auth.user?.permissions?.includes('manage-product-service-item') && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => window.open(route('product-service.items.export'), '_blank')}>
+                                        <FileSpreadsheet className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{t('Export CSV')}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                        {auth.user?.permissions?.includes('create-product-service-item') && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                                        <Upload className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{t('Import CSV')}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
                         {auth.user?.permissions?.includes('manage-stock') && (
                             <Tooltip delayDuration={0}>
                                 <TooltipTrigger asChild>
@@ -300,7 +382,7 @@ export default function Index() {
                                     onToggle={() => setShowFilters(!showFilters)}
                                 />
                                 {(() => {
-                                    const activeFilters = [filters.type, filters.category_id].filter(Boolean).length;
+                                    const activeFilters = [filters.type, filters.category_id, filters.is_active].filter(Boolean).length;
                                     return activeFilters > 0 && (
                                         <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
                                             {activeFilters}
@@ -343,6 +425,19 @@ export default function Index() {
                                                 {category.name}
                                             </SelectItem>
                                         ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Status')}</label>
+                                <Select value={filters.is_active || 'all'} onValueChange={(value) => setFilters({...filters, is_active: value === 'all' ? '' : value})}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={t('All Statuses')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t('All Statuses')}</SelectItem>
+                                        <SelectItem value="true">{t('Active')}</SelectItem>
+                                        <SelectItem value="false">{t('Archived')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -439,7 +534,7 @@ export default function Index() {
                                                     )}
                                                     <div className="flex justify-between">
                                                         <span className="text-sm text-gray-600">{t('Quantity')}</span>
-                                                        <span className="text-sm font-medium">{Math.floor(item.total_quantity) || 0}</span>
+                                                        <span className="text-sm font-medium">{item.type === 'service' ? '-' : formatQty(item.total_quantity)}</span>
                                                     </div>
                                                     {item.category && (
                                                         <div className="flex justify-between">
@@ -481,7 +576,24 @@ export default function Index() {
                                                             <TooltipContent><p>{t('Edit')}</p></TooltipContent>
                                                         </Tooltip>
                                                     )}
-                                                    {auth.user?.permissions?.includes('delete-product-service-item') && (
+                                                    {auth.user?.permissions?.includes('edit-product-service-item') && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => router.post(route('product-service.items.toggle-status', item.id), {}, { preserveScroll: true })}
+                                        className={`h-8 w-8 p-0 ${item.is_active === false ? 'text-emerald-600' : 'text-amber-600'}`}
+                                    >
+                                        <Power className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{item.is_active === false ? t('Activate') : t('Archive')}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                        {auth.user?.permissions?.includes('delete-product-service-item') && (
                                                         <Tooltip delayDuration={300}>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -539,6 +651,28 @@ export default function Index() {
                 onConfirm={confirmDelete}
                 variant="destructive"
             />
+
+            <Dialog open={importOpen} onOpenChange={setImportOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('Import Products & Services (CSV)')}</DialogTitle>
+                        <DialogDescription>
+                            {t('Upload a UTF-8 CSV containing at minimum Name and SKU columns (plus optional Barcode, HS Code, Category, Unit, Sale Price, Purchase Price, Tax Classification).')}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleImportSubmit} className="space-y-4">
+                        <Input ref={fileInputRef} type="file" accept=".csv,text/csv" required />
+                        <div className="flex justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
+                                {t('Cancel')}
+                            </Button>
+                            <Button type="submit" disabled={importing}>
+                                {importing ? t('Importing...') : t('Upload & Import')}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             </AuthenticatedLayout>
         </TooltipProvider>

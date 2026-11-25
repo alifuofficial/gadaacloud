@@ -66,7 +66,8 @@ export default function Index() {
     const { data, setData, post, processing, errors, reset } = useForm({
         product_id: '',
         warehouse_id: '',
-        quantity: ''
+        quantity: '',
+        unit_cost: ''
     });
 
 
@@ -115,7 +116,7 @@ export default function Index() {
             key: 'total_quantity',
             header: t('Quantity'),
             sortable: false,
-            render: (value: number) => Math.floor(value) || 0
+            render: (value: number) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })
         },
         {
             key: 'actions',
@@ -243,18 +244,32 @@ export default function Index() {
                             </Select>
                             {errors.warehouse_id && <p className="text-sm text-red-600">{errors.warehouse_id}</p>}
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="quantity">{t('Quantity')}</Label>
-                            <Input
-                                id="quantity"
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={data.quantity}
-                                onChange={(e) => setData('quantity', e.target.value)}
-                                placeholder={t('Enter quantity')}
-                            />
-                            {errors.quantity && <p className="text-sm text-red-600">{errors.quantity}</p>}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="quantity">{t('Quantity')}</Label>
+                                <Input
+                                    id="quantity"
+                                    type="number"
+                                    min="0.0001"
+                                    step="0.0001"
+                                    value={data.quantity}
+                                    onChange={(e) => setData('quantity', e.target.value)}
+                                    placeholder={t('Enter quantity')}
+                                />
+                                {errors.quantity && <p className="text-sm text-red-600">{errors.quantity}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="unit_cost">{t('Unit Cost (Optional WAC)')}</Label>
+                                <Input
+                                    id="unit_cost"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={data.unit_cost}
+                                    onChange={(e) => setData('unit_cost', e.target.value)}
+                                    placeholder={t('Default purchase cost')}
+                                />
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" onClick={closeModal}>

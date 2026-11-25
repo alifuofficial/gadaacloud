@@ -15,30 +15,55 @@ import { Dialog } from "@/components/ui/dialog";
 import MediaPicker from "@/components/MediaPicker";
 import InputError from "@/components/ui/input-error";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ItemComplianceFields, ItemPricingAndGlFields } from '../../Components/ItemEnterpriseFields';
 import { CreateItemPageProps, ItemFormData } from './types';
 
 export default function Create() {
     const { t } = useTranslation();
-    const { taxes, categories, units, warehouses } = usePage<CreateItemPageProps>().props;
+    const {
+        taxes,
+        categories,
+        units,
+        warehouses,
+        hasAccountModule,
+        revenueAccounts,
+        expenseAccounts,
+        assetAccounts,
+    } = usePage<CreateItemPageProps>().props;
     const [activeTab, setActiveTab] = useState('details');
 
 
     const { data, setData, post, processing, errors } = useForm<ItemFormData>({
         name: '',
         sku: '',
+        barcode: '',
+        hs_code: '',
         tax_ids: [],
+        tax_classification: 'VAT15',
+        excise_rate: '0',
+        is_tax_inclusive: false,
         category_id: '',
         description: '',
         long_description: '',
         sale_price: '',
+        min_sale_price: '',
+        wholesale_price: '',
+        wholesale_min_qty: '',
         purchase_price: '',
+        sale_chartaccount_id: '',
+        expense_chartaccount_id: '',
+        inventory_chartaccount_id: '',
         unit: '',
+        purchase_unit_id: '',
+        unit_conversion_factor: '1',
+        reorder_level: '0',
         quantity: '',
         image: '',
         images: [],
         warehouse_id: '',
         type: 'product',
         inventory_type: 'standard',
+        is_active: true,
         custom_fields: {},
         has_warranty: 0,
         warranty_type: '',
@@ -275,6 +300,8 @@ export default function Create() {
                                         </div>
                                     )}
 
+                                    <ItemComplianceFields data={data} setData={setData} errors={errors} />
+
                                     {/* Warranty Fields */}
                                     {warrantyFields && warrantyFields.length > 0 && (
                                         <div className="border-t pt-6">
@@ -349,6 +376,8 @@ export default function Create() {
                                                 <Input
                                                     id="quantity"
                                                     type="number"
+                                                    step="0.0001"
+                                                    min="0"
                                                     value={data.quantity}
                                                     onChange={(e) => setData('quantity', e.target.value)}
                                                     placeholder={t('Enter Quantity')}
@@ -358,6 +387,17 @@ export default function Create() {
                                             </div>
                                         )}
                                     </div>
+
+                                    <ItemPricingAndGlFields
+                                        data={data}
+                                        setData={setData}
+                                        errors={errors}
+                                        units={units}
+                                        hasAccountModule={hasAccountModule}
+                                        revenueAccounts={revenueAccounts}
+                                        expenseAccounts={expenseAccounts}
+                                        assetAccounts={assetAccounts}
+                                    />
 
                                     <div className="flex justify-between">
                                         <Button type="button" variant="outline" onClick={prevTab}>

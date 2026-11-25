@@ -62,6 +62,9 @@ class CategoryController extends Controller
     public function update(Request $request, ProductServiceCategory $itemCategory)
     {
         if(Auth::user()->can('edit-product-service-categories')){
+            if (!Auth::user()->hasRole('superadmin') && (int) $itemCategory->created_by !== (int) creatorId()) {
+                return redirect()->route('product-service.item-categories.index')->with('error', __('Permission denied'));
+            }
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'color' => 'required|string|max:7',
@@ -82,6 +85,9 @@ class CategoryController extends Controller
     public function destroy(ProductServiceCategory $itemCategory)
     {
         if(Auth::user()->can('delete-product-service-categories')){
+            if (!Auth::user()->hasRole('superadmin') && (int) $itemCategory->created_by !== (int) creatorId()) {
+                return redirect()->route('product-service.item-categories.index')->with('error', __('Permission denied'));
+            }
 
             DestroyProductServiceCategory::dispatch($itemCategory);
 

@@ -4,8 +4,8 @@ import { usePageButtons } from '@/hooks/usePageButtons';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, Image } from "lucide-react";
-import { formatCurrency, getImagePath } from "@/utils/helpers";
+import { Package, Image, ArrowDownUp } from "lucide-react";
+import { formatCurrency, formatDateTime, getImagePath } from "@/utils/helpers";
 import { ImageSlider } from "@/components/ui/image-slider";
 
 interface ShowItemPageProps {
@@ -13,25 +13,52 @@ interface ShowItemPageProps {
         id: number;
         name: string;
         sku?: string;
+        barcode?: string;
+        hs_code?: string;
+        tax_classification?: string;
+        excise_rate?: number;
+        is_tax_inclusive?: boolean;
         description?: string;
         sale_price?: number;
+        min_sale_price?: number;
+        wholesale_price?: number;
+        wholesale_min_qty?: number;
         purchase_price?: number;
         quantity?: number;
         total_quantity?: number;
+        total_valuation?: number;
+        reorder_level?: number;
+        unit_conversion_factor?: number;
         type: string;
+        inventory_type?: string;
+        is_active?: boolean;
         image?: string;
         images?: string[] | string;
-        gallery?: string[];
-        additional_images?: string[];
         warehouse_stocks?: Array<{
             warehouse_name: string;
             quantity: number;
+            unit_cost?: number;
+            total_value?: number;
+        }>;
+        audit_logs?: Array<{
+            id: number;
+            warehouse_name: string;
+            action_type: string;
+            quantity_change: number;
+            new_quantity: number;
+            reference_type?: string;
+            notes?: string;
+            created_at?: string;
         }>;
         category?: {
             id: number;
             name: string;
         };
         unit_relation?: {
+            id: number;
+            unit_name: string;
+        };
+        purchase_unit?: {
             id: number;
             unit_name: string;
         };
@@ -119,23 +146,107 @@ export default function Show() {
                                     )}
                                     <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
                                         <label className="text-sm font-medium text-orange-700">{t('Total Quantity')}</label>
-                                        <p className="text-xl font-bold text-orange-800 mt-1">{Math.floor(item.total_quantity) || 0}</p>
+                                        <p className="text-xl font-bold text-orange-800 mt-1">
+                                            {Number(item.total_quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                        </p>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                        <label className="text-sm font-medium text-purple-700">{t('Stock Valuation (WAC)')}</label>
+                                        <p className="text-xl font-bold text-purple-800 mt-1">
+                                            {formatCurrency(item.total_valuation || 0)}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
 
                             {item.warehouse_stocks && item.warehouse_stocks.length > 0 && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('Warehouse Stock')}</h3>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('Warehouse Stock & Valuation')}</h3>
                                     <div className="bg-gray-50 p-4 rounded-lg">
                                         <div className="space-y-2">
                                             {item.warehouse_stocks.map((stock, index) => (
                                                 <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                                                    <span className="font-medium text-gray-700">{stock.warehouse_name}</span>
-                                                    <span className="text-lg font-semibold text-gray-900">{Math.floor(stock.quantity)}</span>
+                                                    <div>
+                                                        <span className="font-medium text-gray-700">{stock.warehouse_name}</span>
+                                                        {stock.unit_cost !== undefined && (
+                                                            <span className="ml-2 text-xs text-muted-foreground">
+                                                                @ {formatCurrency(stock.unit_cost)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-base font-semibold text-gray-900">
+                                                            {Number(stock.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                                        </span>
+                                                        {stock.total_value !== undefined && (
+                                                            <span className="ml-3 text-xs text-muted-foreground">
+                                                                ({formatCurrency(stock.total_value)})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('Compliance, Pricing Tiers & UoM')}</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <span className="text-xs text-muted-foreground block">{t('Barcode / HS Code')}</span>
+                                        <span className="font-medium">{item.barcode || '-'} / {item.hs_code || '-'}</span>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <span className="text-xs text-muted-foreground block">{t('EIMS Tax Class / Excise')}</span>
+                                        <span className="font-medium">
+                                            {item.tax_classification || 'VAT15'}
+                                            {Number(item.excise_rate || 0) > 0 ? ` (${item.excise_rate}%)` : ''}
+                                            {item.is_tax_inclusive ? ` • ${t('Inclusive')}` : ''}
+                                        </span>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <span className="text-xs text-muted-foreground block">{t('Purchase UoM & Reorder')}</span>
+                                        <span className="font-medium">
+                                            {item.purchase_unit ? `1 ${item.purchase_unit.unit_name} = ${item.unit_conversion_factor || 1} ${item.unit_relation?.unit_name || 'Base'}` : (item.unit_relation?.unit_name || '-')}
+                                            {Number(item.reorder_level || 0) > 0 ? ` • Min: ${item.reorder_level}` : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {item.audit_logs && item.audit_logs.length > 0 && (
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                        <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
+                                        {t('Recent Stock Movement Ledger')}
+                                    </h3>
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-muted/50 border-b">
+                                                <tr>
+                                                    <th className="text-left p-2.5">{t('Date')}</th>
+                                                    <th className="text-left p-2.5">{t('Warehouse')}</th>
+                                                    <th className="text-left p-2.5">{t('Action')}</th>
+                                                    <th className="text-right p-2.5">{t('Change')}</th>
+                                                    <th className="text-right p-2.5">{t('Balance')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {item.audit_logs.map((log) => (
+                                                    <tr key={log.id} className="border-b last:border-b-0">
+                                                        <td className="p-2.5">{log.created_at ? formatDateTime(log.created_at) : '-'}</td>
+                                                        <td className="p-2.5">{log.warehouse_name}</td>
+                                                        <td className="p-2.5 capitalize">{String(log.action_type).replace(/_/g, ' ')}</td>
+                                                        <td className={`p-2.5 text-right font-semibold ${log.quantity_change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {log.quantity_change >= 0 ? '+' : ''}{log.quantity_change}
+                                                        </td>
+                                                        <td className="p-2.5 text-right font-mono">{log.new_quantity}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             )}

@@ -105,25 +105,39 @@ class EimsPayloadBuilderService
 
             $description = substr($product->name ?? ($product->description ?? 'Standard Supply Item'), 0, 100);
 
-            // Tax code
-            $taxCode = ($lineTaxAmount > 0) ? 'VAT15' : 'VAT0';
+            // Tax classification & excise handling
+            $taxClass = strtoupper((string) ($product->tax_classification ?? ($lineTaxAmount > 0 ? 'VAT15' : 'VAT0')));
+            if (!in_array($taxClass, ['VAT15', 'VAT0', 'EXEMPT', 'EXCISE'], true)) {
+                $taxClass = ($lineTaxAmount > 0) ? 'VAT15' : 'VAT0';
+            }
+            $taxCode = ($lineTaxAmount > 0 && $taxClass === 'VAT0') ? 'VAT15' : $taxClass;
+            $exciseRate = (float) ($product->excise_rate ?? 0);
+            $exciseValue = ($taxClass === 'EXCISE' && $exciseRate > 0)
+                ? round(max(0, $linePreTax - $discountAmount) * ($exciseRate / 100), 2)
+                : 0.0;
 
-            $items[] = [
+            $linePayload = [
                 'lineNumber' => $lineNumber,
                 'itemCode' => $itemCode,
                 'productDescription' => $description,
                 'natureOfSupplies' => $nature,
                 'quantity' => $qty,
-                'unitOfMeasure' => substr($product->unitRelation->name ?? 'PCS', 0, 10),
+                'unitOfMeasure' => substr($product->unitRelation->unit_name ?? 'PCS', 0, 10),
                 'unitPrice' => $unitPrice,
                 'preTaxValue' => $linePreTax,
                 'discount' => $discountAmount,
                 'taxCode' => $taxCode,
-                'taxRate' => ($taxCode === 'VAT15') ? 15.0 : 0.0,
+                'taxRate' => in_array($taxCode, ['VAT15', 'EXCISE'], true) ? 15.0 : 0.0,
                 'taxAmount' => $lineTaxAmount,
-                'exciseTaxValue' => 0.0,
+                'exciseTaxValue' => $exciseValue,
                 'totalLineAmount' => $lineTotal,
             ];
+
+            if ($product && !empty($product->hs_code)) {
+                $linePayload['hsCode'] = substr(preg_replace('/[^a-zA-Z0-9.\-]/', '', $product->hs_code), 0, 30);
+            }
+
+            $items[] = $linePayload;
 
             $calculatedPreTax += $linePreTax;
             $calculatedDiscount += $discountAmount;
@@ -180,7 +194,7 @@ class EimsPayloadBuilderService
                 'discountAmount' => round($calculatedDiscount, 2),
                 'taxableAmount' => round($calculatedPreTax - $calculatedDiscount, 2),
                 'taxAmount' => round($calculatedTax, 2),
-                'exciseTaxAmount' => 0.0,
+                'exciseTaxAmount' => round(array_sum(array_column($items, 'exciseTaxValue')), 2),
                 'totalAmount' => round($calculatedTotal, 2),
             ],
             'payment' => [

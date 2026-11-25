@@ -60,6 +60,9 @@ class UnitController extends Controller
     public function update(Request $request, ProductServiceUnit $unit)
     {
         if(Auth::user()->can('edit-product-service-units')){
+            if (!Auth::user()->hasRole('superadmin') && (int) $unit->created_by !== (int) creatorId()) {
+                return redirect()->route('product-service.units.index')->with('error', __('Permission denied'));
+            }
             $validated = $request->validate([
                 'unit_name' => 'required|string|max:255',
             ]);
@@ -78,6 +81,9 @@ class UnitController extends Controller
     public function destroy(ProductServiceUnit $unit)
     {
         if(Auth::user()->can('delete-product-service-units')){
+            if (!Auth::user()->hasRole('superadmin') && (int) $unit->created_by !== (int) creatorId()) {
+                return redirect()->route('product-service.units.index')->with('error', __('Permission denied'));
+            }
 
             // Dispatch event for packages to handle their fields
             DestroyProductServiceUnit::dispatch($unit);

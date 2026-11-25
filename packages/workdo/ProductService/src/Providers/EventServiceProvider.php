@@ -7,13 +7,12 @@ use App\Events\ApprovePurchaseReturn;
 use App\Events\CompleteSalesReturn;
 use App\Events\PostSalesInvoice;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Workdo\Pos\Events\CreatePos;
 use Workdo\ProductService\Listeners\PostPurchaseInvoiceListener;
 use Workdo\ProductService\Listeners\ApprovePurchaseReturnListener;
 use Workdo\ProductService\Listeners\CompleteSalesReturnListener;
+use Workdo\ProductService\Listeners\ConvertSalesRetainerListener;
 use Workdo\ProductService\Listeners\PosCreateListener;
 use Workdo\ProductService\Listeners\PostSalesInvoiceListener;
-use Workdo\Retainer\Events\ConvertSalesRetainer;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -30,11 +29,22 @@ class EventServiceProvider extends ServiceProvider
         CompleteSalesReturn::class => [
             CompleteSalesReturnListener::class,
         ],
-        CreatePos::class => [
-            PosCreateListener::class,
-        ],
-        ConvertSalesRetainer::class => [
-            CompleteSalesReturnListener::class,
-        ],
     ];
+
+    public function register(): void
+    {
+        if (class_exists(\Workdo\Pos\Events\CreatePos::class)) {
+            $this->listen[\Workdo\Pos\Events\CreatePos::class] = [
+                PosCreateListener::class,
+            ];
+        }
+
+        if (class_exists(\Workdo\Retainer\Events\ConvertSalesRetainer::class)) {
+            $this->listen[\Workdo\Retainer\Events\ConvertSalesRetainer::class] = [
+                ConvertSalesRetainerListener::class,
+            ];
+        }
+
+        parent::register();
+    }
 }

@@ -11,7 +11,14 @@ class ApprovePurchaseReturnListener
     public function handle(ApprovePurchaseReturn $event)
     {
         $return = $event->return;
+        if (empty($return->warehouse_id)) {
+            return;
+        }
+
         $companyId = (int) ($return->created_by ?? creatorId());
+        $allowNegative = function_exists('company_setting')
+            ? company_setting('allow_negative_stock', $companyId) !== 'off'
+            : true;
 
         foreach ($return->items()->get() as $item) {
             if (class_exists(InventoryService::class)) {
@@ -24,7 +31,7 @@ class ApprovePurchaseReturnListener
                     referenceType: 'PurchaseReturn',
                     referenceId: (int) $return->id,
                     notes: 'Purchase Return #' . ($return->return_number ?? $return->id),
-                    allowNegative: true
+                    allowNegative: $allowNegative
                 );
             } else {
                 $stock = WarehouseStock::where('warehouse_id', $return->warehouse_id)

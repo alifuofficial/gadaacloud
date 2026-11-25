@@ -1,23 +1,23 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Workdo\ProductService\Http\Controllers\DashboardController;
 use Workdo\ProductService\Http\Controllers\ProductServiceItemController;
-use Workdo\ProductService\Http\Controllers\SystemSetupController;
 use Workdo\ProductService\Http\Controllers\CategoryController;
 use Workdo\ProductService\Http\Controllers\TaxController;
 use Workdo\ProductService\Http\Controllers\UnitController;
-use Workdo\ProductService\Http\Controllers\WarehouseStockController;
 
 Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:ProductService'])->group(function () {
 
     Route::prefix('product-service/items')->name('product-service.items.')->group(function () {
         Route::get('/', [ProductServiceItemController::class, 'index'])->name('index');
         Route::get('/create', [ProductServiceItemController::class, 'create'])->name('create');
+        Route::get('/export', [ProductServiceItemController::class, 'exportCsv'])->name('export');
+        Route::post('/import', [ProductServiceItemController::class, 'importCsv'])->name('import');
         Route::post('/', [ProductServiceItemController::class, 'store'])->name('store');
         Route::get('/{item}', [ProductServiceItemController::class, 'show'])->name('show');
         Route::get('/{item}/edit', [ProductServiceItemController::class, 'edit'])->name('edit');
         Route::put('/{item}', [ProductServiceItemController::class, 'update'])->name('update');
+        Route::post('/{item}/toggle-status', [ProductServiceItemController::class, 'toggleStatus'])->name('toggle-status');
         Route::delete('/{item}', [ProductServiceItemController::class, 'destroy'])->name('destroy');
     });
 

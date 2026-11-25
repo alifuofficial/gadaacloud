@@ -12,8 +12,12 @@ class PostSalesInvoiceListener
     {
         $salesInvoice = $event->salesInvoice;
 
-        if ($salesInvoice->type === 'product') {
+        if ($salesInvoice->type === 'product' && !empty($salesInvoice->warehouse_id)) {
             $companyId = (int) ($salesInvoice->created_by ?? creatorId());
+            $allowNegative = function_exists('company_setting')
+                ? company_setting('allow_negative_stock', $companyId) !== 'off'
+                : true;
+
             foreach ($salesInvoice->items()->get() as $item) {
                 if (class_exists(InventoryService::class)) {
                     InventoryService::deductStock(
@@ -25,7 +29,7 @@ class PostSalesInvoiceListener
                         referenceType: 'SalesInvoice',
                         referenceId: (int) $salesInvoice->id,
                         notes: 'Sales Invoice #' . ($salesInvoice->invoice_number ?? $salesInvoice->id),
-                        allowNegative: true
+                        allowNegative: $allowNegative
                     );
                 } else {
                     $stock = WarehouseStock::where('warehouse_id', $salesInvoice->warehouse_id)

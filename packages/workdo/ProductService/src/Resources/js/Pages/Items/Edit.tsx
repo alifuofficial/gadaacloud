@@ -15,17 +15,42 @@ import MediaPicker from "@/components/MediaPicker";
 import InputError from "@/components/ui/input-error";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useFormFields } from '@/hooks/useFormFields';
+import { ItemComplianceFields, ItemPricingAndGlFields } from '../../Components/ItemEnterpriseFields';
 
 import { EditItemPageProps, ItemFormData } from './types';
 
 export default function Edit() {
     const { t } = useTranslation();
-    const { item, taxes, categories, units, warehouses } = usePage<EditItemPageProps>().props;
+    const {
+        item,
+        taxes,
+        categories,
+        units,
+        hasAccountModule,
+        revenueAccounts,
+        expenseAccounts,
+        assetAccounts,
+    } = usePage<EditItemPageProps>().props;
     const [activeTab, setActiveTab] = useState('details');
 
 
     const { data, setData, put, processing, errors } = useForm<ItemFormData>({
         ...item,
+        category_id: item.category_id ? String(item.category_id) : '',
+        unit: item.unit ? String(item.unit) : '',
+        sale_price: item.sale_price !== undefined && item.sale_price !== null ? String(item.sale_price) : '',
+        purchase_price: item.purchase_price !== undefined && item.purchase_price !== null ? String(item.purchase_price) : '',
+        min_sale_price: item.min_sale_price !== undefined && item.min_sale_price !== null ? String(item.min_sale_price) : '',
+        wholesale_price: item.wholesale_price !== undefined && item.wholesale_price !== null ? String(item.wholesale_price) : '',
+        wholesale_min_qty: item.wholesale_min_qty !== undefined && item.wholesale_min_qty !== null ? String(item.wholesale_min_qty) : '',
+        excise_rate: item.excise_rate !== undefined && item.excise_rate !== null ? String(item.excise_rate) : '0',
+        unit_conversion_factor: item.unit_conversion_factor !== undefined && item.unit_conversion_factor !== null ? String(item.unit_conversion_factor) : '1',
+        reorder_level: item.reorder_level !== undefined && item.reorder_level !== null ? String(item.reorder_level) : '0',
+        sale_chartaccount_id: item.sale_chartaccount_id ? String(item.sale_chartaccount_id) : '',
+        expense_chartaccount_id: item.expense_chartaccount_id ? String(item.expense_chartaccount_id) : '',
+        inventory_chartaccount_id: item.inventory_chartaccount_id ? String(item.inventory_chartaccount_id) : '',
+        purchase_unit_id: item.purchase_unit_id ? String(item.purchase_unit_id) : '',
+        tax_ids: Array.isArray(item.tax_ids) ? item.tax_ids.map(String) : [],
         images: item.images ? (typeof item.images === 'string' ? JSON.parse(item.images) : item.images) : []
     });
 
@@ -41,16 +66,16 @@ export default function Edit() {
 
 
     const validateDetailsTab = () => {
-        return data.name.trim() !== '' &&
-            data.sku.trim() !== '' &&
-            data.tax_ids.length > 0 &&
-            data.category_id !== '';
+        return (data.name || '').toString().trim() !== '' &&
+            (data.sku || '').toString().trim() !== '' &&
+            (data.tax_ids || []).length > 0 &&
+            (data.category_id || '').toString() !== '';
     };
 
     const validatePricingTab = () => {
-        return data.sale_price.trim() !== '' &&
-            data.purchase_price.trim() !== '' &&
-            data.unit !== '';
+        return (data.sale_price || '').toString().trim() !== '' &&
+            (data.purchase_price || '').toString().trim() !== '' &&
+            (data.unit || '').toString() !== '';
     };
 
     const nextTab = () => {
@@ -248,6 +273,7 @@ export default function Edit() {
                                             {customFields.map(field => field.component)}
                                         </div>
                                     )}
+                                    <ItemComplianceFields data={data} setData={setData} errors={errors} />
                                     {/* Warranty Fields */}
                                     {warrantyFields && warrantyFields.length > 0 && (
                                         <div className="border-t pt-6">
@@ -316,6 +342,17 @@ export default function Edit() {
                                             <InputError message={errors.unit} />
                                         </div>
                                     </div>
+
+                                    <ItemPricingAndGlFields
+                                        data={data}
+                                        setData={setData}
+                                        errors={errors}
+                                        units={units}
+                                        hasAccountModule={hasAccountModule}
+                                        revenueAccounts={revenueAccounts}
+                                        expenseAccounts={expenseAccounts}
+                                        assetAccounts={assetAccounts}
+                                    />
 
                                     <div className="flex justify-between">
                                         <Button type="button" variant="outline" onClick={prevTab}>
