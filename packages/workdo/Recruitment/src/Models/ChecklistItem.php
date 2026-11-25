@@ -2,13 +2,14 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\OnboardingChecklist;
 
 class ChecklistItem extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'checklist_id',

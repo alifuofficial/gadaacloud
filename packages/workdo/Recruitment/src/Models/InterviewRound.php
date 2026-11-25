@@ -2,13 +2,14 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\JobPosting;
 
 class InterviewRound extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',

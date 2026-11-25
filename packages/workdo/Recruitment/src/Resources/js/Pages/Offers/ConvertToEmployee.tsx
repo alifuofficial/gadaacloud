@@ -67,7 +67,15 @@ interface Props {
     generatedEmployeeId: string;
 }
 
-export default function ConvertToEmployee({ offer, branches, departments, designations, shifts, documentTypes, generatedEmployeeId }: Props) {
+export default function ConvertToEmployee({
+    offer,
+    branches = [],
+    departments = [],
+    designations = [],
+    shifts = [],
+    documentTypes = [],
+    generatedEmployeeId = '',
+}: Props) {
     const [activeTab, setActiveTab] = useState('personal');
     const [filteredDepartments, setFilteredDepartments] = useState(departments || []);
     const [filteredDesignations, setFilteredDesignations] = useState(designations || []);
@@ -77,9 +85,9 @@ export default function ConvertToEmployee({ offer, branches, departments, design
 
     const { data, setData, post, processing, errors } = useForm({
         employee_id: generatedEmployeeId,
-        candidate_name: offer.candidate.first_name + ' ' + offer.candidate.last_name,
-        candidate_email: offer.candidate.email,
-        phone_number: offer.candidate.phone || '',
+        candidate_name: `${offer?.candidate?.first_name || ''} ${offer?.candidate?.last_name || ''}`.trim(),
+        candidate_email: offer?.candidate?.email || '',
+        phone_number: offer?.candidate?.phone || '',
         date_of_birth: '',
         gender: '0',
         password: '',

@@ -63,8 +63,14 @@ class FrontendController extends Controller
                     ];
                 });
 
-            // Get job categories (departments)
-            $jobCategories = ['Technology', 'Accounting', 'HR section'];
+            // Dynamic job categories from tenant's active JobTypes
+            $jobCategories = JobType::where('created_by', $userId)
+                ->where('is_active', 1)
+                ->pluck('name')
+                ->toArray();
+            if (empty($jobCategories)) {
+                $jobCategories = ['Full Time', 'Part Time', 'Contract'];
+            }
 
             // Get job locations
             $jobLocations = JobLocation::where('created_by', $userId)

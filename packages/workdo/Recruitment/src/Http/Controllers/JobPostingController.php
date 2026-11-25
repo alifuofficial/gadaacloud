@@ -16,9 +16,12 @@ use Workdo\Recruitment\Models\JobLocation;
 use Workdo\Recruitment\Events\CreateJobPosting;
 use Workdo\Recruitment\Events\UpdateJobPosting;
 use Workdo\Recruitment\Events\DestroyJobPosting;
+use Workdo\Recruitment\Services\RecruitmentHrmIntegrationService;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class JobPostingController extends Controller
 {
+    use RecruitmentControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-job-postings')){
@@ -50,22 +53,28 @@ class JobPostingController extends Controller
                 ->when(request('location_id') && request('location_id') !== 'all', fn($q) => $q->where('location_id', request('location_id')))
                 ->when(request('branch_id') && request('branch_id') !== 'all', fn($q) => $q->where('job_postings.branch_id', request('branch_id')))
                 ->when(request('status') && request('status') !== 'all', fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), function($q) {
+                ->when(true, function($q) {
                     $sort = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower(request('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
 
                     if ($sort === 'branch_name') {
-                        $q->orderBy('branches.branch_name', $direction);
+                        return $q->orderBy('branches.branch_name', $direction);
                     } elseif ($sort === 'salary_range') {
-                        $q->orderBy('job_postings.min_salary', $direction)
-                          ->orderBy('job_postings.max_salary', $direction);
-                    } elseif ($sort === 'application_deadline') {
-                        $q->orderBy('job_postings.application_deadline', $direction);
-                    } else {
-                        $q->orderBy('job_postings.' . $sort, $direction);
+                        return $q->orderBy('job_postings.min_salary', $direction)
+                            ->orderBy('job_postings.max_salary', $direction);
                     }
-                }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+
+                    return $this->applySafeSort($q, [
+                        'title' => 'job_postings.title',
+                        'posting_code' => 'job_postings.posting_code',
+                        'position' => 'job_postings.position',
+                        'priority' => 'job_postings.priority',
+                        'application_deadline' => 'job_postings.application_deadline',
+                        'status' => 'job_postings.status',
+                        'created_at' => 'job_postings.created_at',
+                    ], 'created_at');
+                })
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/JobPostings/Index', [
@@ -82,7 +91,7 @@ class JobPostingController extends Controller
                     ->where('is_active', 1)
                     ->select('id', 'question', 'is_required')
                     ->get(),
-                'branches' => Branch::where('created_by', creatorId())->select('id', 'branch_name')->get(),
+                'branches' => app(RecruitmentHrmIntegrationService::class)->getBranches(),
             ]);
         }
         else{
@@ -106,7 +115,7 @@ class JobPostingController extends Controller
                     ->where('is_active', 1)
                     ->select('id', 'question', 'is_required')
                     ->get(),
-                'branches' => Branch::where('created_by', creatorId())->select('id', 'branch_name')->get(),
+                'branches' => app(RecruitmentHrmIntegrationService::class)->getBranches(),
             ]);
         }
         else{
@@ -131,7 +140,7 @@ class JobPostingController extends Controller
                     ->where('is_active', 1)
                     ->select('id', 'question', 'is_required')
                     ->get(),
-                'branches' => Branch::where('created_by', creatorId())->select('id', 'branch_name')->get(),
+                'branches' => app(RecruitmentHrmIntegrationService::class)->getBranches(),
             ]);
         }
         else{

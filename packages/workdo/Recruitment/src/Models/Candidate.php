@@ -2,6 +2,7 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\JobPosting;
@@ -11,13 +12,14 @@ use Workdo\Recruitment\Models\CandidateAssessment;
 
 class Candidate extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'first_name',
         'last_name',
         'email',
         'phone',
+        'national_id',
         'gender',
         'dob',
         'country',
@@ -38,6 +40,7 @@ class Candidate extends Model
         'cover_letter_path',
         'status',
         'application_date',
+        'ethiopian_fiscal_year',
         'custom_question',
         'tracking_id',
         'job_id',

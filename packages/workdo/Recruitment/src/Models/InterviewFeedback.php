@@ -2,6 +2,7 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\Interview;
@@ -9,7 +10,7 @@ use App\Models\User;
 
 class InterviewFeedback extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $table = 'interview_feedbacks';
 

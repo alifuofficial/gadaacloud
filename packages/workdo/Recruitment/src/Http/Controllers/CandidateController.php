@@ -14,9 +14,11 @@ use Workdo\Recruitment\Models\CustomQuestion;
 use Workdo\Recruitment\Events\CreateCandidate;
 use Workdo\Recruitment\Events\UpdateCandidate;
 use Workdo\Recruitment\Events\DestroyCandidate;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class CandidateController extends Controller
 {
+    use RecruitmentControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-candidates')) {
@@ -46,15 +48,21 @@ class CandidateController extends Controller
                 ->when(request('source_id') && request('source_id') !== 'all', fn($q) => $q->where('source_id', request('source_id')))
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
                 ->when(request('application_date'), fn($q) => $q->whereDate('application_date', request('application_date')))
-                ->when(request('sort'), function($q) {
+                ->when(true, function($q) {
                     $sort = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower(request('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
                     if ($sort === 'name') {
                         return $q->orderBy('first_name', $direction)->orderBy('last_name', $direction);
                     }
-                    return $q->orderBy($sort, $direction);
-                }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                    return $this->applySafeSort($q, [
+                        'email' => 'email',
+                        'status' => 'status',
+                        'application_date' => 'application_date',
+                        'tracking_id' => 'tracking_id',
+                        'created_at' => 'created_at',
+                    ], 'latest');
+                })
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/Candidates/Index', [
@@ -216,7 +224,7 @@ class CandidateController extends Controller
 
     public function update(UpdateCandidateRequest $request, Candidate $candidate)
     {
-        if (Auth::user()->can('edit-candidates')) {
+        if (Auth::user()->can('edit-candidates') && $this->assertBelongsToTenant($candidate)) {
             $validated = $request->validated();
 
             // Handle profile_url (extract filename from path)

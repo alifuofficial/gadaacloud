@@ -30,9 +30,12 @@ use Workdo\Recruitment\Events\UpdateOffer;
 use Workdo\Recruitment\Events\DestroyOffer;
 use Workdo\Recruitment\Events\UpdateOfferApprovalStatus;
 use Workdo\Recruitment\Events\ConvertOfferToEmployee;
+use Workdo\Recruitment\Services\RecruitmentHrmIntegrationService;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class OfferController extends Controller
 {
+    use RecruitmentControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-offers')) {
@@ -219,7 +222,7 @@ class OfferController extends Controller
 
     public function update(UpdateOfferRequest $request, Offer $offer)
     {
-        if (Auth::user()->can('edit-offers')) {
+        if (Auth::user()->can('edit-offers') && $this->assertBelongsToTenant($offer)) {
             $validated = $request->validated();
 
             // Get job_id from candidate's job application
@@ -253,7 +256,7 @@ class OfferController extends Controller
 
     public function updateApprovalStatus(Request $request, Offer $offer)
     {
-        if (Auth::user()->can('approve-offers')) {
+        if (Auth::user()->can('approve-offers') && $this->assertBelongsToTenant($offer)) {
             $action = $request->input('action');
 
             if ($action === 'approve') {
@@ -278,7 +281,7 @@ class OfferController extends Controller
 
     public function destroy(Offer $offer)
     {
-        if (Auth::user()->can('delete-offers')) {
+        if (Auth::user()->can('delete-offers') && $this->assertBelongsToTenant($offer)) {
             DestroyOffer::dispatch($offer);
 
             $offer->delete();
@@ -395,20 +398,25 @@ class OfferController extends Controller
     public function showConvertToEmployeeForm($id)
     {
         if (Auth::user()->can('convert-offers-to-employees')) {
-            $offer = Offer::with('candidate')->findOrFail($id);
+            $offer = Offer::with('candidate')
+                ->where('id', $id)
+                ->where('created_by', creatorId())
+                ->firstOrFail();
 
             if ($offer->converted_to_employee) {
                 return redirect()->back()->with('error', __('Offer already converted to employee'));
             }
 
+            $hrmService = app(RecruitmentHrmIntegrationService::class);
+
             return Inertia::render('Recruitment/Offers/ConvertToEmployee', [
                 'offer' => $offer,
-                'branches' => Branch::where('created_by', creatorId())->select('id', 'branch_name')->get(),
-                'departments' => Department::where('created_by', creatorId())->select('id', 'department_name', 'branch_id')->get(),
-                'designations' => Designation::where('created_by', creatorId())->select('id', 'designation_name', 'branch_id', 'department_id')->get(),
-                'shifts' => Shift::where('created_by', creatorId())->select('id', 'shift_name')->get(),
-                'documentTypes' => EmployeeDocumentType::where('created_by', creatorId())->select('id', 'document_name', 'is_required')->get(),
-                'generatedEmployeeId' => Employee::generateEmployeeId(),
+                'branches' => $hrmService->getBranches(),
+                'departments' => $hrmService->getDepartments(),
+                'designations' => $hrmService->getDesignations(),
+                'shifts' => $hrmService->getShifts(),
+                'documentTypes' => $hrmService->getDocumentTypes(),
+                'generatedEmployeeId' => $hrmService->generateEmployeeId(),
             ]);
         } else {
             return redirect()->back()->with('error', __('Permission denied'));
@@ -419,111 +427,12 @@ class OfferController extends Controller
     {
         if (Auth::user()->can('convert-offers-to-employees')) {
             try {
-                $offer = Offer::with('candidate')->findOrFail($id);
+                $offer = Offer::with('candidate')
+                    ->where('id', $id)
+                    ->where('created_by', creatorId())
+                    ->firstOrFail();
 
-                if ($offer->converted_to_employee) {
-                    return redirect()->back()->with('error', __('Offer already converted to employee'));
-                }
-
-                // Convert gender from numeric to text
-                $genderMap = [
-                    '0' => 'Male',
-                    '1' => 'Female',
-                    '2' => 'Other'
-                ];
-                $genderText = $genderMap[$request->gender] ?? 'Male';
-
-                // Create user account
-                $user = new User();
-                $user->name = $request->candidate_name;
-                $user->email = $request->candidate_email;
-                $user->mobile_no = $request->phone_number;
-                $user->password = bcrypt($request->password);
-                $user->type = 'staff';
-                $user->is_enable_login = true;
-                $user->lang = company_setting('defaultLanguage') ?? 'en';
-                $user->creator_id = Auth::id();
-                $user->created_by = creatorId();
-                $user->email_verified_at = now();
-                $user->save();
-
-                $user->assignRole('staff');
-
-                // Create employee record
-                $employee = new Employee();
-                $employee->employee_id = $request->employee_id;
-                $employee->date_of_birth = $request->date_of_birth;
-                $employee->gender = $genderText;
-                $employee->shift = $request->shift_id;
-                $employee->date_of_joining = $request->date_of_joining;
-                $employee->employment_type = $request->employment_type;
-                $employee->address_line_1 = $request->address_line_1;
-                $employee->address_line_2 = $request->address_line_2;
-                $employee->city = $request->city;
-                $employee->state = $request->state;
-                $employee->country = $request->country;
-                $employee->postal_code = $request->postal_code;
-                $employee->emergency_contact_name = $request->emergency_contact_name;
-                $employee->emergency_contact_relationship = $request->emergency_contact_relationship;
-                $employee->emergency_contact_number = $request->emergency_contact_number;
-                $employee->bank_name = $request->bank_name;
-                $employee->account_holder_name = $request->account_holder_name;
-                $employee->account_number = $request->account_number;
-                $employee->bank_identifier_code = $request->bank_identifier_code;
-                $employee->bank_branch = $request->bank_branch;
-                $employee->tax_payer_id = $request->tax_payer_id;
-                $employee->user_id = $user->id;
-                $employee->branch_id = $request->branch_id;
-                $employee->department_id = $request->department_id;
-                $employee->designation_id = $request->designation_id;
-                $employee->basic_salary = $request->basic_salary;
-                $employee->hours_per_day = $request->hours_per_day;
-                $employee->days_per_week = $request->days_per_week;
-                $employee->rate_per_hour = $request->rate_per_hour;
-                $employee->creator_id = Auth::id();
-                $employee->created_by = creatorId();
-
-                $employee->save();
-
-                // Store documents
-                if ($request->has('documents')) {
-                    foreach ($request->input('documents', []) as $index => $document) {
-                        if ($request->hasFile("documents.{$index}.file") && !empty($document['document_type_id'])) {
-                            $file = $request->file("documents.{$index}.file");
-
-                            $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                            $extension = $file->getClientOriginalExtension();
-                            $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-
-                            $upload = upload_file($request, "documents.{$index}.file", $fileNameToStore, 'employee_documents');
-
-                            if (isset($upload['flag']) && $upload['flag'] == 1 && isset($upload['url'])) {
-                                EmployeeDocument::create([
-                                    'user_id' => $employee->id,
-                                    'document_type_id' => $document['document_type_id'],
-                                    'file_path' => $upload['url'],
-                                    'creator_id' => Auth::id(),
-                                    'created_by' => creatorId(),
-                                ]);
-                            }
-                        }
-                    }
-                }
-
-                // Update offer status
-                $offer->update([
-                    'converted_to_employee' => true,
-                    'employee_id' => $employee->id
-                ]);
-
-                // Update candidate status from Offer (3) to Hired (4)
-                $candidate = $offer->candidate;
-                if ($candidate && $candidate->status === '3') {
-                    $candidate->status = '4';
-                    $candidate->save();
-                }
-
-                ConvertOfferToEmployee::dispatch($request, $offer, $employee);
+                app(RecruitmentHrmIntegrationService::class)->convertOfferToEmployee($request, $offer);
 
                 return redirect()->route('recruitment.offers.index')->with('success', __('Offer converted to employee successfully'));
             } catch (\Exception $e) {

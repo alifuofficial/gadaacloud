@@ -2,6 +2,7 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\Candidate;
@@ -11,12 +12,13 @@ use Workdo\Hrm\Models\Department;
 
 class Offer extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'candidate_id',
         'job_id',
         'offer_date',
+        'ethiopian_fiscal_year',
         'position',
         'department_id',
         'salary',

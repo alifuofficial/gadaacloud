@@ -2,6 +2,7 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Recruitment\Models\Candidate;
@@ -12,7 +13,7 @@ use Workdo\Recruitment\Models\InterviewFeedback;
 
 class Interview extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'scheduled_date',

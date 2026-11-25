@@ -2,6 +2,7 @@
 
 namespace Workdo\Recruitment\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Crypt;
@@ -11,7 +12,7 @@ use Workdo\Recruitment\Models\JobLocation;
 
 class JobPosting extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $table = 'job_postings';
 
@@ -44,6 +45,7 @@ class JobPosting extends Model
         'job_type_id',
         'location_id',
         'custom_questions',
+        'ethiopian_fiscal_year',
         'creator_id',
         'created_by',
     ];
