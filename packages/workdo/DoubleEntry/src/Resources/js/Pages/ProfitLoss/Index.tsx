@@ -40,8 +40,8 @@ export default function Index() {
     const { profitLoss, auth } = usePage<ProfitLossProps>().props;
     const urlParams = new URLSearchParams(window.location.search);
 
-    const [fromDate, setFromDate] = useState(urlParams.get('from_date') || profitLoss.from_date);
-    const [toDate, setToDate] = useState(urlParams.get('to_date') || profitLoss.to_date);
+    const [fromDate, setFromDate] = useState(urlParams.get('from_date') || profitLoss?.from_date || '');
+    const [toDate, setToDate] = useState(urlParams.get('to_date') || profitLoss?.to_date || '');
 
 
     const handleGenerate = () => {
@@ -150,8 +150,8 @@ export default function Index() {
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800 mb-3">{t('Revenue')}</h3>
                                 <div className="space-y-1">
-                                    {profitLoss.revenue.length > 0 ? (
-                                        profitLoss.revenue.map((account) => (
+                                    {(profitLoss?.revenue || []).length > 0 ? (
+                                        (profitLoss?.revenue || []).map((account) => (
                                             <div key={account.id} className="flex justify-between items-center py-1.5 border-b border-gray-100">
                                                 <p className="font-medium text-sm">
                                                     <span className="text-green-600">{account.account_code}</span> - {account.account_name}
@@ -168,8 +168,8 @@ export default function Index() {
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800 mb-3">{t('Expenses')}</h3>
                                 <div className="space-y-1">
-                                    {profitLoss.expenses.length > 0 ? (
-                                        profitLoss.expenses.map((account) => (
+                                    {(profitLoss?.expenses || []).length > 0 ? (
+                                        (profitLoss?.expenses || []).map((account) => (
                                             <div key={account.id} className="flex justify-between items-center py-1.5 border-b border-gray-100">
                                                 <p className="font-medium text-sm">
                                                     <span className="text-green-600">{account.account_code}</span> - {account.account_name}

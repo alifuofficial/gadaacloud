@@ -3,6 +3,7 @@
 namespace Workdo\DoubleEntry\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\DoubleEntry\Traits\DoubleEntryControllerHelpers;
 
 class CompareBalanceSheetRequest extends FormRequest
 {
@@ -14,8 +15,17 @@ class CompareBalanceSheetRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'current_period_id' => 'required|exists:balance_sheets,id',
-            'previous_period_id' => 'required|exists:balance_sheets,id'
+            'current_period_id' => [
+                'required',
+                'integer',
+                DoubleEntryControllerHelpers::tenantExists('balance_sheets', 'id'),
+            ],
+            'previous_period_id' => [
+                'required',
+                'integer',
+                'different:current_period_id',
+                DoubleEntryControllerHelpers::tenantExists('balance_sheets', 'id'),
+            ],
         ];
     }
 }

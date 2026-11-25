@@ -19,37 +19,45 @@ class ProfitLossController extends Controller
 
     public function index(Request $request)
     {
-        if(Auth::user()->can('manage-profit-loss')){
+        if (Auth::user()->can('manage-profit-loss')) {
             $currentYear = date('Y');
             $fromDate = $request->from_date ?: "$currentYear-01-01";
             $toDate = $request->to_date ?: "$currentYear-12-31";
 
-            $profitLoss = $this->profitLossService->generateProfitLoss($fromDate, $toDate);
+            $profitLoss = $this->profitLossService->generateProfitLoss(
+                $fromDate,
+                $toDate,
+                $request->ethiopian_fiscal_year,
+                $request->ethiopian_quarter
+            );
 
             return Inertia::render('DoubleEntry/ProfitLoss/Index', [
                 'profitLoss' => $profitLoss,
             ]);
         }
-        else{
-            return back()->with('error', __('Permission denied'));
-        }
+
+        return back()->with('error', __('Permission denied'));
     }
 
     public function print(Request $request)
     {
-        if(Auth::user()->can('print-profit-loss')){
+        if (Auth::user()->can('print-profit-loss')) {
             $currentYear = date('Y');
             $fromDate = $request->from_date ?: "$currentYear-01-01";
             $toDate = $request->to_date ?: "$currentYear-12-31";
 
-            $profitLoss = $this->profitLossService->generateProfitLoss($fromDate, $toDate);
+            $profitLoss = $this->profitLossService->generateProfitLoss(
+                $fromDate,
+                $toDate,
+                $request->ethiopian_fiscal_year,
+                $request->ethiopian_quarter
+            );
 
             return Inertia::render('DoubleEntry/ProfitLoss/Print', [
                 'profitLoss' => $profitLoss,
             ]);
         }
-        else{
-            return back()->with('error', __('Permission denied'));
-        }
+
+        return back()->with('error', __('Permission denied'));
     }
 }

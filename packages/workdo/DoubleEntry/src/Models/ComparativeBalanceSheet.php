@@ -2,17 +2,20 @@
 
 namespace Workdo\DoubleEntry\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ComparativeBalanceSheet extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'current_period_id',
         'previous_period_id',
         'comparison_date',
+        'ethiopian_fiscal_year',
+        'notes',
         'creator_id',
         'created_by',
     ];

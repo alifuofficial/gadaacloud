@@ -19,37 +19,45 @@ class TrialBalanceController extends Controller
 
     public function index(Request $request)
     {
-        if(Auth::user()->can('manage-trial-balance')){
+        if (Auth::user()->can('manage-trial-balance')) {
             $currentYear = date('Y');
             $fromDate = $request->from_date ?: "$currentYear-01-01";
             $toDate = $request->to_date ?: "$currentYear-12-31";
 
-            $trialBalance = $this->trialBalanceService->generateTrialBalance($fromDate, $toDate);
+            $trialBalance = $this->trialBalanceService->generateTrialBalance(
+                $fromDate,
+                $toDate,
+                $request->ethiopian_fiscal_year,
+                $request->ethiopian_quarter
+            );
 
             return Inertia::render('DoubleEntry/TrialBalance/Index', [
                 'trialBalance' => $trialBalance,
             ]);
         }
-        else{
-            return back()->with('error', __('Permission denied'));
-        }
+
+        return back()->with('error', __('Permission denied'));
     }
 
     public function print(Request $request)
     {
-        if(Auth::user()->can('print-trial-balance')){
+        if (Auth::user()->can('print-trial-balance')) {
             $currentYear = date('Y');
             $fromDate = $request->from_date ?: "$currentYear-01-01";
             $toDate = $request->to_date ?: "$currentYear-12-31";
 
-            $trialBalance = $this->trialBalanceService->generateTrialBalance($fromDate, $toDate);
+            $trialBalance = $this->trialBalanceService->generateTrialBalance(
+                $fromDate,
+                $toDate,
+                $request->ethiopian_fiscal_year,
+                $request->ethiopian_quarter
+            );
 
             return Inertia::render('DoubleEntry/TrialBalance/Print', [
                 'trialBalance' => $trialBalance,
             ]);
         }
-        else{
-            return back()->with('error', __('Permission denied'));
-        }
+
+        return back()->with('error', __('Permission denied'));
     }
 }

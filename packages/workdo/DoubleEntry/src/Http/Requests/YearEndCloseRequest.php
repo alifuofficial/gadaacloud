@@ -14,8 +14,8 @@ class YearEndCloseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'financial_year' => 'required|string|max:4',
-            'closing_date' => 'required|date'
+            'financial_year' => 'required|string|max:30',
+            'closing_date' => 'required|date',
         ];
     }
 }

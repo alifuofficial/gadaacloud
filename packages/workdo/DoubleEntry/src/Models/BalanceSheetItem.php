@@ -2,13 +2,14 @@
 
 namespace Workdo\DoubleEntry\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Account\Models\ChartOfAccount;
 
 class BalanceSheetItem extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'balance_sheet_id',

@@ -2,16 +2,19 @@
 
 namespace Workdo\DoubleEntry\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BalanceSheet extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'balance_sheet_date',
         'financial_year',
+        'ethiopian_fiscal_year',
+        'ethiopian_quarter',
         'total_assets',
         'total_liabilities',
         'total_equity',

@@ -41,8 +41,8 @@ export default function Index() {
     const { trialBalance, auth } = usePage<TrialBalanceProps>().props;
     const urlParams = new URLSearchParams(window.location.search);
 
-    const [fromDate, setFromDate] = useState(urlParams.get('from_date') || trialBalance.from_date);
-    const [toDate, setToDate] = useState(urlParams.get('to_date') || trialBalance.to_date);
+    const [fromDate, setFromDate] = useState(urlParams.get('from_date') || trialBalance?.from_date || '');
+    const [toDate, setToDate] = useState(urlParams.get('to_date') || trialBalance?.to_date || '');
 
 
     const handleGenerate = () => {
@@ -143,7 +143,7 @@ export default function Index() {
 
                 <Card className="shadow-lg border-0">
                     <CardContent className="p-8">
-                        {trialBalance.accounts && trialBalance.accounts.length > 0 ? (
+                        {(trialBalance?.accounts || []).length > 0 ? (
                             <>
                                 <div className="space-y-1">
                                     <div className="grid grid-cols-12 gap-4 py-2 border-b-2 border-gray-300 font-bold">
@@ -152,7 +152,7 @@ export default function Index() {
                                         <div className="col-span-2 text-right">{t('Debit')}</div>
                                         <div className="col-span-2 text-right">{t('Credit')}</div>
                                     </div>
-                                    {trialBalance.accounts.map((account) => (
+                                    {(trialBalance?.accounts || []).map((account) => (
                                         <div key={account.id} className="grid grid-cols-12 gap-4 py-1.5 border-b border-gray-100">
                                             <div className="col-span-2 text-sm">
                                                 <span className="text-green-600">{account.account_code}</span>

@@ -3,11 +3,18 @@
 namespace Workdo\DoubleEntry\Services;
 
 use Illuminate\Support\Facades\DB;
+use Workdo\DoubleEntry\Traits\DoubleEntryDateHelpers;
 
 class TrialBalanceService
 {
-    public function generateTrialBalance($fromDate, $toDate)
+    use DoubleEntryDateHelpers;
+
+    public function generateTrialBalance($fromDate = null, $toDate = null, $ethFiscalYear = null, $ethQuarter = null)
     {
+        $dates = $this->resolveDateRange($fromDate, $toDate, $ethFiscalYear, $ethQuarter);
+        $resolvedFrom = $dates['from_date'];
+        $resolvedTo = $dates['to_date'];
+
         $accounts = DB::select("
             SELECT
                 coa.id,
@@ -33,15 +40,15 @@ class TrialBalanceService
             WHERE coa.is_active = 1
               AND coa.created_by = ?
             GROUP BY coa.id, coa.account_code, coa.account_name, coa.normal_balance, coa.opening_balance, ob.effective_date
-            ORDER BY coa.account_code ASC
-        ", [$fromDate, $toDate, $fromDate, $toDate, $fromDate, $toDate, $fromDate, $toDate, creatorId()]);
+            ORDER BY CAST(coa.account_code AS UNSIGNED) ASC, coa.account_code ASC
+        ", [$resolvedFrom, $resolvedTo, $resolvedFrom, $resolvedTo, $resolvedFrom, $resolvedTo, $resolvedFrom, $resolvedTo, creatorId()]);
 
         $totalDebit = 0;
         $totalCredit = 0;
         $accountsList = [];
 
-        foreach($accounts as $account) {
-            $balance = (float)$account->balance;
+        foreach ($accounts as $account) {
+            $balance = (float) $account->balance;
 
             if (abs($balance) > 0.01) {
                 $debit = 0;
@@ -70,8 +77,8 @@ class TrialBalanceService
                     'id' => $account->id,
                     'account_code' => $account->account_code,
                     'account_name' => $account->account_name,
-                    'debit' => $debit,
-                    'credit' => $credit
+                    'debit' => round($debit, 2),
+                    'credit' => round($credit, 2),
                 ];
             }
         }
@@ -81,8 +88,13 @@ class TrialBalanceService
             'total_debit' => round($totalDebit, 2),
             'total_credit' => round($totalCredit, 2),
             'is_balanced' => abs($totalDebit - $totalCredit) < 0.01,
-            'from_date' => $fromDate,
-            'to_date' => $toDate
+            'from_date' => $resolvedFrom,
+            'to_date' => $resolvedTo,
+            'ethiopian_fiscal_year' => $dates['ethiopian_fiscal_year'],
+            'ethiopian_quarter' => $dates['ethiopian_quarter'],
+            'fiscal_year_label' => $dates['fiscal_year_label'],
+            'dual_from' => $dates['dual_from'],
+            'dual_to' => $dates['dual_to'],
         ];
     }
 }

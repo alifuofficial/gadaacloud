@@ -55,7 +55,7 @@ export default function View() {
     };
 
     const renderSection = (sectionType: string, sectionTitle: string) => {
-        const sectionItems = groupedItems[sectionType];
+        const sectionItems = groupedItems?.[sectionType];
         if (!sectionItems) return null;
 
         let sectionTotal = 0;
@@ -278,7 +278,7 @@ export default function View() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {allBalanceSheets.map((sheet) => (
+                                            {(allBalanceSheets || []).map((sheet) => (
                                                 <SelectItem key={sheet.id} value={sheet.id.toString()}>
                                                     {formatDate(sheet.balance_sheet_date)}
                                                 </SelectItem>
@@ -390,7 +390,7 @@ export default function View() {
                                     <h3 className="text-xl font-bold text-gray-800 mb-6">{t('Liabilities & Equity')}</h3>
 
                                     {/* Equity */}
-                                    {groupedItems.equity && (
+                                    {groupedItems?.equity && (
                                         <div className="mb-6">
                                             <h4 className="font-semibold text-gray-700 mb-3">{t('Equity')}</h4>
                                             {Object.entries(groupedItems.equity).map(([subSection, items]) => (
@@ -411,7 +411,7 @@ export default function View() {
                                     )}
 
                                     {/* Liabilities */}
-                                    {groupedItems.liabilities && (
+                                    {groupedItems?.liabilities && (
                                         <div className="mb-6">
                                             <h4 className="font-semibold text-gray-700 mb-3">{t('Liabilities')}</h4>
                                             {Object.entries(groupedItems.liabilities).map(([subSection, items]) => {
@@ -451,7 +451,7 @@ export default function View() {
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-800 mb-6">{t('Assets')}</h3>
 
-                                    {groupedItems.assets && (
+                                    {groupedItems?.assets && (
                                         <div>
                                             <h4 className="font-semibold text-gray-700 mb-3">{t('Assets')}</h4>
                                             {Object.entries(groupedItems.assets).map(([subSection, items]) => {
@@ -511,11 +511,11 @@ export default function View() {
                         </div>
 
                         {/* Notes Section */}
-                        {balanceSheet.notes && balanceSheet.notes.length > 0 && (
+                        {Boolean(balanceSheet?.notes && balanceSheet.notes.length > 0) && (
                             <div className="mt-8 pt-6 border-t">
                                 <h3 className="text-lg font-semibold mb-4">{t('Notes to Balance Sheet')}</h3>
                                 <div className="space-y-4">
-                                    {balanceSheet.notes.map((note: any) => (
+                                    {(balanceSheet.notes || []).map((note: any) => (
                                         <div key={note.id} className="p-4 bg-gray-50 rounded-lg">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1">

@@ -53,8 +53,8 @@ export default function YearEndClose({ open, onOpenChange }: YearEndCloseProps) 
                             value={data.financial_year}
                             onChange={(e) => setData('financial_year', e.target.value)}
                             className={errors.financial_year ? 'border-red-500' : ''}
-                            placeholder={t('e.g., 2024')}
-                            maxLength={4}
+                            placeholder={t('e.g., 2024 or 2017 E.C.')}
+                            maxLength={30}
                             required
                         />
                         {errors.financial_year && (

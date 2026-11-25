@@ -27,8 +27,6 @@ interface ReportsIndexProps {
 export default function Index() {
     const { t } = useTranslation();
     const { auth, financialYear } = usePage<ReportsIndexProps>().props;
-    const [activeTab, setActiveTab] = useState('journal-entry');
-
     const tabs = [
         { id: 'journal-entry', label: t('Journal Entry'), permission: 'view-journal-entry' },
         { id: 'general-ledger', label: t('General Ledger'), permission: 'view-general-ledger' },
@@ -36,7 +34,9 @@ export default function Index() {
         { id: 'account-balance', label: t('Account Balance'), permission: 'view-account-balance' },
         { id: 'cash-flow', label: t('Cash Flow'), permission: 'view-cash-flow' },
         { id: 'expense-report', label: t('Expense Report'), permission: 'view-expense-report' },
-    ].filter(tab => auth.user?.permissions?.includes(tab.permission));
+    ].filter(tab => !tab.permission || auth?.user?.permissions?.includes(tab.permission) || auth?.user?.permissions?.includes('manage-double-entry-reports'));
+
+    const [activeTab, setActiveTab] = useState(tabs[0]?.id || 'journal-entry');
 
     return (
         <AuthenticatedLayout

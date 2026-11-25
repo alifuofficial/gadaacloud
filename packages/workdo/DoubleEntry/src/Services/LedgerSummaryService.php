@@ -2,16 +2,38 @@
 
 namespace Workdo\DoubleEntry\Services;
 
-use Workdo\Account\Models\ChartOfAccount;
-use Workdo\Account\Models\OpeningBalance;
-use Workdo\Account\Models\JournalEntry;
 use Workdo\Account\Models\JournalEntryItem;
-use Illuminate\Support\Facades\DB;
+use Workdo\DoubleEntry\Traits\DoubleEntryDateHelpers;
 
 class LedgerSummaryService
 {
-    public function getAllLedgerEntries($fromDate = null, $toDate = null, $accountId = null, $paginate = true)
-    {
+    use DoubleEntryDateHelpers;
+
+    public function getAllLedgerEntries(
+        $fromDate = null,
+        $toDate = null,
+        $accountId = null,
+        $paginate = true,
+        $ethFiscalYear = null,
+        $ethQuarter = null
+    ) {
+        $dates = $this->resolveDateRange($fromDate, $toDate, $ethFiscalYear, $ethQuarter);
+        $resolvedFrom = $dates['from_date'];
+        $resolvedTo = $dates['to_date'];
+
+        $sortMap = [
+            'journal_date' => 'journal_entries.journal_date',
+            'account_code' => 'chart_of_accounts.account_code',
+            'account_name' => 'chart_of_accounts.account_name',
+            'debit_amount' => 'journal_entry_items.debit_amount',
+            'credit_amount' => 'journal_entry_items.credit_amount',
+            'id' => 'journal_entry_items.id',
+        ];
+
+        $sortParam = request('sort');
+        $sortColumn = ($sortParam && isset($sortMap[$sortParam])) ? $sortMap[$sortParam] : null;
+        $sortDirection = strtolower(request('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
         $query = JournalEntryItem::select(
                 'journal_entry_items.id',
                 'journal_entries.journal_date',
@@ -27,23 +49,29 @@ class LedgerSummaryService
             ->join('chart_of_accounts', 'journal_entry_items.account_id', '=', 'chart_of_accounts.id')
             ->where('journal_entries.status', 'posted')
             ->where('journal_entries.created_by', creatorId())
-            ->when($fromDate, fn($q) => $q->where('journal_entries.journal_date', '>=', $fromDate))
-            ->when($toDate, fn($q) => $q->where('journal_entries.journal_date', '<=', $toDate))
+            ->where('chart_of_accounts.created_by', creatorId())
+            ->when($resolvedFrom, fn($q) => $q->where('journal_entries.journal_date', '>=', $resolvedFrom))
+            ->when($resolvedTo, fn($q) => $q->where('journal_entries.journal_date', '<=', $resolvedTo))
             ->when($accountId, fn($q) => $q->where('journal_entry_items.account_id', $accountId))
             ->when(request('search'), fn($q) => $q->where(function($query) {
-                $query->where('chart_of_accounts.account_code', 'like', '%' . request('search') . '%')
-                      ->orWhere('chart_of_accounts.account_name', 'like', '%' . request('search') . '%')
-                      ->orWhere('journal_entry_items.description', 'like', '%' . request('search') . '%')
-                      ->orWhere('journal_entries.description', 'like', '%' . request('search') . '%');
-            }))
-            ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'desc')), fn($q) => $q->orderBy('journal_entries.journal_date', 'desc')->orderBy('journal_entry_items.id', 'desc'));
+                $search = request('search');
+                $query->where('chart_of_accounts.account_code', 'like', '%' . $search . '%')
+                      ->orWhere('chart_of_accounts.account_name', 'like', '%' . $search . '%')
+                      ->orWhere('journal_entry_items.description', 'like', '%' . $search . '%')
+                      ->orWhere('journal_entries.description', 'like', '%' . $search . '%');
+            }));
+
+        if ($sortColumn) {
+            $query->orderBy($sortColumn, $sortDirection);
+        } else {
+            $query->orderBy('journal_entries.journal_date', 'desc')->orderBy('journal_entry_items.id', 'desc');
+        }
 
         if ($paginate) {
-            return $query->paginate(request('per_page', 10))->withQueryString();
+            $perPage = min(max((int) request('per_page', 10), 1), 100);
+            return $query->paginate($perPage)->withQueryString();
         }
 
         return $query->get();
     }
-
-
 }

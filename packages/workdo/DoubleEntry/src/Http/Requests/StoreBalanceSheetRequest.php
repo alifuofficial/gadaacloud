@@ -15,7 +15,9 @@ class StoreBalanceSheetRequest extends FormRequest
     {
         return [
             'balance_sheet_date' => 'required|date',
-            'financial_year' => 'required|string|max:4'
+            'financial_year' => 'required|string|max:30',
+            'ethiopian_fiscal_year' => 'nullable|string|max:30',
+            'ethiopian_quarter' => 'nullable|string|in:q1,q2,q3,q4,Q1,Q2,Q3,Q4',
         ];
     }
 }

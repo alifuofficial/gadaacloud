@@ -179,12 +179,13 @@ export default function Index() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('Account')}</label>
-                                <Select value={filters.account_id} onValueChange={(value) => setFilters({...filters, account_id: value})}>
+                                <Select value={filters.account_id || 'all'} onValueChange={(value) => setFilters({...filters, account_id: value === 'all' ? '' : value})}>
                                     <SelectTrigger>
                                         <SelectValue placeholder={t('All Accounts')} />
                                     </SelectTrigger>
                                     <SelectContent searchable>
-                                        {accounts.map((account) => (
+                                        <SelectItem value="all">{t('All Accounts')}</SelectItem>
+                                        {(accounts || []).map((account) => (
                                             <SelectItem key={account.id} value={account.id.toString()}>
                                                 {account.account_code} - {account.account_name}
                                             </SelectItem>

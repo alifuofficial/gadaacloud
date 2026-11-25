@@ -3,11 +3,11 @@
 namespace Workdo\DoubleEntry\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Workdo\DoubleEntry\Services\ReportService;
 use Workdo\Account\Models\ChartOfAccount;
-use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
@@ -20,8 +20,7 @@ class ReportController extends Controller
 
     public function index()
     {
-        if(Auth::user()->can('manage-double-entry-reports')){
-
+        if (Auth::user()->can('manage-double-entry-reports')) {
             $currentYear = date('Y');
             $financialYear = [
                 'year_start_date' => "$currentYear-01-01",
@@ -31,16 +30,19 @@ class ReportController extends Controller
             return Inertia::render('DoubleEntry/Reports/Index', [
                 'financialYear' => $financialYear,
             ]);
+        }
 
-        }
-        else{
-            return back()->with('error', __('Permission denied'));
-        }
+        return back()->with('error', __('Permission denied'));
     }
 
     public function generalLedger(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-general-ledger')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $accounts = ChartOfAccount::where('created_by', creatorId())
+            ->where('is_active', 1)
             ->orderBy('account_code')
             ->get(['id', 'account_code', 'account_name']);
 
@@ -53,18 +55,27 @@ class ReportController extends Controller
         $firstAccount = $accounts->first();
         $accountId = $request->account_id ?: ($firstAccount ? $firstAccount->id : null);
 
-        $filters = [
-            'account_id' => $accountId,
-            'from_date' => $request->from_date ?: $financialYear['year_start_date'],
-            'to_date' => $request->to_date ?: $financialYear['year_end_date'],
-        ];
-
-        $data = $accountId ? $this->reportService->getGeneralLedger($filters) : null;
-
+        // IDOR Protection: ensure accountId belongs to current tenant
         $selectedAccount = null;
         if ($accountId) {
-            $selectedAccount = ChartOfAccount::find($accountId);
+            $selectedAccount = ChartOfAccount::where('id', $accountId)
+                ->where('created_by', creatorId())
+                ->first();
+
+            if (!$selectedAccount) {
+                return response()->json(['error' => __('Account not found')], 404);
+            }
         }
+
+        $filters = [
+            'account_id' => $selectedAccount ? $selectedAccount->id : null,
+            'from_date' => $request->from_date ?: $financialYear['year_start_date'],
+            'to_date' => $request->to_date ?: $financialYear['year_end_date'],
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
+        ];
+
+        $data = $selectedAccount ? $this->reportService->getGeneralLedger($filters) : null;
 
         return response()->json([
             'data' => $data,
@@ -76,18 +87,26 @@ class ReportController extends Controller
 
     public function printGeneralLedger(Request $request)
     {
-        $filters = [
-            'account_id' => $request->account_id,
-            'from_date' => $request->from_date,
-            'to_date' => $request->to_date,
-        ];
-
-        $data = $this->reportService->getGeneralLedger($filters);
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-general-ledger')) {
+            return back()->with('error', __('Permission denied'));
+        }
 
         $selectedAccount = null;
         if ($request->account_id) {
-            $selectedAccount = ChartOfAccount::find($request->account_id);
+            $selectedAccount = ChartOfAccount::where('id', $request->account_id)
+                ->where('created_by', creatorId())
+                ->firstOrFail();
         }
+
+        $filters = [
+            'account_id' => $selectedAccount ? $selectedAccount->id : null,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
+        ];
+
+        $data = $this->reportService->getGeneralLedger($filters);
 
         return Inertia::render('DoubleEntry/Reports/Print/GeneralLedger', [
             'data' => $data,
@@ -98,7 +117,12 @@ class ReportController extends Controller
 
     public function accountStatement(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-account-statement')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $accounts = ChartOfAccount::where('created_by', creatorId())
+            ->where('is_active', 1)
             ->orderBy('account_code')
             ->get(['id', 'account_code', 'account_name']);
 
@@ -111,18 +135,27 @@ class ReportController extends Controller
         $firstAccount = $accounts->first();
         $accountId = $request->account_id ?: ($firstAccount ? $firstAccount->id : null);
 
-        $filters = [
-            'account_id' => $accountId,
-            'from_date' => $request->from_date ?: $financialYear['year_start_date'],
-            'to_date' => $request->to_date ?: $financialYear['year_end_date'],
-        ];
-
-        $data = $accountId ? $this->reportService->getGeneralLedger($filters) : null;
-
+        // IDOR Protection: ensure accountId belongs to current tenant
         $selectedAccount = null;
         if ($accountId) {
-            $selectedAccount = ChartOfAccount::find($accountId);
+            $selectedAccount = ChartOfAccount::where('id', $accountId)
+                ->where('created_by', creatorId())
+                ->first();
+
+            if (!$selectedAccount) {
+                return response()->json(['error' => __('Account not found')], 404);
+            }
         }
+
+        $filters = [
+            'account_id' => $selectedAccount ? $selectedAccount->id : null,
+            'from_date' => $request->from_date ?: $financialYear['year_start_date'],
+            'to_date' => $request->to_date ?: $financialYear['year_end_date'],
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
+        ];
+
+        $data = $selectedAccount ? $this->reportService->getGeneralLedger($filters) : null;
 
         return response()->json([
             'data' => $data,
@@ -134,18 +167,26 @@ class ReportController extends Controller
 
     public function printAccountStatement(Request $request)
     {
-        $filters = [
-            'account_id' => $request->account_id,
-            'from_date' => $request->from_date,
-            'to_date' => $request->to_date,
-        ];
-
-        $data = $this->reportService->getGeneralLedger($filters);
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-account-statement')) {
+            return back()->with('error', __('Permission denied'));
+        }
 
         $selectedAccount = null;
         if ($request->account_id) {
-            $selectedAccount = ChartOfAccount::find($request->account_id);
+            $selectedAccount = ChartOfAccount::where('id', $request->account_id)
+                ->where('created_by', creatorId())
+                ->firstOrFail();
         }
+
+        $filters = [
+            'account_id' => $selectedAccount ? $selectedAccount->id : null,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
+        ];
+
+        $data = $this->reportService->getGeneralLedger($filters);
 
         return Inertia::render('DoubleEntry/Reports/Print/AccountStatement', [
             'data' => $data,
@@ -156,6 +197,10 @@ class ReportController extends Controller
 
     public function journalEntry(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-journal-entry')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -164,6 +209,8 @@ class ReportController extends Controller
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'status' => $request->status,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return response()->json($data);
@@ -171,6 +218,10 @@ class ReportController extends Controller
 
     public function printJournalEntry(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-journal-entry')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -179,6 +230,8 @@ class ReportController extends Controller
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'status' => $request->status,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return Inertia::render('DoubleEntry/Reports/Print/JournalEntry', [
@@ -187,12 +240,17 @@ class ReportController extends Controller
                 'from_date' => $fromDate,
                 'to_date' => $toDate,
                 'status' => $request->status,
+                'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
             ],
         ]);
     }
 
     public function accountBalance(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-account-balance')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $currentYear = date('Y');
         $asOfDate = $request->as_of_date ?: "$currentYear-12-31";
         $accountType = $request->account_type;
@@ -202,6 +260,7 @@ class ReportController extends Controller
             'as_of_date' => $asOfDate,
             'account_type' => $accountType,
             'show_zero_balances' => $showZeroBalances,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
         ]);
 
         return response()->json($data);
@@ -209,6 +268,10 @@ class ReportController extends Controller
 
     public function printAccountBalance(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-account-balance')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
         $currentYear = date('Y');
         $asOfDate = $request->as_of_date ?: "$currentYear-12-31";
         $accountType = $request->account_type;
@@ -218,6 +281,7 @@ class ReportController extends Controller
             'as_of_date' => $asOfDate,
             'account_type' => $accountType,
             'show_zero_balances' => $showZeroBalances,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
         ]);
 
         return Inertia::render('DoubleEntry/Reports/Print/AccountBalance', [
@@ -225,12 +289,17 @@ class ReportController extends Controller
             'filters' => [
                 'as_of_date' => $asOfDate,
                 'account_type' => $accountType,
+                'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
             ],
         ]);
     }
 
     public function cashFlow(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-cash-flow')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -238,6 +307,8 @@ class ReportController extends Controller
         $data = $this->reportService->getCashFlow([
             'from_date' => $fromDate,
             'to_date' => $toDate,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return response()->json($data);
@@ -245,6 +316,10 @@ class ReportController extends Controller
 
     public function printCashFlow(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-cash-flow')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -252,6 +327,8 @@ class ReportController extends Controller
         $data = $this->reportService->getCashFlow([
             'from_date' => $fromDate,
             'to_date' => $toDate,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return Inertia::render('DoubleEntry/Reports/Print/CashFlow', [
@@ -259,12 +336,17 @@ class ReportController extends Controller
             'filters' => [
                 'from_date' => $fromDate,
                 'to_date' => $toDate,
+                'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
             ],
         ]);
     }
 
     public function expenseReport(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-expense-report')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -272,6 +354,8 @@ class ReportController extends Controller
         $data = $this->reportService->getExpenseReport([
             'from_date' => $fromDate,
             'to_date' => $toDate,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return response()->json($data);
@@ -279,6 +363,10 @@ class ReportController extends Controller
 
     public function printExpenseReport(Request $request)
     {
+        if (!Auth::user()->can('manage-double-entry-reports') && !Auth::user()->can('view-expense-report')) {
+            return back()->with('error', __('Permission denied'));
+        }
+
         $currentYear = date('Y');
         $fromDate = $request->from_date ?: "$currentYear-01-01";
         $toDate = $request->to_date ?: "$currentYear-12-31";
@@ -286,6 +374,8 @@ class ReportController extends Controller
         $data = $this->reportService->getExpenseReport([
             'from_date' => $fromDate,
             'to_date' => $toDate,
+            'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
+            'ethiopian_quarter' => $request->ethiopian_quarter,
         ]);
 
         return Inertia::render('DoubleEntry/Reports/Print/ExpenseReport', [
@@ -293,6 +383,7 @@ class ReportController extends Controller
             'filters' => [
                 'from_date' => $fromDate,
                 'to_date' => $toDate,
+                'ethiopian_fiscal_year' => $request->ethiopian_fiscal_year,
             ],
         ]);
     }

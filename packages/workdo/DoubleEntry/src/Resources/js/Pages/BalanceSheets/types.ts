@@ -2,6 +2,8 @@ export interface BalanceSheet {
     id: number;
     balance_sheet_date: string;
     financial_year: string;
+    ethiopian_fiscal_year?: string | number | null;
+    ethiopian_quarter?: string | null;
     total_assets: number;
     total_liabilities: number;
     total_equity: number;
@@ -49,6 +51,7 @@ export interface BalanceSheetsIndexProps {
 
 export interface BalanceSheetFilters {
     financial_year?: string;
+    ethiopian_fiscal_year?: string;
     status?: string;
 }
 
@@ -57,6 +60,8 @@ export interface ComparativeBalanceSheet {
     current_period_id: number;
     previous_period_id: number;
     comparison_date: string;
+    ethiopian_fiscal_year?: string | number | null;
+    notes?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -89,11 +94,13 @@ export interface BalanceSheetViewProps {
         id: number;
         balance_sheet_date: string;
         financial_year: string;
+        ethiopian_fiscal_year?: string | number | null;
     }[];
     otherBalanceSheets?: {
         id: number;
         balance_sheet_date: string;
         financial_year: string;
+        ethiopian_fiscal_year?: string | number | null;
     }[];
     auth: {
         user: {

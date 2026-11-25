@@ -56,9 +56,9 @@ export default function Compare({ open, onOpenChange, balanceSheetId, otherBalan
                                 <SelectValue placeholder={t('Select balance sheet to compare')} />
                             </SelectTrigger>
                             <SelectContent>
-                                {otherBalanceSheets?.map((bs: any) => (
+                                {(otherBalanceSheets || []).map((bs: any) => (
                                     <SelectItem key={bs.id} value={bs.id.toString()}>
-                                        {formatDate(bs.balance_sheet_date)} - {bs.financial_year}
+                                        {formatDate(bs.balance_sheet_date)} - {bs.financial_year || ''}{bs.ethiopian_fiscal_year ? ` (${bs.ethiopian_fiscal_year})` : ''}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

@@ -15,7 +15,7 @@ class StoreBalanceSheetNoteRequest extends FormRequest
     {
         return [
             'note_title' => 'required|string|max:255',
-            'note_content' => 'required|string'
+            'note_content' => 'required|string|max:10000',
         ];
     }
 }
