@@ -18,7 +18,11 @@ import { PerPageSelector } from '@/components/ui/per-page-selector';
 import { ListGridToggle } from '@/components/ui/list-grid-toggle';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Dialog } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
+import { useForm } from '@inertiajs/react';
+import { Lock, Unlock, Users } from 'lucide-react';
 import NoRecordsFound from '@/components/no-records-found';
 import Create from './Create';
 import EditReviewCycle from './Edit';
@@ -47,7 +51,29 @@ interface ReviewCycleModalState {
 
 export default function Index() {
     const { t } = useTranslation();
-    const { reviewCycles, auth } = usePage<{ reviewCycles: any; auth: any }>().props;
+    const { reviewCycles, auth, hrmContext, reviewTemplates = [], reviewers = [] } = usePage<any>().props;
+    const [bulkCycle, setBulkCycle] = useState<any>(null);
+    const bulkForm = useForm({
+        reviewer_id: '',
+        review_template_id: 'none',
+        review_date: new Date().toISOString().slice(0, 10),
+        branch_id: 'none',
+        department_id: 'none',
+    });
+
+    const submitBulkAssign = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bulkCycle) return;
+        bulkForm.transform((f) => ({
+            ...f,
+            review_template_id: f.review_template_id === 'none' ? '' : f.review_template_id,
+            branch_id: f.branch_id === 'none' ? '' : f.branch_id,
+            department_id: f.department_id === 'none' ? '' : f.department_id,
+        }));
+        bulkForm.post(route('performance.review-cycles.bulk-assign', bulkCycle.id), {
+            onSuccess: () => setBulkCycle(null),
+        });
+    };
     const urlParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
 
     const [filters, setFilters] = useState<ReviewCycleFilters>({
@@ -171,6 +197,31 @@ export default function Index() {
                 <div className="flex gap-1">
                     <TooltipProvider>
                         <ReviewCycleActionButtons reviewCycle={reviewCycle} />
+                        {auth.user?.permissions?.includes('create-employee-reviews') && !reviewCycle.is_locked && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="sm" onClick={() => setBulkCycle(reviewCycle)} className="h-8 w-8 p-0 text-indigo-600">
+                                        <Users className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{t('Bulk Assign Appraisals')}</p></TooltipContent>
+                            </Tooltip>
+                        )}
+                        {auth.user?.permissions?.includes('edit-review-cycles') && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => router.post(route('performance.review-cycles.toggle-lock', reviewCycle.id))}
+                                        className="h-8 w-8 p-0 text-amber-600"
+                                    >
+                                        {reviewCycle.is_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{reviewCycle.is_locked ? t('Unlock Cycle') : t('Lock Cycle')}</p></TooltipContent>
+                            </Tooltip>
+                        )}
                         {auth.user?.permissions?.includes('view-review-cycles') && (
                             <Tooltip delayDuration={0}>
                                 <TooltipTrigger asChild>
@@ -493,13 +544,84 @@ export default function Index() {
 
                 <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
                     {modalState.mode === 'add' && (
-                        <Create onSuccess={closeModal} />
+                        <Create onSuccess={closeModal} hrmContext={hrmContext} />
                     )}
                     {modalState.mode === 'edit' && modalState.data && (
-                        <EditReviewCycle reviewCycle={modalState.data} onSuccess={closeModal} />
+                        <EditReviewCycle reviewCycle={modalState.data} onSuccess={closeModal} hrmContext={hrmContext} />
                     )}
                     {modalState.mode === 'show' && modalState.data && (
                         <Show reviewCycle={modalState.data} />
+                    )}
+                </Dialog>
+
+                <Dialog open={!!bulkCycle} onOpenChange={() => setBulkCycle(null)}>
+                    {bulkCycle && (
+                        <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>{t('Bulk Assign Appraisals')} — {bulkCycle.name}</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={submitBulkAssign} className="space-y-4">
+                                <div>
+                                    <Label required>{t('Default Reviewer')}</Label>
+                                    <Select value={bulkForm.data.reviewer_id} onValueChange={(v) => bulkForm.setData('reviewer_id', v)} required>
+                                        <SelectTrigger><SelectValue placeholder={t('Select reviewer')} /></SelectTrigger>
+                                        <SelectContent searchable={true}>
+                                            {(reviewers || []).map((r: any) => (
+                                                <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>{t('Review Template (Optional)')}</Label>
+                                    <Select value={bulkForm.data.review_template_id} onValueChange={(v) => bulkForm.setData('review_template_id', v)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">{t('Standard KPI Set')}</SelectItem>
+                                            {(reviewTemplates || []).map((tpl: any) => (
+                                                <SelectItem key={tpl.id} value={tpl.id.toString()}>{tpl.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label required>{t('Scheduled Review Date')}</Label>
+                                    <DatePicker value={bulkForm.data.review_date} onChange={(v) => bulkForm.setData('review_date', v)} />
+                                </div>
+                                {hrmContext?.hrm_active && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <Label>{t('Branch Filter')}</Label>
+                                            <Select value={bulkForm.data.branch_id} onValueChange={(v) => bulkForm.setData('branch_id', v)}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">{t('All Branches')}</SelectItem>
+                                                    {(hrmContext?.branches || []).map((b: any) => (
+                                                        <SelectItem key={b.id} value={b.id.toString()}>{b.branch_name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label>{t('Department Filter')}</Label>
+                                            <Select value={bulkForm.data.department_id} onValueChange={(v) => bulkForm.setData('department_id', v)}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">{t('All Departments')}</SelectItem>
+                                                    {(hrmContext?.departments || []).map((d: any) => (
+                                                        <SelectItem key={d.id} value={d.id.toString()}>{d.department_name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <Button type="button" variant="outline" onClick={() => setBulkCycle(null)}>{t('Cancel')}</Button>
+                                    <Button type="submit" disabled={bulkForm.processing}>{t('Generate Appraisals')}</Button>
+                                </div>
+                            </form>
+                        </DialogContent>
                     )}
                 </Dialog>
             </AuthenticatedLayout>

@@ -73,7 +73,7 @@ interface Props {
 
 export default function Index() {
     const { t } = useTranslation();
-    const { indicators, auth, categories } = usePage<Props>().props;
+    const { indicators, auth, categories = [], hrmContext } = usePage<any>().props;
     const urlParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
 
     const [filters, setFilters] = useState<IndicatorFilters>({
@@ -535,9 +535,10 @@ export default function Index() {
 
                 <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
                     {modalState.mode === 'add' && (
-                        <Create 
-                            onSuccess={closeModal} 
+                        <Create
+                            onSuccess={closeModal}
                             categories={categories}
+                            hrmContext={hrmContext}
                         />
                     )}
                     {modalState.mode === 'edit' && modalState.data && (
@@ -545,6 +546,7 @@ export default function Index() {
                             indicator={modalState.data}
                             onSuccess={closeModal}
                             categories={categories}
+                            hrmContext={hrmContext}
                         />
                     )}
                 </Dialog>

@@ -8,58 +8,43 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InputError from "@/components/ui/input-error";
 
-interface PerformanceIndicator {
-    id: number;
-    name: string;
-    description: string;
-    measurement_unit: string;
-    target_value: string;
-    status: string;
-    category_id: number;
-}
-
-interface IndicatorCategory {
-    id: number;
-    name: string;
-}
-
 interface EditProps {
-    indicator: PerformanceIndicator;
+    indicator: any;
     onSuccess: () => void;
-    categories: IndicatorCategory[];
+    categories: any[];
+    hrmContext?: any;
 }
 
-interface FormData {
-    category_id: string;
-    name: string;
-    description: string;
-    measurement_unit: string;
-    target_value: string;
-    status: string;
-}
-
-export default function Edit({ indicator, onSuccess, categories }: EditProps) {
+export default function Edit({ indicator, onSuccess, categories = [], hrmContext }: EditProps) {
     const { t } = useTranslation();
-    const { data, setData, put, processing, errors } = useForm<FormData>({
+    const { data, setData, put, processing, errors, transform } = useForm({
         category_id: indicator.category_id?.toString() || '',
-        name: indicator.name,
+        department_id: indicator.department_id ? indicator.department_id.toString() : 'none',
+        designation_id: indicator.designation_id ? indicator.designation_id.toString() : 'none',
+        name: indicator.name || '',
         description: indicator.description || '',
-        measurement_unit: indicator.measurement_unit,
+        measurement_unit: indicator.measurement_unit || '',
         target_value: indicator.target_value || '',
-        status: indicator.status,
+        weight: indicator.weight?.toString() || '0',
+        goal_direction: indicator.goal_direction || 'higher_is_better',
+        kpi_source: indicator.kpi_source || 'manual',
+        status: indicator.status || 'active',
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        transform((form) => ({
+            ...form,
+            department_id: form.department_id === 'none' ? '' : form.department_id,
+            designation_id: form.designation_id === 'none' ? '' : form.designation_id,
+        }));
         put(route('performance.indicators.update', indicator.id), {
-            onSuccess: () => {
-                onSuccess();
-            }
+            onSuccess: () => onSuccess(),
         });
     };
 
     return (
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
                 <DialogTitle>{t('Edit Performance Indicator')}</DialogTitle>
             </DialogHeader>
@@ -67,27 +52,16 @@ export default function Edit({ indicator, onSuccess, categories }: EditProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="name" required>{t('Name')}</Label>
-                        <Input
-                            id="name"
-                            value={data.name}
-                            onChange={(e) => setData('name', e.target.value)}
-                            placeholder={t('Enter indicator name')}
-                            required
-                        />
+                        <Input id="name" value={data.name} onChange={(e) => setData('name', e.target.value)} required />
                         <InputError message={errors.name} />
                     </div>
-                    
                     <div>
                         <Label htmlFor="category_id" required>{t('Category')}</Label>
                         <Select value={data.category_id} onValueChange={(value) => setData('category_id', value)} required>
-                            <SelectTrigger>
-                                <SelectValue placeholder={t('Select category')} />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {categories.map((category) => (
-                                    <SelectItem key={category.id} value={category.id.toString()}>
-                                        {category.name}
-                                    </SelectItem>
+                                {(categories || []).map((category) => (
+                                    <SelectItem key={category.id} value={category.id.toString()}>{category.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -95,64 +69,82 @@ export default function Edit({ indicator, onSuccess, categories }: EditProps) {
                     </div>
                 </div>
 
+                {hrmContext?.hrm_active && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label>{t('Department (Optional)')}</Label>
+                            <Select value={data.department_id} onValueChange={(v) => setData('department_id', v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">{t('Company-Wide')}</SelectItem>
+                                    {(hrmContext?.departments || []).map((d: any) => (
+                                        <SelectItem key={d.id} value={d.id.toString()}>{d.department_name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>{t('Designation (Optional)')}</Label>
+                            <Select value={data.designation_id} onValueChange={(v) => setData('designation_id', v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">{t('All Roles')}</SelectItem>
+                                    {(hrmContext?.designations || []).map((d: any) => (
+                                        <SelectItem key={d.id} value={d.id.toString()}>{d.designation_name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                )}
+
                 <div>
                     <Label htmlFor="description">{t('Description')}</Label>
-                    <Textarea
-                        id="description"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
-                        placeholder={t('Enter indicator description')}
-                        rows={3}
-                    />
-                    <InputError message={errors.description} />
+                    <Textarea id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} rows={2} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <Label htmlFor="measurement_unit" required>{t('Measurement Unit')}</Label>
+                        <Input id="measurement_unit" value={data.measurement_unit} onChange={(e) => setData('measurement_unit', e.target.value)} required />
+                        <InputError message={errors.measurement_unit} />
+                    </div>
+                    <div>
+                        <Label htmlFor="target_value">{t('Target Value')}</Label>
+                        <Input id="target_value" value={data.target_value} onChange={(e) => setData('target_value', e.target.value)} />
+                    </div>
+                    <div>
+                        <Label htmlFor="weight">{t('Scoring Weight (%)')}</Label>
+                        <Input id="weight" type="number" min="0" max="100" step="0.5" value={data.weight} onChange={(e) => setData('weight', e.target.value)} />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="measurement_unit" required>{t('Measurement Unit')}</Label>
-                        <Input
-                            id="measurement_unit"
-                            value={data.measurement_unit}
-                            onChange={(e) => setData('measurement_unit', e.target.value)}
-                            placeholder={t('e.g., %, hours, count')}
-                            required
-                        />
-                        <InputError message={errors.measurement_unit} />
+                        <Label>{t('Optimization Direction')}</Label>
+                        <Select value={data.goal_direction} onValueChange={(v) => setData('goal_direction', v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="higher_is_better">{t('Higher is Better')}</SelectItem>
+                                <SelectItem value="lower_is_better">{t('Lower is Better')}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    
                     <div>
-                        <Label htmlFor="target_value">{t('Target Value')}</Label>
-                        <Input
-                            id="target_value"
-                            value={data.target_value}
-                            onChange={(e) => setData('target_value', e.target.value)}
-                            placeholder={t('e.g., 4/5, 4.5/5, <24, 90%')}
-                        />
-                        <InputError message={errors.target_value} />
+                        <Label>{t('Status')}</Label>
+                        <Select value={data.status} onValueChange={(value) => setData('status', value)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">{t('Active')}</SelectItem>
+                                <SelectItem value="inactive">{t('Inactive')}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
-                <div>
-                    <Label htmlFor="status">{t('Status')}</Label>
-                    <Select value={data.status} onValueChange={(value) => setData('status', value)}>
-                        <SelectTrigger>
-                            <SelectValue placeholder={t('Select status')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="active">{t('Active')}</SelectItem>
-                            <SelectItem value="inactive">{t('Inactive')}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.status} />
-                </div>
-                
                 <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={onSuccess}>
-                        {t('Cancel')}
-                    </Button>
-                    <Button type="submit" disabled={processing}>
-                        {processing ? t('Updating...') : t('Update')}
-                    </Button>
+                    <Button type="button" variant="outline" onClick={onSuccess}>{t('Cancel')}</Button>
+                    <Button type="submit" disabled={processing}>{processing ? t('Updating...') : t('Update')}</Button>
                 </div>
             </form>
         </DialogContent>

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Edit, Trash2, Eye, Target } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, Target, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
@@ -85,7 +85,7 @@ interface ShowModalState {
 
 export default function Index() {
     const { t } = useTranslation();
-    const { goals, auth, employees, goalTypes } = usePage<Props>().props;
+    const { goals, auth, employees = [], goalTypes = [], reviewCycles = [], kpiSources = [] } = usePage<any>().props;
     const urlParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
 
     const [filters, setFilters] = useState<GoalFilters>({
@@ -211,17 +211,17 @@ export default function Index() {
         {
             key: 'progress',
             header: t('Progress'),
-            render: (value: number) => {
-                if (!value) return '-';
+            render: (value: number, goal: any) => {
+                const pct = Math.min(Number(goal?.progress_percentage ?? value ?? 0), 100);
                 return (
                     <div className="flex items-center gap-2 min-w-24">
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
                                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${value}%` }}
+                                style={{ width: `${pct}%` }}
                             />
                         </div>
-                        <span className="text-xs font-medium text-gray-600 min-w-8">{value}%</span>
+                        <span className="text-xs font-medium text-gray-600 min-w-8">{pct}%</span>
                     </div>
                 );
             }
@@ -255,6 +255,21 @@ export default function Index() {
                 <div className="flex gap-1">
                     <TooltipProvider>
                         <GoalActionButtons goal={goal} />
+                        {auth.user?.permissions?.includes('edit-employee-goals') && (goal as any).kpi_source && (goal as any).kpi_source !== 'manual' && (
+                            <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => router.post(route('performance.employee-goals.sync-kpi', goal.id))}
+                                        className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-700"
+                                    >
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{t('Sync ERP KPI')}</p></TooltipContent>
+                            </Tooltip>
+                        )}
                         {auth.user?.permissions?.includes('view-employee-goals') && (
                             <Tooltip delayDuration={0}>
                                 <TooltipTrigger asChild>
@@ -618,10 +633,12 @@ export default function Index() {
 
                 <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
                     {modalState.mode === 'add' && (
-                        <Create 
-                            onSuccess={closeModal} 
+                        <Create
+                            onSuccess={closeModal}
                             employees={employees}
                             goalTypes={goalTypes}
+                            reviewCycles={reviewCycles}
+                            kpiSources={kpiSources}
                         />
                     )}
                     {modalState.mode === 'edit' && modalState.data && (
@@ -630,6 +647,8 @@ export default function Index() {
                             onSuccess={closeModal}
                             employees={employees}
                             goalTypes={goalTypes}
+                            reviewCycles={reviewCycles}
+                            kpiSources={kpiSources}
                         />
                     )}
                 </Dialog>

@@ -8,6 +8,10 @@ use Spatie\Permission\Models\Role;
 
 class PerformanceUtility extends Model
 {
+    /**
+     * Grant least-privilege Performance permissions to standard employee/staff roles.
+     * Company-wide configuration (categories, goal types, templates, bulk deletes) stays restricted to HR/company admins.
+     */
     public static function GivePermissionToRoles($role_id = null, $rolename = null)
     {
         $staff_permission = [
@@ -16,46 +20,29 @@ class PerformanceUtility extends Model
 
             'manage-performance-indicators',
             'manage-own-performance-indicators',
-            'create-performance-indicators',
             'view-performance-indicators',
-            'edit-performance-indicators',
-            'delete-performance-indicators',
-
-            'manage-performance-indicator-categories',
-            'manage-any-performance-indicator-categories',
-            'create-performance-indicator-categories',
-            'view-performance-indicator-categories',
-            'edit-performance-indicator-categories',
-            'delete-performance-indicator-categories',
 
             'manage-employee-goals',
             'manage-own-employee-goals',
-            'create-employee-goals',
             'view-employee-goals',
+            'create-employee-goals',
             'edit-employee-goals',
-            'delete-employee-goals',
-
-            'manage-goal-types',
-            'manage-any-goal-types',
-            'create-goal-types',
-            'view-goal-types',
-            'edit-goal-types',
-            'delete-goal-types',
 
             'manage-review-cycles',
             'manage-own-review-cycles',
-            'create-review-cycles',
             'view-review-cycles',
-            'edit-review-cycles',
-            'delete-review-cycles',
 
             'manage-employee-reviews',
             'manage-own-employee-reviews',
-            'create-employee-reviews',
             'view-employee-reviews',
-            'edit-employee-reviews',
-            'delete-employee-reviews',
             'conduct-employee-reviews',
+
+            'manage-employee-competencies',
+            'manage-own-employee-competencies',
+
+            'manage-employee-feedback',
+            'manage-own-employee-feedback',
+            'create-employee-feedback',
         ];
 
         if ($rolename == 'staff') {
@@ -63,10 +50,8 @@ class PerformanceUtility extends Model
             if ($roles_v) {
                 foreach ($staff_permission as $permission_v) {
                     $permission = Permission::where('name', $permission_v)->first();
-                    if (!empty($permission)) {
-                        if (!$roles_v->hasPermissionTo($permission_v)) {
-                            $roles_v->givePermissionTo($permission);
-                        }
+                    if (!empty($permission) && !$roles_v->hasPermissionTo($permission_v)) {
+                        $roles_v->givePermissionTo($permission);
                     }
                 }
             }

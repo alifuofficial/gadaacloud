@@ -7,76 +7,59 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import InputError from "@/components/ui/input-error";
 
-interface EmployeeGoal {
-    id: number;
-    title: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    target: string;
-    progress: number;
-    status: string;
-    employee_id: number;
-    goal_type_id: number;
-}
-
-interface Employee {
-    id: number;
-    name: string;
-    employee_id: string;
-}
-
-interface GoalType {
-    id: number;
-    name: string;
-}
-
 interface EditProps {
-    goal: EmployeeGoal;
+    goal: any;
     onSuccess: () => void;
-    employees: Employee[];
-    goalTypes: GoalType[];
+    employees: any[];
+    goalTypes: any[];
+    reviewCycles?: any[];
+    kpiSources?: { value: string; label: string }[];
 }
 
-interface FormData {
-    employee_id: string;
-    goal_type_id: string;
-    title: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    target: string;
-    progress: string;
-    status: string;
-}
-
-export default function Edit({ goal, onSuccess, employees, goalTypes }: EditProps) {
+export default function Edit({
+    goal,
+    onSuccess,
+    employees = [],
+    goalTypes = [],
+    reviewCycles = [],
+    kpiSources = [{ value: 'manual', label: 'Manual Tracking' }],
+}: EditProps) {
     const { t } = useTranslation();
-    const { data, setData, put, processing, errors } = useForm<FormData>({
+    const { data, setData, put, processing, errors, transform } = useForm({
         employee_id: goal.employee_id?.toString() || '',
         goal_type_id: goal.goal_type_id?.toString() || '',
+        review_cycle_id: goal.review_cycle_id ? goal.review_cycle_id.toString() : 'none',
         title: goal.title || '',
         description: goal.description || '',
         start_date: goal.start_date || '',
         end_date: goal.end_date || '',
         target: goal.target || '',
+        target_numeric: goal.target_numeric?.toString() || '',
+        current_value: goal.current_value?.toString() || '',
         progress: goal.progress?.toString() || '0',
         status: goal.status || 'not_started',
+        kpi_source: goal.kpi_source || 'manual',
+        auto_sync_enabled: Boolean(goal.auto_sync_enabled),
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        transform((form) => ({
+            ...form,
+            review_cycle_id: form.review_cycle_id === 'none' ? '' : form.review_cycle_id,
+            target_numeric: form.target_numeric === '' ? null : form.target_numeric,
+            current_value: form.current_value === '' ? null : form.current_value,
+        }));
         put(route('performance.employee-goals.update', goal.id), {
-            onSuccess: () => {
-                onSuccess();
-            }
+            onSuccess: () => onSuccess(),
         });
     };
 
     return (
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
                 <DialogTitle>{t('Edit Employee Goal')}</DialogTitle>
             </DialogHeader>
@@ -85,44 +68,23 @@ export default function Edit({ goal, onSuccess, employees, goalTypes }: EditProp
                     <div>
                         <Label htmlFor="employee_id" required>{t('Employee')}</Label>
                         <Select value={data.employee_id} onValueChange={(value) => setData('employee_id', value)} required>
-                            <SelectTrigger>
-                                <SelectValue placeholder={t('Select employee')} />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder={t('Select employee')} /></SelectTrigger>
                             <SelectContent searchable={true}>
-                                {employees && employees.length > 0 ? (
-                                    employees.map((employee) => (
-                                        <SelectItem key={employee.id} value={employee.id?.toString() || ''}>
-                                            {employee.name}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-employees" disabled>
-                                        {t('No employees available')}
-                                    </SelectItem>
-                                )}
+                                {(employees || []).map((employee) => (
+                                    <SelectItem key={employee.id} value={employee.id?.toString() || ''}>{employee.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                         <InputError message={errors.employee_id} />
                     </div>
-                    
                     <div>
                         <Label htmlFor="goal_type_id" required>{t('Goal Type')}</Label>
                         <Select value={data.goal_type_id} onValueChange={(value) => setData('goal_type_id', value)} required>
-                            <SelectTrigger>
-                                <SelectValue placeholder={t('Select goal type')} />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder={t('Select goal type')} /></SelectTrigger>
                             <SelectContent>
-                                {goalTypes && goalTypes.length > 0 ? (
-                                    goalTypes.map((type) => (
-                                        <SelectItem key={type.id} value={type.id.toString()}>
-                                            {type.name}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-goal-types" disabled>
-                                        {t('No goal types available')}
-                                    </SelectItem>
-                                )}
+                                {(goalTypes || []).map((type) => (
+                                    <SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                         <InputError message={errors.goal_type_id} />
@@ -131,84 +93,74 @@ export default function Edit({ goal, onSuccess, employees, goalTypes }: EditProp
 
                 <div>
                     <Label htmlFor="title" required>{t('Title')}</Label>
-                    <Input
-                        id="title"
-                        value={data.title}
-                        onChange={(e) => setData('title', e.target.value)}
-                        placeholder={t('Enter goal title')}
-                        required
-                    />
+                    <Input id="title" value={data.title} onChange={(e) => setData('title', e.target.value)} required />
                     <InputError message={errors.title} />
                 </div>
 
                 <div>
                     <Label htmlFor="description" required>{t('Description')}</Label>
-                    <Textarea
-                        id="description"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
-                        placeholder={t('Enter goal description')}
-                        rows={3}
-                        required
-                    />
+                    <Textarea id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} rows={2} required />
                     <InputError message={errors.description} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label required>{t('Start Date')}</Label>
-                        <DatePicker
-                            value={data.start_date}
-                            onChange={(value) => setData('start_date', value)}
-                            placeholder={t('Select start date')}
-                        />
+                        <DatePicker value={data.start_date} onChange={(value) => setData('start_date', value)} />
                         <InputError message={errors.start_date} />
                     </div>
-                    
                     <div>
                         <Label required>{t('End Date')}</Label>
-                        <DatePicker
-                            value={data.end_date}
-                            onChange={(value) => setData('end_date', value)}
-                            placeholder={t('Select end date')}
-                        />
+                        <DatePicker value={data.end_date} onChange={(value) => setData('end_date', value)} />
                         <InputError message={errors.end_date} />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <Label htmlFor="target" required>{t('Target')}</Label>
-                        <Input
-                            id="target"
-                            value={data.target}
-                            onChange={(e) => setData('target', e.target.value)}
-                            placeholder={t('Enter target value')}
-                            required
-                        />
+                        <Label htmlFor="target" required>{t('Target Display')}</Label>
+                        <Input id="target" value={data.target} onChange={(e) => setData('target', e.target.value)} required />
                         <InputError message={errors.target} />
                     </div>
-                    
+                    <div>
+                        <Label htmlFor="current_value">{t('Current Actual')}</Label>
+                        <Input id="current_value" type="number" step="0.01" min="0" value={data.current_value} onChange={(e) => setData('current_value', e.target.value)} placeholder="Optional" />
+                    </div>
                     <div>
                         <Label htmlFor="progress">{t('Progress (%)')}</Label>
-                        <Input
-                            id="progress"
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={data.progress}
-                            onChange={(e) => setData('progress', e.target.value)}
-                            placeholder="0"
-                        />
+                        <Input id="progress" type="number" min="0" max="100" value={data.progress} onChange={(e) => setData('progress', e.target.value)} />
                         <InputError message={errors.progress} />
                     </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <Label>{t('Review Cycle')}</Label>
+                        <Select value={data.review_cycle_id} onValueChange={(value) => setData('review_cycle_id', value)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">{t('Unlinked')}</SelectItem>
+                                {(reviewCycles || []).map((c) => (
+                                    <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label>{t('ERP KPI Source')}</Label>
+                        <Select value={data.kpi_source} onValueChange={(value) => setData('kpi_source', value)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {(kpiSources || []).map((s) => (
+                                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div>
                         <Label htmlFor="status">{t('Status')}</Label>
                         <Select value={data.status} onValueChange={(value) => setData('status', value)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder={t('Select status')} />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="not_started">{t('Not Started')}</SelectItem>
                                 <SelectItem value="in_progress">{t('In Progress')}</SelectItem>
@@ -219,14 +171,15 @@ export default function Edit({ goal, onSuccess, employees, goalTypes }: EditProp
                         <InputError message={errors.status} />
                     </div>
                 </div>
-                
+
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={data.auto_sync_enabled} onCheckedChange={(v) => setData('auto_sync_enabled', Boolean(v))} />
+                    {t('Enable ERP KPI auto-sync')}
+                </label>
+
                 <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={onSuccess}>
-                        {t('Cancel')}
-                    </Button>
-                    <Button type="submit" disabled={processing}>
-                        {processing ? t('Updating...') : t('Update')}
-                    </Button>
+                    <Button type="button" variant="outline" onClick={onSuccess}>{t('Cancel')}</Button>
+                    <Button type="submit" disabled={processing}>{processing ? t('Updating...') : t('Update')}</Button>
                 </div>
             </form>
         </DialogContent>

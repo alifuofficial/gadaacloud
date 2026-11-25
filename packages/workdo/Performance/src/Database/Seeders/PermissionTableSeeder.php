@@ -12,6 +12,7 @@ class PermissionTableSeeder extends Seeder
     {
         $permission = [
             ['name' => 'manage-performance', 'module' => 'performance', 'label' => 'Manage Performance'],
+            ['name' => 'manage-performance-dashboard', 'module' => 'performance', 'label' => 'Manage Performance Dashboard'],
             ['name' => 'manage-performance-system-setup', 'module' => 'performance', 'label' => 'Manage System Setup'],
 
             // Performance Indicator Categories
@@ -66,9 +67,45 @@ class PermissionTableSeeder extends Seeder
             ['name' => 'edit-employee-reviews', 'module' => 'employee-review', 'label' => 'Edit Employee Reviews'],
             ['name' => 'delete-employee-reviews', 'module' => 'employee-review', 'label' => 'Delete Employee Reviews'],
             ['name' => 'conduct-employee-reviews', 'module' => 'employee-review', 'label' => 'Conduct Employee Reviews'],
+            ['name' => 'calibrate-employee-reviews', 'module' => 'employee-review', 'label' => 'Calibrate & Lock Employee Reviews'],
+
+            // Competency Categories & Competencies
+            ['name' => 'manage-competency-categories', 'module' => 'competency-category', 'label' => 'Manage Competency Categories'],
+            ['name' => 'create-competency-categories', 'module' => 'competency-category', 'label' => 'Create Competency Categories'],
+            ['name' => 'edit-competency-categories', 'module' => 'competency-category', 'label' => 'Edit Competency Categories'],
+            ['name' => 'delete-competency-categories', 'module' => 'competency-category', 'label' => 'Delete Competency Categories'],
+
+            ['name' => 'manage-competencies', 'module' => 'competency', 'label' => 'Manage Competencies'],
+            ['name' => 'create-competencies', 'module' => 'competency', 'label' => 'Create Competencies'],
+            ['name' => 'edit-competencies', 'module' => 'competency', 'label' => 'Edit Competencies'],
+            ['name' => 'delete-competencies', 'module' => 'competency', 'label' => 'Delete Competencies'],
+
+            ['name' => 'manage-employee-competencies', 'module' => 'employee-competency', 'label' => 'Manage Employee Competencies'],
+            ['name' => 'manage-any-employee-competencies', 'module' => 'employee-competency', 'label' => 'Manage All Employee Competencies'],
+            ['name' => 'manage-own-employee-competencies', 'module' => 'employee-competency', 'label' => 'Manage Own Employee Competencies'],
+            ['name' => 'create-employee-competencies', 'module' => 'employee-competency', 'label' => 'Assess Employee Competencies'],
+            ['name' => 'edit-employee-competencies', 'module' => 'employee-competency', 'label' => 'Edit Employee Competencies'],
+            ['name' => 'delete-employee-competencies', 'module' => 'employee-competency', 'label' => 'Delete Employee Competencies'],
+
+            // 360 Feedback Types & Continuous Feedback
+            ['name' => 'manage-feedback-types', 'module' => 'feedback-type', 'label' => 'Manage Feedback Types'],
+            ['name' => 'create-feedback-types', 'module' => 'feedback-type', 'label' => 'Create Feedback Types'],
+            ['name' => 'edit-feedback-types', 'module' => 'feedback-type', 'label' => 'Edit Feedback Types'],
+            ['name' => 'delete-feedback-types', 'module' => 'feedback-type', 'label' => 'Delete Feedback Types'],
+
+            ['name' => 'manage-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Manage 360 Feedback'],
+            ['name' => 'manage-any-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Manage All 360 Feedback'],
+            ['name' => 'manage-own-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Manage Own 360 Feedback'],
+            ['name' => 'create-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Give 360 Feedback'],
+            ['name' => 'edit-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Edit 360 Feedback'],
+            ['name' => 'delete-employee-feedback', 'module' => 'employee-feedback', 'label' => 'Delete 360 Feedback'],
+
+            // Review Templates & Performance Items
+            ['name' => 'manage-review-templates', 'module' => 'review-template', 'label' => 'Manage Review Templates'],
+            ['name' => 'create-review-templates', 'module' => 'review-template', 'label' => 'Create Review Templates'],
+            ['name' => 'edit-review-templates', 'module' => 'review-template', 'label' => 'Edit Review Templates'],
+            ['name' => 'delete-review-templates', 'module' => 'review-template', 'label' => 'Delete Review Templates'],
         ];
-
-
 
         $company_role = Role::where('name', 'company')->first();
 
@@ -80,7 +117,7 @@ class PermissionTableSeeder extends Seeder
                     'label' => $perm['label'],
                     'add_on' => 'Performance',
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]
             );
 

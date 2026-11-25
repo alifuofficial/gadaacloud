@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
-import { BarChart3, Target } from "lucide-react";
+import { BarChart3, Target, Award, MessageSquare } from "lucide-react";
 
 interface SidebarItem {
     key: string;
@@ -29,19 +29,34 @@ export default function SystemSetupSidebar({ activeItem, onSectionChange }: Syst
             label: t('Indicator Categories'),
             icon: BarChart3,
             route: 'performance.indicator-categories.index',
-            permission: 'manage-performance-indicator-categories'
+            permission: 'manage-performance-indicator-categories',
         },
         {
             key: 'goal-types',
             label: t('Goal Types'),
             icon: Target,
             route: 'performance.goal-types.index',
-            permission: 'manage-goal-types'
+            permission: 'manage-goal-types',
+        },
+        {
+            key: 'competency-categories',
+            label: t('Competency Categories'),
+            icon: Award,
+            route: 'performance.competency-categories.index',
+            permission: 'manage-competency-categories',
+        },
+        {
+            key: 'feedback-types',
+            label: t('Feedback Types'),
+            icon: MessageSquare,
+            route: 'performance.feedback-types.index',
+            permission: 'manage-feedback-types',
         },
     ];
 
-    const filteredItems = sidebarItems.filter(item =>
-        auth.user?.permissions?.includes(item.permission)
+    const permissions: string[] = auth?.user?.permissions || [];
+    const filteredItems = sidebarItems.filter(
+        (item) => permissions.includes(item.permission) || permissions.includes('manage-performance-system-setup')
     );
 
     return (

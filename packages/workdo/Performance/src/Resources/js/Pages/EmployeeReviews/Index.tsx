@@ -112,11 +112,12 @@ const EmployeeReviewActionButtons = ({ review, auth, t, openModal, openDeleteDia
 
 export default function Index() {
     const { t } = useTranslation();
-    const { employeeReviews, employees = [], reviewers = [], reviewCycles = [], auth } = usePage<{ 
+    const { employeeReviews, employees = [], reviewers = [], reviewCycles = [], reviewTemplates = [], auth } = usePage<{ 
         employeeReviews: any; 
         employees: any[]; 
         reviewers: any[]; 
         reviewCycles: any[]; 
+        reviewTemplates?: any[];
         auth: any 
     }>().props;
     const urlParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
@@ -139,11 +140,16 @@ export default function Index() {
         data: null
     });
     
-    const [showModalState, setShowModalState] = useState<ShowModalState>({
+    const [showModalState, setShowModalState] = useState<any>({
         isOpen: false,
         data: null,
         performanceIndicators: {},
-        averageRating: null
+        averageRating: null,
+        competencies: [],
+        employeeGoals: [],
+        peerFeedback: [],
+        nineBox: null,
+        hrmContext: null,
     });
 
 
@@ -194,8 +200,13 @@ export default function Index() {
             setShowModalState({
                 isOpen: true,
                 data: data.props.employeeReview,
-                performanceIndicators: data.props.performanceIndicators,
-                averageRating: data.props.averageRating
+                performanceIndicators: data.props.performanceIndicators || {},
+                averageRating: data.props.averageRating,
+                competencies: data.props.competencies || [],
+                employeeGoals: data.props.employeeGoals || [],
+                peerFeedback: data.props.peerFeedback || [],
+                nineBox: data.props.nineBox || null,
+                hrmContext: data.props.hrmContext || null,
             });
         } catch (error) {
             console.error('Error fetching review details:', error);
@@ -203,7 +214,17 @@ export default function Index() {
     };
     
     const closeShowModal = () => {
-        setShowModalState({ isOpen: false, data: null, performanceIndicators: {}, averageRating: null });
+        setShowModalState({
+            isOpen: false,
+            data: null,
+            performanceIndicators: {},
+            averageRating: null,
+            competencies: [],
+            employeeGoals: [],
+            peerFeedback: [],
+            nineBox: null,
+            hrmContext: null,
+        });
     };
 
     const getStatusLabel = (status: string) => {
@@ -641,30 +662,37 @@ export default function Index() {
 
                 <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
                     {modalState.mode === 'add' && (
-                        <Create 
-                            onSuccess={closeModal} 
-                            employees={employees}
-                            reviewers={reviewers}
-                            reviewCycles={reviewCycles}
-                        />
-                    )}
-                    {modalState.mode === 'edit' && modalState.data && (
-                        <EditEmployeeReview 
-                            employeeReview={modalState.data} 
+                        <Create
                             onSuccess={closeModal}
                             employees={employees}
                             reviewers={reviewers}
                             reviewCycles={reviewCycles}
+                            reviewTemplates={reviewTemplates}
+                        />
+                    )}
+                    {modalState.mode === 'edit' && modalState.data && (
+                        <EditEmployeeReview
+                            employeeReview={modalState.data}
+                            onSuccess={closeModal}
+                            employees={employees}
+                            reviewers={reviewers}
+                            reviewCycles={reviewCycles}
+                            reviewTemplates={reviewTemplates}
                         />
                     )}
                 </Dialog>
-                
+
                 <Dialog open={showModalState.isOpen} onOpenChange={closeShowModal}>
                     {showModalState.data && (
-                        <Show 
+                        <Show
                             employeeReview={showModalState.data}
                             performanceIndicators={showModalState.performanceIndicators}
                             averageRating={showModalState.averageRating}
+                            competencies={showModalState.competencies}
+                            employeeGoals={showModalState.employeeGoals}
+                            peerFeedback={showModalState.peerFeedback}
+                            nineBox={showModalState.nineBox}
+                            hrmContext={showModalState.hrmContext}
                         />
                     )}
                 </Dialog>
