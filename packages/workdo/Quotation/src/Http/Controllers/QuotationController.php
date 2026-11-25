@@ -16,6 +16,7 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesInvoiceItemTax;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Quotation\Events\AcceptSalesQuotation;
 use Workdo\Quotation\Events\ConvertSalesQuotation;
@@ -24,9 +25,12 @@ use Workdo\Quotation\Events\UpdateQuotation;
 use Workdo\Quotation\Events\DestroyQuotation;
 use Workdo\Quotation\Events\RejectSalesQuotation;
 use Workdo\Quotation\Events\SentSalesQuotation;
+use Workdo\Quotation\Traits\QuotationControllerHelpers;
+use Workdo\Quotation\Traits\QuotationDateHelpers;
 
 class QuotationController extends Controller
 {
+    use QuotationControllerHelpers, QuotationDateHelpers;
     public function index(Request $request)
     {
         if (Auth::user()->can('manage-quotations')) {
@@ -58,11 +62,19 @@ class QuotationController extends Controller
                 if (count($dates) === 2) {
                     $query->whereBetween('quotation_date', [$dates[0], $dates[1]]);
                 }
+            } elseif ($request->filled('ethiopian_fiscal_year')) {
+                $range = $this->resolveQuotationDateRange(
+                    null,
+                    null,
+                    $request->input('ethiopian_fiscal_year'),
+                    $request->input('ethiopian_quarter')
+                );
+                $query->whereBetween('quotation_date', [$range['from_date'], $range['to_date']]);
             }
 
               // Apply sorting
             $sortField     = $request->get('sort', 'created_at');
-            $sortDirection = $request->get('direction', 'desc');
+            $sortDirection = strtolower($request->get('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
 
             $allowedSortFields = ['quotation_number', 'quotation_date', 'due_date', 'subtotal', 'tax_amount', 'total_amount', 'status', 'created_at'];
             if (!in_array($sortField, $allowedSortFields) || empty($sortField)) {
@@ -71,7 +83,7 @@ class QuotationController extends Controller
 
             $query->orderBy($sortField, $sortDirection);
 
-            $perPage    = $request->get('per_page', 10);
+            $perPage    = $this->safePerPage(10, 100);
             $quotations = $query->paginate($perPage);
             $customers  = User::where('type', 'client')->select('id', 'name', 'email')->where('created_by', creatorId())->get();
 
@@ -105,28 +117,32 @@ class QuotationController extends Controller
         if (Auth::user()->can('create-quotations')) {
             $totals = $this->calculateTotals($request->items);
 
-            $quotation                  = new SalesQuotation();
-            $quotation->quotation_date  = $request->invoice_date;
-            $quotation->due_date        = $request->due_date;
-            $quotation->customer_id     = $request->customer_id;
-            $quotation->warehouse_id    = $request->warehouse_id;
-            $quotation->payment_terms   = $request->payment_terms;
-            $quotation->notes           = $request->notes;
-            $quotation->subtotal        = $totals['subtotal'];
-            $quotation->tax_amount      = $totals['tax_amount'];
-            $quotation->discount_amount = $totals['discount_amount'];
-            $quotation->total_amount    = $totals['total_amount'];
-            $quotation->creator_id      = Auth::id();
-            $quotation->created_by      = creatorId();
-            $quotation->save();
+            $quotation = DB::transaction(function () use ($request, $totals) {
+                $quotation                  = new SalesQuotation();
+                $quotation->quotation_date  = $request->invoice_date;
+                $quotation->due_date        = $request->due_date;
+                $quotation->customer_id     = $request->customer_id;
+                $quotation->warehouse_id    = $request->warehouse_id;
+                $quotation->payment_terms   = $request->payment_terms;
+                $quotation->notes           = $request->notes;
+                $quotation->subtotal        = $totals['subtotal'];
+                $quotation->tax_amount      = $totals['tax_amount'];
+                $quotation->discount_amount = $totals['discount_amount'];
+                $quotation->total_amount    = $totals['total_amount'];
+                $quotation->creator_id      = Auth::id();
+                $quotation->created_by      = creatorId();
+                $quotation->save();
 
-              // Create quotation items
-            $this->createQuotationItems($quotation->id, $request->items);
+                  // Create quotation items
+                $this->createQuotationItems($quotation->id, $request->items);
+
+                return $quotation;
+            });
 
             try {
                 CreateQuotation::dispatch($request, $quotation);
             } catch (\Throwable $th) {
-                return back()->with('error', $th->getMessage());
+                // Non-blocking event dispatch
             }
 
             return redirect()->route('quotations.index')->with('success', __('The quotation has been created successfully.'));
@@ -181,29 +197,35 @@ class QuotationController extends Controller
 
     public function update(UpdateQuotationRequest $request, SalesQuotation $quotation)
     {
-        if (Auth::user()->can('edit-quotations') && $quotation->created_by == creatorId()) {
+        if (Auth::user()->can('edit-quotations') && $this->assertBelongsToTenant($quotation)) {
             if ($quotation->status != 'draft') {
                 return redirect()->route('quotations.index')->with('error', __('Cannot update sent quotation.'));
             }
 
             $totals = $this->calculateTotals($request->items);
 
-            $quotation->quotation_date  = $request->invoice_date;
-            $quotation->due_date        = $request->due_date;
-            $quotation->customer_id     = $request->customer_id;
-            $quotation->warehouse_id    = $request->warehouse_id;
-            $quotation->payment_terms   = $request->payment_terms;
-            $quotation->notes           = $request->notes;
-            $quotation->subtotal        = $totals['subtotal'];
-            $quotation->tax_amount      = $totals['tax_amount'];
-            $quotation->discount_amount = $totals['discount_amount'];
-            $quotation->total_amount    = $totals['total_amount'];
-            $quotation->save();
+            DB::transaction(function () use ($request, $quotation, $totals) {
+                $quotation->quotation_date  = $request->invoice_date;
+                $quotation->due_date        = $request->due_date;
+                $quotation->customer_id     = $request->customer_id;
+                $quotation->warehouse_id    = $request->warehouse_id;
+                $quotation->payment_terms   = $request->payment_terms;
+                $quotation->notes           = $request->notes;
+                $quotation->subtotal        = $totals['subtotal'];
+                $quotation->tax_amount      = $totals['tax_amount'];
+                $quotation->discount_amount = $totals['discount_amount'];
+                $quotation->total_amount    = $totals['total_amount'];
+                $quotation->save();
 
-            $quotation->items()->delete();
-            $this->createQuotationItems($quotation->id, $request->items);
+                $quotation->items()->delete();
+                $this->createQuotationItems($quotation->id, $request->items);
+            });
 
-            UpdateQuotation::dispatch($request, $quotation);
+            try {
+                UpdateQuotation::dispatch($request, $quotation);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
+            }
 
             return redirect()->route('quotations.index')->with('success', __('The quotation details are updated successfully.'));
         } else {
@@ -213,14 +235,21 @@ class QuotationController extends Controller
 
     public function destroy(SalesQuotation $quotation)
     {
-        if (Auth::user()->can('delete-quotations')) {
+        if (Auth::user()->can('delete-quotations') && $this->assertBelongsToTenant($quotation)) {
             if ($quotation->status === 'sent') {
                 return back()->with('error', __('Cannot delete sent quotation.'));
             }
 
-            DestroyQuotation::dispatch($quotation);
+            try {
+                DestroyQuotation::dispatch($quotation);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
+            }
 
-            $quotation->delete();
+            DB::transaction(function () use ($quotation) {
+                $quotation->items()->delete();
+                $quotation->delete();
+            });
 
             return redirect()->route('quotations.index')->with('success', __('The quotation has been deleted.'));
         } else {
@@ -255,6 +284,9 @@ class QuotationController extends Controller
 
     private function createQuotationItems($quotationId, $items)
     {
+        $creatorId = creatorId();
+        $authId = Auth::id();
+
         foreach ($items as $itemData) {
             $item                      = new SalesQuotationItem();
             $item->quotation_id        = $quotationId;
@@ -263,15 +295,19 @@ class QuotationController extends Controller
             $item->unit_price          = $itemData['unit_price'];
             $item->discount_percentage = $itemData['discount_percentage'] ?? 0;
             $item->tax_percentage      = $itemData['tax_percentage'] ?? 0;
+            $item->creator_id          = $authId;
+            $item->created_by          = $creatorId;
             $item->save();
 
               // Store individual taxes
             if (isset($itemData['taxes']) && is_array($itemData['taxes'])) {
                 foreach ($itemData['taxes'] as $tax) {
-                    $quotationItemTax           = new SalesQuotationItemTax();
-                    $quotationItemTax->item_id  = $item->id;
-                    $quotationItemTax->tax_name = $tax['tax_name'];
-                    $quotationItemTax->tax_rate = $tax['tax_rate'] ?? $tax['rate'] ?? 0;
+                    $quotationItemTax             = new SalesQuotationItemTax();
+                    $quotationItemTax->item_id    = $item->id;
+                    $quotationItemTax->tax_name   = $tax['tax_name'];
+                    $quotationItemTax->tax_rate   = $tax['tax_rate'] ?? $tax['rate'] ?? 0;
+                    $quotationItemTax->creator_id = $authId;
+                    $quotationItemTax->created_by = $creatorId;
                     $quotationItemTax->save();
                 }
             }
@@ -328,7 +364,7 @@ class QuotationController extends Controller
 
     public function print(SalesQuotation $quotation)
     {
-        if (Auth::user()->can('print-quotations')) {
+        if (Auth::user()->can('print-quotations') && $this->canAccessQuotation($quotation)) {
             $quotation->load(['customer', 'customerDetails', 'items.product', 'items.taxes', 'warehouse']);
 
             return Inertia::render('Quotation/Quotations/Print', [
@@ -341,36 +377,46 @@ class QuotationController extends Controller
 
     public function createRevision(SalesQuotation $quotation)
     {
-        if (Auth::user()->can('create-quotations-revision') && $quotation->created_by == creatorId()) {
+        if (Auth::user()->can('create-quotations-revision') && $this->assertBelongsToTenant($quotation)) {
             if ($quotation->status === 'draft') {
                 return back()->with('error', __('Cannot create version of draft quotation.'));
             }
 
             $quotation->load(['items.taxes']);
 
-            // Create new revision
-            $newRevision = $quotation->replicate();
-            $newRevision->parent_quotation_id = $quotation->id;
-            $newRevision->revision_number = $quotation->revision_number + 1;
-            $newRevision->status = 'draft';
-            $newRevision->converted_to_invoice = false;
-            $newRevision->invoice_id = null;
-            $newRevision->quotation_number = null;
-            $newRevision->save();
+            $newRevision = DB::transaction(function () use ($quotation) {
+                // Create new revision
+                $newRevision = $quotation->replicate();
+                $newRevision->parent_quotation_id = $quotation->id;
+                $newRevision->revision_number = $quotation->revision_number + 1;
+                $newRevision->status = 'draft';
+                $newRevision->converted_to_invoice = false;
+                $newRevision->invoice_id = null;
+                $newRevision->quotation_number = null;
+                $newRevision->creator_id = Auth::id();
+                $newRevision->created_by = creatorId();
+                $newRevision->save();
 
-            // Copy items
-            foreach ($quotation->items as $item) {
-                $newItem = $item->replicate();
-                $newItem->quotation_id = $newRevision->id;
-                $newItem->save();
+                // Copy items
+                foreach ($quotation->items as $item) {
+                    $newItem = $item->replicate();
+                    $newItem->quotation_id = $newRevision->id;
+                    $newItem->creator_id = Auth::id();
+                    $newItem->created_by = creatorId();
+                    $newItem->save();
 
-                // Copy taxes
-                foreach ($item->taxes as $tax) {
-                    $newTax = $tax->replicate();
-                    $newTax->item_id = $newItem->id;
-                    $newTax->save();
+                    // Copy taxes
+                    foreach ($item->taxes as $tax) {
+                        $newTax = $tax->replicate();
+                        $newTax->item_id = $newItem->id;
+                        $newTax->creator_id = Auth::id();
+                        $newTax->created_by = creatorId();
+                        $newTax->save();
+                    }
                 }
-            }
+
+                return $newRevision;
+            });
 
             return redirect()->route('quotations.edit', $newRevision);
         } else {
@@ -380,32 +426,40 @@ class QuotationController extends Controller
 
     public function duplicate(SalesQuotation $quotation)
     {
-        if (Auth::user()->can('duplicate-quotations')) {
+        if (Auth::user()->can('duplicate-quotations') && $this->assertBelongsToTenant($quotation)) {
             $quotation->load(['items.taxes']);
 
-            // Create duplicate
-            $duplicate = $quotation->replicate();
-            $duplicate->status = 'draft';
-            $duplicate->converted_to_invoice = false;
-            $duplicate->invoice_id = null;
-            $duplicate->quotation_number = null; // Will be auto-generated
-            $duplicate->parent_quotation_id = null;
-            $duplicate->revision_number = 1;
-            $duplicate->save();
+            DB::transaction(function () use ($quotation) {
+                // Create duplicate
+                $duplicate = $quotation->replicate();
+                $duplicate->status = 'draft';
+                $duplicate->converted_to_invoice = false;
+                $duplicate->invoice_id = null;
+                $duplicate->quotation_number = null; // Will be auto-generated
+                $duplicate->parent_quotation_id = null;
+                $duplicate->revision_number = 1;
+                $duplicate->creator_id = Auth::id();
+                $duplicate->created_by = creatorId();
+                $duplicate->save();
 
-            // Copy items
-            foreach ($quotation->items as $item) {
-                $newItem = $item->replicate();
-                $newItem->quotation_id = $duplicate->id;
-                $newItem->save();
+                // Copy items
+                foreach ($quotation->items as $item) {
+                    $newItem = $item->replicate();
+                    $newItem->quotation_id = $duplicate->id;
+                    $newItem->creator_id = Auth::id();
+                    $newItem->created_by = creatorId();
+                    $newItem->save();
 
-                // Copy taxes
-                foreach ($item->taxes as $tax) {
-                    $newTax = $tax->replicate();
-                    $newTax->item_id = $newItem->id;
-                    $newTax->save();
+                    // Copy taxes
+                    foreach ($item->taxes as $tax) {
+                        $newTax = $tax->replicate();
+                        $newTax->item_id = $newItem->id;
+                        $newTax->creator_id = Auth::id();
+                        $newTax->created_by = creatorId();
+                        $newTax->save();
+                    }
                 }
-            }
+            });
             return back()->with('success', __('Quotation duplicated successfully.'));
         } else {
             return back()->with('error', __('Permission denied'));
@@ -414,7 +468,7 @@ class QuotationController extends Controller
 
     public function convertToInvoice(SalesQuotation $quotation)
     {
-        if (Auth::user()->can('convert-to-invoice-quotations') && $quotation->created_by == creatorId()) {
+        if (Auth::user()->can('convert-to-invoice-quotations') && $this->assertBelongsToTenant($quotation)) {
             if ($quotation->status !== 'accepted') {
                 return back()->with('error', __('Only accepted quotations can be converted to invoice.'));
             }
@@ -425,57 +479,62 @@ class QuotationController extends Controller
 
             $quotation->load(['items.taxes']);
 
-              // Create sales invoice from quotation
-            $invoice                  = new SalesInvoice();
-            $invoice->customer_id     = $quotation->customer_id;
-            $invoice->warehouse_id    = $quotation->warehouse_id ?? 1;
-            $invoice->invoice_date    = now();
-            $invoice->due_date        = $quotation->due_date;
-            $invoice->subtotal        = $quotation->subtotal;
-            $invoice->tax_amount      = $quotation->tax_amount;
-            $invoice->discount_amount = $quotation->discount_amount;
-            $invoice->total_amount    = $quotation->total_amount;
-            $invoice->balance_amount  = $quotation->total_amount;
-            $invoice->paid_amount     = 0;
-            $invoice->status          = 'draft';
-            $invoice->payment_terms   = $quotation->payment_terms;
-            $invoice->notes           = $quotation->notes;
-            $invoice->creator_id      = Auth::id();
-            $invoice->created_by      = creatorId();
-            $invoice->save();
+            $invoice = DB::transaction(function () use ($quotation) {
+                // Create sales invoice from quotation
+                $invoice                  = new SalesInvoice();
+                $invoice->customer_id     = $quotation->customer_id;
+                $invoice->warehouse_id    = $quotation->warehouse_id ?? 1;
+                $invoice->invoice_date    = now();
+                $invoice->due_date        = $quotation->due_date;
+                $invoice->subtotal        = $quotation->subtotal;
+                $invoice->tax_amount      = $quotation->tax_amount;
+                $invoice->discount_amount = $quotation->discount_amount;
+                $invoice->total_amount    = $quotation->total_amount;
+                $invoice->balance_amount  = $quotation->total_amount;
+                $invoice->paid_amount     = 0;
+                $invoice->status          = 'draft';
+                $invoice->payment_terms   = $quotation->payment_terms;
+                $invoice->notes           = $quotation->notes;
+                $invoice->creator_id      = Auth::id();
+                $invoice->created_by      = creatorId();
+                $invoice->save();
 
-              // Copy quotation items to invoice items
-            foreach ($quotation->items as $quotationItem) {
-                $invoiceItem                      = new SalesInvoiceItem();
-                $invoiceItem->invoice_id          = $invoice->id;
-                $invoiceItem->product_id          = $quotationItem->product_id;
-                $invoiceItem->quantity            = $quotationItem->quantity;
-                $invoiceItem->unit_price          = $quotationItem->unit_price;
-                $invoiceItem->discount_percentage = $quotationItem->discount_percentage;
-                $invoiceItem->discount_amount     = $quotationItem->discount_amount;
-                $invoiceItem->tax_percentage      = $quotationItem->tax_percentage;
-                $invoiceItem->tax_amount          = $quotationItem->tax_amount;
-                $invoiceItem->total_amount        = $quotationItem->total_amount;
-                $invoiceItem->save();
+                  // Copy quotation items to invoice items
+                foreach ($quotation->items as $quotationItem) {
+                    $invoiceItem                      = new SalesInvoiceItem();
+                    $invoiceItem->invoice_id          = $invoice->id;
+                    $invoiceItem->product_id          = $quotationItem->product_id;
+                    $invoiceItem->quantity            = $quotationItem->quantity;
+                    $invoiceItem->unit_price          = $quotationItem->unit_price;
+                    $invoiceItem->discount_percentage = $quotationItem->discount_percentage;
+                    $invoiceItem->discount_amount     = $quotationItem->discount_amount;
+                    $invoiceItem->tax_percentage      = $quotationItem->tax_percentage;
+                    $invoiceItem->tax_amount          = $quotationItem->tax_amount;
+                    $invoiceItem->total_amount        = $quotationItem->total_amount;
+                    $invoiceItem->save();
 
-                  // Copy tax details
-                foreach ($quotationItem->taxes as $tax) {
-                    $invoiceTax           = new SalesInvoiceItemTax();
-                    $invoiceTax->item_id  = $invoiceItem->id;
-                    $invoiceTax->tax_name = $tax->tax_name;
-                    $invoiceTax->tax_rate = $tax->tax_rate;
-                    $invoiceTax->save();
+                      // Copy tax details
+                    foreach ($quotationItem->taxes as $tax) {
+                        $invoiceTax           = new SalesInvoiceItemTax();
+                        $invoiceTax->item_id  = $invoiceItem->id;
+                        $invoiceTax->tax_name = $tax->tax_name;
+                        $invoiceTax->tax_rate = $tax->tax_rate;
+                        $invoiceTax->save();
+                    }
                 }
-            }
 
-              // Mark quotation as converted
-            $quotation->converted_to_invoice = true;
-            $quotation->invoice_id           = $invoice->id;
-            $quotation->save();
+                  // Mark quotation as converted
+                $quotation->converted_to_invoice = true;
+                $quotation->invoice_id           = $invoice->id;
+                $quotation->save();
+
+                return $invoice;
+            });
+
             try {
                 ConvertSalesQuotation::dispatch($quotation, $invoice);
             } catch (\Throwable $th) {
-                return back()->with('error', $th->getMessage());
+                // Non-blocking event dispatch
             }
             return back()->with('success', __('Quotation converted to invoice successfully.'));
         } else {
@@ -488,7 +547,7 @@ class QuotationController extends Controller
         if (Auth::user()->can('manage-any-quotations')) {
             return $quotation->created_by == creatorId();
         } elseif (Auth::user()->can('manage-own-quotations')) {
-            return $quotation->creator_id == Auth::id() || $quotation->customer_id == Auth::id();
+            return $quotation->created_by == creatorId() && ($quotation->creator_id == Auth::id() || $quotation->customer_id == Auth::id());
         } else {
             return false;
         }
@@ -499,7 +558,7 @@ class QuotationController extends Controller
         if (Auth::user()->can('create-quotations') || Auth::user()->can('edit-quotations')) {
             $warehouseId = $request->warehouse_id;
 
-            if (!$warehouseId) {
+            if (!$warehouseId || !Warehouse::where('created_by', creatorId())->where('id', $warehouseId)->exists()) {
                 return response()->json([]);
             }
 

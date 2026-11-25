@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Traits\TenantScoped;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Workdo\Account\Models\Customer;
 
 class SalesQuotation extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'quotation_number',

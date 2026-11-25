@@ -3,6 +3,7 @@
 namespace Workdo\Quotation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Quotation\Traits\QuotationControllerHelpers;
 
 class StoreQuotationRequest extends FormRequest
 {
@@ -16,12 +17,12 @@ class StoreQuotationRequest extends FormRequest
         return [
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
-            'customer_id' => 'required|exists:users,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'customer_id' => ['required', QuotationControllerHelpers::tenantExists('users', 'id')],
+            'warehouse_id' => ['required', QuotationControllerHelpers::tenantExists('warehouses', 'id')],
             'payment_terms' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|numeric|min:1',
+            'items.*.product_id' => ['required', 'numeric', 'min:1', QuotationControllerHelpers::tenantExists('product_service_items', 'id')],
             'items.*.quantity' => 'required|numeric|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
