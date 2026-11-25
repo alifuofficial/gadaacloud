@@ -2,12 +2,14 @@
 
 namespace Workdo\Contract\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 
 class ContractAttachment extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'contract_id',
         'file_name',
@@ -27,3 +29,4 @@ class ContractAttachment extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 }
+

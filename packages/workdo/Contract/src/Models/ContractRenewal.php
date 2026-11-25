@@ -2,12 +2,14 @@
 
 namespace Workdo\Contract\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 
 class ContractRenewal extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'contract_id',
         'start_date',
@@ -38,3 +40,4 @@ class ContractRenewal extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 }
+

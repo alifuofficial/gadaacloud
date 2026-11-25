@@ -2,12 +2,14 @@
 
 namespace Workdo\Contract\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 
 class ContractComment extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'contract_id',
         'comment',
@@ -34,3 +36,4 @@ class ContractComment extends Model
         return $this->belongsTo(User::class);
     }
 }
+

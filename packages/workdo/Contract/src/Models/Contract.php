@@ -5,6 +5,7 @@ namespace Workdo\Contract\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
+use App\Traits\TenantScoped;
 use Workdo\Contract\Models\ContractType;
 use Workdo\Contract\Models\ContractAttachment;
 use Workdo\Contract\Models\ContractComment;
@@ -14,7 +15,7 @@ use Workdo\Contract\Models\ContractSignature;
 
 class Contract extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'subject',
@@ -119,3 +120,5 @@ class Contract extends Model
     }
 
 }
+
+

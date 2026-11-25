@@ -2,13 +2,13 @@
 
 namespace Workdo\Contract\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-
 class ContractType extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',
@@ -29,3 +29,5 @@ class ContractType extends Model
         return $this->hasMany(Contract::class, 'type_id');
     }
 }
+
+

@@ -2,13 +2,14 @@
 
 namespace Workdo\Contract\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
 
 class ContractSignature extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'contract_id',
@@ -42,3 +43,4 @@ class ContractSignature extends Model
         return $this->belongsTo(User::class, 'creator_id');
     }
 }
+

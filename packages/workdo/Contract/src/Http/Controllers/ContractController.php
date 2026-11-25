@@ -9,6 +9,7 @@ use Workdo\Contract\Http\Requests\DuplicateContractRequest;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
 use Workdo\Contract\Events\StatusChangeContract;
@@ -16,9 +17,12 @@ use Workdo\Contract\Events\CreateContract;
 use Workdo\Contract\Events\UpdateContract;
 use Workdo\Contract\Events\DestroyContract;
 use Workdo\Contract\Models\ContractType;
+use Workdo\Contract\Traits\ContractControllerHelpers;
+use Workdo\Contract\Traits\ContractDateHelpers;
 
 class ContractController extends Controller
 {
+    use ContractControllerHelpers, ContractDateHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-contracts')) {
@@ -56,8 +60,8 @@ class ContractController extends Controller
                 ->when(request('start_date') && request('start_date') !== '', fn($q) => $q->whereDate('start_date', '>=', request('start_date')))
                 ->when(request('end_date') && request('end_date') !== '', fn($q) => $q->whereDate('end_date', '<=', request('end_date')))
 
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), strtolower(request('direction', 'desc')) === 'asc' ? 'asc' : 'desc'), fn($q) => $q->latest())
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $users = User::select('id', 'name')->where(function ($q) {
@@ -93,13 +97,20 @@ class ContractController extends Controller
         if (Auth::user()->can('create-contracts')) {
             $validated = $request->validated();
 
-            $contract = new Contract();
-            $contract->fill($validated);
-            $contract->creator_id = Auth::id();
-            $contract->created_by = creatorId();
-            $contract->save();
+            $contract = DB::transaction(function () use ($validated) {
+                $contract = new Contract();
+                $contract->fill($validated);
+                $contract->creator_id = Auth::id();
+                $contract->created_by = creatorId();
+                $contract->save();
+                return $contract;
+            });
 
-            CreateContract::dispatch($request, $contract);
+            try {
+                CreateContract::dispatch($request, $contract);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
+            }
 
             return redirect()->route('contract.index')->with('success', __('The contract has been created successfully.'));
         } else {
@@ -110,18 +121,20 @@ class ContractController extends Controller
     public function update(UpdateContractRequest $request, $id)
     {
         if (Auth::user()->can('edit-contracts')) {
-            $contract = Contract::find($id);
-
-            if (!$contract) {
-                return redirect()->route('contract.index')->with('error', __('Contract not found.'));
-            }
+            $contract = $this->findTenantContract($id);
 
             $validated = $request->validated();
 
-            $contract->fill($validated);
-            $contract->save();
-            
-            UpdateContract::dispatch($request, $contract);
+            DB::transaction(function () use ($contract, $validated) {
+                $contract->fill($validated);
+                $contract->save();
+            });
+
+            try {
+                UpdateContract::dispatch($request, $contract);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
+            }
 
             return redirect()->back()->with('success', __('The contract details are updated successfully.'));
         } else {
@@ -132,20 +145,20 @@ class ContractController extends Controller
     public function updateStatus(Request $request, $id)
     {
         if (Auth::user()->can('edit-contracts')) {
-            $contract = Contract::find($id);
-
-            if (!$contract) {
-                return redirect()->route('contract.index')->with('error', __('Contract not found.'));
-            }
+            $contract = $this->findTenantContract($id);
 
             $request->validate([
-                'status' => 'required|string'
+                'status' => 'required|string',
             ]);
 
             $contract->status = $request->status;
             $contract->save();
 
-            StatusChangeContract::dispatch($request, $contract);
+            try {
+                StatusChangeContract::dispatch($request, $contract);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
+            }
 
             return redirect()->back()->with('success', __('Contract status updated successfully.'));
         } else {
@@ -156,14 +169,17 @@ class ContractController extends Controller
     public function destroy($id)
     {
         if (Auth::user()->can('delete-contracts')) {
-            $contract = Contract::find($id);
+            $contract = $this->findTenantContract($id);
 
-            if (!$contract) {
-                return redirect()->route('contract.index')->with('error', __('Contract not found.'));
+            try {
+                DestroyContract::dispatch($contract);
+            } catch (\Throwable $th) {
+                // Non-blocking event dispatch
             }
 
-            DestroyContract::dispatch($contract);
-            $contract->delete();
+            DB::transaction(function () use ($contract) {
+                $contract->delete();
+            });
 
             return redirect()->back()->with('success', __('The contract has been deleted.'));
         } else {
@@ -297,29 +313,18 @@ class ContractController extends Controller
     public function duplicate(DuplicateContractRequest $request, $id)
     {
         if (Auth::user()->can('duplicate-contracts')) {
-            $originalContract = Contract::where('source_type', 'contract')
-                ->where(function ($q) {
-                    if (Auth::user()->can('manage-any-contracts')) {
-                        $q->where('created_by', creatorId());
-                    } elseif (Auth::user()->can('manage-own-contracts')) {
-                        $q->where('user_id', Auth::id())->orWhere('creator_id', Auth::id());
-                    } else {
-                        $q->whereRaw('1 = 0');
-                    }
-                })->find($id);
-
-            if (!$originalContract) {
-                return redirect()->route('contract.index')->with('error', __('Contract not found.'));
-            }
+            $originalContract = $this->findTenantContract($id);
 
             $validated = $request->validated();
 
-            $duplicateContract = new Contract();
-            $duplicateContract->fill($validated);
-            $duplicateContract->source_type = 'contract';
-            $duplicateContract->creator_id = Auth::id();
-            $duplicateContract->created_by = creatorId();
-            $duplicateContract->save();
+            DB::transaction(function () use ($validated) {
+                $duplicateContract              = new Contract();
+                $duplicateContract->fill($validated);
+                $duplicateContract->source_type = 'contract';
+                $duplicateContract->creator_id  = Auth::id();
+                $duplicateContract->created_by  = creatorId();
+                $duplicateContract->save();
+            });
 
             return redirect()->route('contract.index')->with('success', __('The contract has been duplicated successfully.'));
         } else {

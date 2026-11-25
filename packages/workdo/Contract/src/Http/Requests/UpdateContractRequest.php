@@ -3,6 +3,7 @@
 namespace Workdo\Contract\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Contract\Traits\ContractControllerHelpers;
 
 class UpdateContractRequest extends FormRequest
 {
@@ -14,14 +15,14 @@ class UpdateContractRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'subject' => 'required|max:255',
-            'user_id' => 'required|exists:users,id',
-            'value' => 'required',
-            'type_id' => 'required|exists:contract_types,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'subject'     => 'required|max:255',
+            'user_id'     => ['required', ContractControllerHelpers::tenantExists('users', 'id')],
+            'value'       => 'required',
+            'type_id'     => ['required', ContractControllerHelpers::tenantExists('contract_types', 'id')],
+            'start_date'  => 'required|date',
+            'end_date'    => 'required|date|after:start_date',
             'description' => 'nullable',
-            'status' => 'required'
+            'status'      => 'required',
         ];
     }
 }
