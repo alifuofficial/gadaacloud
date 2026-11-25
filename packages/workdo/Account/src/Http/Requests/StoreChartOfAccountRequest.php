@@ -3,6 +3,7 @@
 namespace Workdo\Account\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Account\Traits\AccountControllerHelpers;
 
 class StoreChartOfAccountRequest extends FormRequest
 {
@@ -22,8 +23,8 @@ class StoreChartOfAccountRequest extends FormRequest
             'current_balance' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string|max:1000',
-            'account_type_id' => 'nullable|exists:account_types,id',
-            'parent_account_id' => 'nullable|exists:chart_of_accounts,id'
+            'account_type_id' => ['nullable', AccountControllerHelpers::tenantExists('account_types', 'id')],
+            'parent_account_id' => ['nullable', AccountControllerHelpers::tenantExists('chart_of_accounts', 'id')]
         ];
     }
 }

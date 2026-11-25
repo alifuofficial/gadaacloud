@@ -4,6 +4,7 @@ namespace Workdo\Account\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Workdo\Account\Traits\AccountControllerHelpers;
 
 class StoreVendorPaymentRequest extends FormRequest
 {
@@ -16,8 +17,8 @@ class StoreVendorPaymentRequest extends FormRequest
     {
         return [
             'payment_date' => 'required|date|before_or_equal:today',
-            'vendor_id' => 'required|exists:users,id',
-            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'vendor_id' => ['required', AccountControllerHelpers::tenantExists('users', 'id')],
+            'bank_account_id' => ['required', AccountControllerHelpers::tenantExists('bank_accounts', 'id')],
             'reference_number' => 'nullable|string|max:100',
             'payment_amount' => 'required|numeric|min:0',
             'wht_rate' => 'nullable|numeric|min:0|max:100',
@@ -27,10 +28,10 @@ class StoreVendorPaymentRequest extends FormRequest
             'foreign_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'allocations' => 'nullable|array',
-            'allocations.*.invoice_id' => 'required|exists:purchase_invoices,id',
+            'allocations.*.invoice_id' => ['required', AccountControllerHelpers::tenantExists('purchase_invoices', 'id')],
             'allocations.*.amount' => 'required|numeric|min:0.01',
             'debit_notes' => 'nullable|array',
-            'debit_notes.*.debit_note_id' => 'required|exists:debit_notes,id',
+            'debit_notes.*.debit_note_id' => ['required', AccountControllerHelpers::tenantExists('debit_notes', 'id')],
             'debit_notes.*.amount' => 'required|numeric|min:0.01'
         ];
     }

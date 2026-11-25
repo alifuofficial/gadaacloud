@@ -3,6 +3,7 @@
 namespace Workdo\Account\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Account\Traits\AccountControllerHelpers;
 
 class UpdateBankAccountRequest extends FormRequest
 {
@@ -27,7 +28,7 @@ class UpdateBankAccountRequest extends FormRequest
             'swift_code' => 'nullable|string|max:11',
             'routing_number' => 'nullable|string|max:20',
             'is_active' => 'boolean',
-            'gl_account_id' => 'required|exists:chart_of_accounts,id'
+            'gl_account_id' => ['required', AccountControllerHelpers::tenantExists('chart_of_accounts', 'id')]
         ];
     }
 }

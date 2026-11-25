@@ -13,9 +13,13 @@ use Workdo\Account\Http\Requests\UpdateVendorRequest;
 use Workdo\Account\Events\CreateVendor;
 use Workdo\Account\Events\UpdateVendor;
 use Workdo\Account\Events\DestroyVendor;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class VendorController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index()
     {
         [$sortCol, $sortDir] = AccountUtility::sanitizeSort(
@@ -41,7 +45,7 @@ class VendorController extends Controller
                 ->when(request('vendor_code'), fn($q) => $q->where('vendor_code', 'like', '%' . request('vendor_code') . '%'))
                 ->when(request('tax_number'), fn($q) => $q->where('tax_number', 'like', '%' . request('tax_number') . '%'))
                 ->when(request('sort'), fn($q) => $q->orderBy($sortCol, $sortDir), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $users = User::where('type', 'vendor')

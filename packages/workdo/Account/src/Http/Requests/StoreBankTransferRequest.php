@@ -3,6 +3,7 @@
 namespace Workdo\Account\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Account\Traits\AccountControllerHelpers;
 
 class StoreBankTransferRequest extends FormRequest
 {
@@ -15,8 +16,8 @@ class StoreBankTransferRequest extends FormRequest
     {
         return [
             'transfer_date' => 'required|date',
-            'from_account_id' => 'required|exists:bank_accounts,id',
-            'to_account_id' => 'required|exists:bank_accounts,id|different:from_account_id',
+            'from_account_id' => ['required', AccountControllerHelpers::tenantExists('bank_accounts', 'id')],
+            'to_account_id' => ['required', AccountControllerHelpers::tenantExists('bank_accounts', 'id'), 'different:from_account_id'],
             'transfer_amount' => 'required|numeric|min:0.01',
             'transfer_charges' => 'nullable|numeric|min:0',
             'reference_number' => 'nullable|string|max:255',

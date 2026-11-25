@@ -14,9 +14,13 @@ use Workdo\Account\Events\DestroyDebitNote;
 use Workdo\Account\Helpers\AccountUtility;
 use Workdo\Account\Models\DebitNote;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class DebitNoteController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     protected $journalService;
 
     public function __construct(JournalService $journalService)
@@ -88,7 +92,7 @@ class DebitNoteController extends Controller
 
         $query->orderBy($sortCol, $sortDir);
 
-        $debitNotes = $query->paginate($request->per_page ?? 10)->withQueryString();
+        $debitNotes = $query->paginate($this->safePerPage(10, 100))->withQueryString();
         $vendors = User::where('type', 'vendor')->where('created_by', creatorId())->get(['id', 'name']);
         $purchaseReturns = PurchaseReturn::where('created_by', creatorId())->get(['id', 'return_number']);
 

@@ -21,9 +21,13 @@ use Workdo\Account\Models\Expense;
 use Workdo\Account\Models\ExpenseCategories;
 use Workdo\Account\Services\BankTransactionsService;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class ExpenseController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     protected $journalService;
     protected $bankTransactionsService;
 
@@ -80,7 +84,7 @@ class ExpenseController extends Controller
             $query->latest();
         }
 
-        $expenses = $query->paginate($request->per_page ?? 10)->withQueryString();
+        $expenses = $query->paginate($this->safePerPage(10, 100))->withQueryString();
 
         $categories = ExpenseCategories::where('created_by', creatorId())
             ->where('is_active', true)

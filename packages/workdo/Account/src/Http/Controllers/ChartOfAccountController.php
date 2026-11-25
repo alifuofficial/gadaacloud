@@ -17,9 +17,13 @@ use Workdo\Account\Models\ChartOfAccount;
 use Workdo\Account\Models\ExpenseCategories;
 use Workdo\Account\Models\JournalEntryItem;
 use Workdo\Account\Models\RevenueCategories;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class ChartOfAccountController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index()
     {
         if (!Auth::user()->can('manage-chart-of-accounts')) {
@@ -54,7 +58,7 @@ class ChartOfAccountController extends Controller
             ->when(request('normal_balance') && request('normal_balance') !== 'all', fn ($q) => $q->where('normal_balance', request('normal_balance')))
             ->when(request('is_active') !== null && request('is_active') !== 'all', fn ($q) => $q->where('is_active', request('is_active') === '1'))
             ->when(request('sort'), fn ($q) => $q->orderBy($sortCol, $sortDir), fn ($q) => $q->latest())
-            ->paginate(request('per_page', 10))
+            ->paginate($this->safePerPage(10, 100))
             ->withQueryString();
 
         return Inertia::render('Account/ChartOfAccounts/Index', [

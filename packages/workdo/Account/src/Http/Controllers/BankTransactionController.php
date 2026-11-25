@@ -17,9 +17,13 @@ use Workdo\Account\Models\Expense;
 use Workdo\Account\Models\Revenue;
 use Workdo\Account\Models\VendorPayment;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class BankTransactionController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index(Request $request)
     {
         if (!Auth::user()->can('manage-bank-transactions')) {
@@ -55,7 +59,7 @@ class BankTransactionController extends Controller
 
         $query->orderBy($sortField, $sortDirection);
 
-        $transactions = $query->paginate($request->get('per_page', 10))->withQueryString();
+        $transactions = $query->paginate($this->safePerPage(10, 100))->withQueryString();
         $bankAccounts = BankAccount::where('is_active', true)->where('created_by', $companyId)->get();
 
         $stats = [

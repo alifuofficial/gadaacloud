@@ -14,9 +14,13 @@ use Workdo\Account\Events\DestroyCreditNote;
 use Workdo\Account\Helpers\AccountUtility;
 use Workdo\Account\Models\CreditNote;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class CreditNoteController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     protected $journalService;
 
     public function __construct(JournalService $journalService)
@@ -88,7 +92,7 @@ class CreditNoteController extends Controller
 
         $query->orderBy($sortCol, $sortDir);
 
-        $creditNotes = $query->paginate($request->per_page ?? 10)->withQueryString();
+        $creditNotes = $query->paginate($this->safePerPage(10, 100))->withQueryString();
         $customers = User::where('type', 'client')->where('created_by', creatorId())->get(['id', 'name']);
         $salesReturns = SalesInvoiceReturn::where('created_by', creatorId())->get(['id', 'return_number']);
 

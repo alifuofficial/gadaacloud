@@ -2,12 +2,15 @@
 
 namespace Workdo\Account\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\PurchaseInvoice;
+use App\Traits\TenantScoped;
 
 class VendorPaymentAllocation extends Model
 {
+    use HasFactory, TenantScoped;
     protected $fillable = [
         'payment_id',
         'invoice_id',

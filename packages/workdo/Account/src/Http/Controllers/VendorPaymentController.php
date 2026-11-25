@@ -21,9 +21,13 @@ use Workdo\Account\Models\VendorPayment;
 use Workdo\Account\Models\VendorPaymentAllocation;
 use Workdo\Account\Services\BankTransactionsService;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class VendorPaymentController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     protected $journalService;
     protected $bankTransactionsService;
 
@@ -81,7 +85,7 @@ class VendorPaymentController extends Controller
 
         $query->orderBy($sortCol, $sortDir);
 
-        $payments = $query->paginate($request->get('per_page', 10));
+        $payments = $query->paginate($this->safePerPage(10, 100));
         $vendors = User::where('type', 'vendor')->where('created_by', creatorId())->get();
         $bankAccounts = BankAccount::where('is_active', true)->where('created_by', creatorId())->get();
 

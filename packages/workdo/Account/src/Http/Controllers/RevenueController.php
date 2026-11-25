@@ -21,9 +21,13 @@ use Workdo\Account\Models\Revenue;
 use Workdo\Account\Models\RevenueCategories;
 use Workdo\Account\Services\BankTransactionsService;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class RevenueController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     protected $journalService;
     protected $bankTransactionsService;
 
@@ -80,7 +84,7 @@ class RevenueController extends Controller
             $query->latest();
         }
 
-        $revenues = $query->paginate($request->per_page ?? 10)->withQueryString();
+        $revenues = $query->paginate($this->safePerPage(10, 100))->withQueryString();
 
         $categories = RevenueCategories::where('created_by', creatorId())
             ->where('is_active', true)

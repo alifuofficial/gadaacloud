@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Account\Models\AccountingPeriod;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class AccountingPeriodController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index(Request $request)
     {
         if (!Auth::user()->can('manage-accounting-periods') && !Auth::user()->can('manage-account-types')) {
@@ -22,7 +26,7 @@ class AccountingPeriodController extends Controller
             ->with('lockedByUser:id,name')
             ->when($request->fiscal_year, fn ($q) => $q->where('fiscal_year', $request->fiscal_year))
             ->orderByDesc('start_date')
-            ->paginate($request->get('per_page', 15))
+            ->paginate($this->safePerPage(15, 100))
             ->withQueryString();
 
         return Inertia::render('Account/SystemSetup/AccountingPeriods/Index', [

@@ -15,12 +15,15 @@ use Workdo\Account\Models\BankTransfer;
 use Workdo\Account\Models\ChartOfAccount;
 use Workdo\Account\Models\CreditNote;
 use Workdo\Account\Models\CreditNoteApplication;
+use Workdo\Account\Models\CreditNoteItem;
+use Workdo\Account\Models\CreditNoteItemTax;
 use Workdo\Account\Models\Customer;
 use Workdo\Account\Models\CustomerPayment;
 use Workdo\Account\Models\CustomerPaymentAllocation;
 use Workdo\Account\Models\DebitNote;
 use Workdo\Account\Models\DebitNoteApplication;
 use Workdo\Account\Models\DebitNoteItem;
+use Workdo\Account\Models\DebitNoteItemTax;
 use Workdo\Account\Models\Expense;
 use Workdo\Account\Models\ExpenseCategories;
 use Workdo\Account\Models\JournalEntry;
@@ -30,7 +33,10 @@ use Workdo\Account\Models\Revenue;
 use Workdo\Account\Models\RevenueCategories;
 use Workdo\Account\Models\Vendor;
 use Workdo\Account\Models\VendorPayment;
+use Workdo\Account\Models\VendorPaymentAllocation;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class AccountEnterpriseUpgradeTest extends TestCase
 {
@@ -59,12 +65,15 @@ class AccountEnterpriseUpgradeTest extends TestCase
             ChartOfAccount::class,
             CreditNote::class,
             CreditNoteApplication::class,
+            CreditNoteItem::class,
+            CreditNoteItemTax::class,
             Customer::class,
             CustomerPayment::class,
             CustomerPaymentAllocation::class,
             DebitNote::class,
             DebitNoteApplication::class,
             DebitNoteItem::class,
+            DebitNoteItemTax::class,
             Expense::class,
             ExpenseCategories::class,
             JournalEntry::class,
@@ -74,6 +83,7 @@ class AccountEnterpriseUpgradeTest extends TestCase
             RevenueCategories::class,
             Vendor::class,
             VendorPayment::class,
+            VendorPaymentAllocation::class,
         ];
 
         foreach ($tenantModels as $modelClass) {
@@ -119,5 +129,47 @@ class AccountEnterpriseUpgradeTest extends TestCase
         $this->assertStringNotContainsString('DATEDIFF("', $source);
         $this->assertStringContainsString('selectRaw(\'DATEDIFF(?, sales_invoices.due_date) as days_overdue\', [$asOfDate])', $source);
         $this->assertStringContainsString('selectRaw(\'DATEDIFF(?, purchase_invoices.due_date) as days_overdue\', [$asOfDate])', $source);
+    }
+
+    public function test_account_form_requests_have_zero_unscoped_exists_rules(): void
+    {
+        $requestFiles = glob(base_path('packages/workdo/Account/src/Http/Requests/*.php'));
+        $this->assertNotEmpty($requestFiles);
+
+        foreach ($requestFiles as $file) {
+            $content = file_get_contents($file);
+            $this->assertDoesNotMatchRegularExpression(
+                '/exists:[a-zA-Z0-9_]+,/',
+                $content,
+                basename($file) . ' still contains an unscoped exists: rule.'
+            );
+        }
+    }
+
+    public function test_account_date_helpers_resolves_ethiopian_fiscal_year(): void
+    {
+        $helper = new class {
+            use AccountDateHelpers;
+        };
+
+        $resolved = $helper->resolveAccountDateRange('2017');
+
+        $this->assertArrayHasKey('start_date', $resolved);
+        $this->assertArrayHasKey('end_date', $resolved);
+        $this->assertStringStartsWith('2024-', $resolved['start_date']);
+        $this->assertStringStartsWith('2025-', $resolved['end_date']);
+    }
+
+    public function test_account_controller_helpers_bounds_per_page(): void
+    {
+        $helper = new class {
+            use AccountControllerHelpers;
+        };
+
+        request()->merge(['per_page' => 9999]);
+        $this->assertEquals(100, $helper->safePerPage(10, 100));
+
+        request()->merge(['per_page' => -5]);
+        $this->assertEquals(10, $helper->safePerPage(10, 100));
     }
 }

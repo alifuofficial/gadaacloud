@@ -13,9 +13,13 @@ use Workdo\Account\Http\Requests\UpdateCustomerRequest;
 use Workdo\Account\Events\CreateCustomer;
 use Workdo\Account\Events\UpdateCustomer;
 use Workdo\Account\Events\DestroyCustomer;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class CustomerController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index()
     {
         [$sortCol, $sortDir] = AccountUtility::sanitizeSort(
@@ -41,7 +45,7 @@ class CustomerController extends Controller
                 ->when(request('customer_code'), fn($q) => $q->where('customer_code', 'like', '%' . request('customer_code') . '%'))
                 ->when(request('tax_number'), fn($q) => $q->where('tax_number', 'like', '%' . request('tax_number') . '%'))
                 ->when(request('sort'), fn($q) => $q->orderBy($sortCol, $sortDir), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $users = User::where('type', 'client')

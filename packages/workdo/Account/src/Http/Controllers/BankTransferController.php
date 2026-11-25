@@ -17,9 +17,13 @@ use Workdo\Account\Models\BankAccount;
 use Workdo\Account\Models\BankTransfer;
 use Workdo\Account\Services\BankTransactionsService;
 use Workdo\Account\Services\JournalService;
+use Workdo\Account\Traits\AccountControllerHelpers;
+use Workdo\Account\Traits\AccountDateHelpers;
 
 class BankTransferController extends Controller
 {
+    use AccountControllerHelpers, AccountDateHelpers;
+
     public function index()
     {
         if (!Auth::user()->can('manage-bank-transfers')) {
@@ -54,7 +58,7 @@ class BankTransferController extends Controller
             ->when(request('from_account_id'), fn ($q) => $q->where('from_account_id', request('from_account_id')))
             ->when(request('to_account_id'), fn ($q) => $q->where('to_account_id', request('to_account_id')))
             ->when(request('sort'), fn ($q) => $q->orderBy($sortCol, $sortDir), fn ($q) => $q->latest())
-            ->paginate(request('per_page', 10))
+            ->paginate($this->safePerPage(10, 100))
             ->withQueryString();
 
         $bankaccounts = BankAccount::where('is_active', true)

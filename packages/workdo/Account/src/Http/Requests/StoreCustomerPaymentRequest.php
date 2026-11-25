@@ -4,6 +4,7 @@ namespace Workdo\Account\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Workdo\Account\Traits\AccountControllerHelpers;
 
 class StoreCustomerPaymentRequest extends FormRequest
 {
@@ -16,8 +17,8 @@ class StoreCustomerPaymentRequest extends FormRequest
     {
         return [
             'payment_date' => 'required|date|before_or_equal:today',
-            'customer_id' => 'required|exists:users,id',
-            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'customer_id' => ['required', AccountControllerHelpers::tenantExists('users', 'id')],
+            'bank_account_id' => ['required', AccountControllerHelpers::tenantExists('bank_accounts', 'id')],
             'reference_number' => 'nullable|string|max:100',
             'payment_amount' => 'required|numeric|min:0',
             'wht_rate' => 'nullable|numeric|min:0|max:100',
@@ -27,10 +28,10 @@ class StoreCustomerPaymentRequest extends FormRequest
             'foreign_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'allocations' => 'nullable|array',
-            'allocations.*.invoice_id' => 'required|exists:sales_invoices,id',
+            'allocations.*.invoice_id' => ['required', AccountControllerHelpers::tenantExists('sales_invoices', 'id')],
             'allocations.*.amount' => 'required|numeric|min:0.01',
             'credit_notes' => 'nullable|array',
-            'credit_notes.*.credit_note_id' => 'required|exists:credit_notes,id',
+            'credit_notes.*.credit_note_id' => ['required', AccountControllerHelpers::tenantExists('credit_notes', 'id')],
             'credit_notes.*.amount' => 'required|numeric|min:0.01'
         ];
     }
