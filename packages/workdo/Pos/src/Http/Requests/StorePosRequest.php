@@ -3,7 +3,7 @@
 namespace Workdo\Pos\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
+use Workdo\Pos\Traits\PosControllerHelpers;
 
 class StorePosRequest extends FormRequest
 {
@@ -15,11 +15,11 @@ class StorePosRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => 'nullable|exists:users,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'customer_id' => ['nullable', 'integer', PosControllerHelpers::tenantExists('users', 'id')],
+            'warehouse_id' => ['required', 'integer', PosControllerHelpers::tenantExists('warehouses', 'id')],
             'pos_date' => 'nullable|date',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:product_service_items,id',
+            'items.*.id' => ['required', 'integer', PosControllerHelpers::tenantExists('product_service_items', 'id')],
             'items.*.quantity' => 'required|numeric|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.discount_amount' => 'nullable|numeric|min:0',

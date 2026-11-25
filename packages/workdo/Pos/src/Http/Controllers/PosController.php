@@ -8,6 +8,7 @@ use Workdo\ProductService\Models\WarehouseStock;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Pos\Events\CreatePos;
 use Workdo\ProductService\Models\ProductServiceCategory;
@@ -18,9 +19,11 @@ use Workdo\Pos\Http\Requests\StorePosRequest;
 use Workdo\Pos\Events\CreatePosSale;
 use Workdo\Pos\Models\PosPayment;
 use Workdo\ProductService\Models\ProductServiceTax;
+use Workdo\Pos\Traits\PosControllerHelpers;
 
 class PosController extends Controller
 {
+    use PosControllerHelpers;
     public function index(Request $request)
     {
         if(Auth::user()->can('manage-pos-orders')){
@@ -56,16 +59,15 @@ class PosController extends Controller
             }
 
             $sortField = $request->get('sort', 'created_at');
-            $sortDirection = $request->get('direction', 'desc');
+            $sortDirection = strtolower($request->get('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-            if (in_array($sortField, ['sale_number', 'total', 'created_at'])) {
+            if (in_array($sortField, ['sale_number', 'total', 'created_at'], true)) {
                 $query->orderBy($sortField, $sortDirection);
             } else {
                 $query->latest();
             }
 
-            $perPage = $request->get('per_page', 10);
-            $sales = $query->paginate($perPage)->withQueryString();
+            $sales = $query->paginate($this->safePerPage(10, 100))->withQueryString();
 
             $sales->getCollection()->transform(function($sale) {
                 $sale->total = $sale->payment ? $sale->payment->discount_amount : 0;
@@ -166,72 +168,99 @@ class PosController extends Controller
 
     public function store(StorePosRequest $request)
     {
-        if(Auth::user()->can('create-pos')){
+        if (Auth::user()->can('create-pos')) {
             $validated = $request->validated();
-
-            $saleNumber = Pos::generateSaleNumber();
-            $sale = new Pos();
-            $sale->sale_number = $saleNumber;
-            $sale->customer_id = $validated['customer_id'] ?? null;
-            $sale->warehouse_id = $validated['warehouse_id'];
-            $sale->pos_date = $validated['pos_date'] ?? now()->toDateString();
-            $sale->creator_id = Auth::id();
-            $sale->created_by = creatorId();
-            $sale->save();
-
-            $finalAmount = 0;
-            foreach ($validated['items'] as $item) {
-                $product = ProductServiceItem::find($item['id']);
-
-                $subtotal = $item['quantity'] * $item['price'];
-
-                $taxAmount = 0;
-                $taxIds = null;
-                if ($product && $product->tax_ids && is_array($product->tax_ids) && !empty($product->tax_ids)) {
-                    $taxIds = $product->tax_ids;
-                    $taxes = ProductServiceTax::whereIn('id', $taxIds)
-                        ->where('created_by', creatorId())
-                        ->get();
-
-                    foreach ($taxes as $tax) {
-                        $taxAmount += $subtotal * ($tax->rate / 100);
-                    }
-                }
-
-                $totalAmount = $subtotal + $taxAmount;
-                $finalAmount+= $totalAmount;
-                $saleItem = new PosItem();
-                $saleItem->pos_id = $sale->id;
-                $saleItem->product_id = $item['id'];
-                $saleItem->quantity = $item['quantity'];
-                $saleItem->price = $item['price'];
-                $saleItem->tax_ids = $taxIds;
-                $saleItem->subtotal = $subtotal;
-                $saleItem->tax_amount = $taxAmount;
-                $saleItem->total_amount = $totalAmount;
-                $saleItem->creator_id = Auth::id();
-                $saleItem->created_by = creatorId();
-                $saleItem->save();
-
-            }
-
-            $posPayment = new PosPayment();
-            $posPayment->pos_id = $sale->id;
-            $posPayment->discount = $validated['discount'];
-            $posPayment->amount = $finalAmount;
-            $posPayment->discount_amount = $finalAmount-$validated['discount'];
-            $posPayment->creator_id = Auth::id();
-            $posPayment->created_by = creatorId();
-            $posPayment->save();
+            $companyId = creatorId();
 
             try {
-                CreatePos::dispatch($request, $sale);
-            } catch (\Throwable $th) {
-                
-            }
+                $sale = DB::transaction(function () use ($validated, $companyId) {
+                    $saleNumber = Pos::generateSaleNumber();
+                    $sale = new Pos();
+                    $sale->sale_number = $saleNumber;
+                    $sale->customer_id = $validated['customer_id'] ?? null;
+                    $sale->warehouse_id = $validated['warehouse_id'];
+                    $sale->pos_date = $validated['pos_date'] ?? now()->toDateString();
+                    $sale->creator_id = Auth::id();
+                    $sale->created_by = $companyId;
+                    $sale->save();
 
-            return back()->with('success', __('The POS sale has been created successfully.'));
-        }else{
+                    $finalAmount = 0;
+                    foreach ($validated['items'] as $item) {
+                        $product = ProductServiceItem::where('created_by', $companyId)->findOrFail($item['id']);
+
+                        $subtotal = $item['quantity'] * $item['price'];
+
+                        $taxAmount = 0;
+                        $taxIds = null;
+                        if ($product->tax_ids && is_array($product->tax_ids) && !empty($product->tax_ids)) {
+                            $taxIds = $product->tax_ids;
+                            $taxes = ProductServiceTax::whereIn('id', $taxIds)
+                                ->where('created_by', $companyId)
+                                ->get();
+
+                            foreach ($taxes as $tax) {
+                                $taxAmount += $subtotal * ($tax->rate / 100);
+                            }
+                        }
+
+                        $totalAmount = $subtotal + $taxAmount;
+                        $finalAmount += $totalAmount;
+
+                        $saleItem = new PosItem();
+                        $saleItem->pos_id = $sale->id;
+                        $saleItem->product_id = $product->id;
+                        $saleItem->quantity = $item['quantity'];
+                        $saleItem->price = $item['price'];
+                        $saleItem->tax_ids = $taxIds;
+                        $saleItem->subtotal = $subtotal;
+                        $saleItem->tax_amount = $taxAmount;
+                        $saleItem->total_amount = $totalAmount;
+                        $saleItem->creator_id = Auth::id();
+                        $saleItem->created_by = $companyId;
+                        $saleItem->save();
+
+                        // Atomic warehouse stock deduction if stock record exists
+                        if (class_exists(WarehouseStock::class)) {
+                            $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                                ->where('product_id', $product->id)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($stock) {
+                                if ((float) $stock->quantity < (float) $item['quantity']) {
+                                    throw new \Exception(__('Insufficient warehouse stock for :product', ['product' => $product->name]));
+                                }
+                                $stock->quantity = max(0, (float) $stock->quantity - (float) $item['quantity']);
+                                $stock->save();
+                            }
+                        }
+                    }
+
+                    $discount = min((float) ($validated['discount'] ?? 0), $finalAmount);
+
+                    $posPayment = new PosPayment();
+                    $posPayment->pos_id = $sale->id;
+                    $posPayment->discount = $discount;
+                    $posPayment->amount = $finalAmount;
+                    $posPayment->discount_amount = max(0, $finalAmount - $discount);
+                    $posPayment->creator_id = Auth::id();
+                    $posPayment->created_by = $companyId;
+                    $posPayment->save();
+
+                    return $sale;
+                });
+
+                try {
+                    CreatePos::dispatch($request, $sale);
+                } catch (\Throwable $th) {
+                    // Non-blocking event dispatch
+                }
+
+                return back()->with('success', __('The POS sale has been created successfully.'));
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        } else {
             return redirect()->route('pos.index')->with('error', __('Permission denied'));
         }
     }
@@ -304,7 +333,7 @@ class PosController extends Controller
 
     public function print(Pos $sale)
     {
-        if(Auth::user()->can('view-pos-orders')){
+        if (Auth::user()->can('view-pos-orders') && $this->assertBelongsToTenant($sale)) {
             $sale->load([
                 'customer:id,name,email',
                 'warehouse:id,name',

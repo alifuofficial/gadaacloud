@@ -2,12 +2,14 @@
 
 namespace Workdo\Pos\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Workdo\ProductService\Models\ProductServiceItem;
 
 class PosItem extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'pos_id',
         'product_id',

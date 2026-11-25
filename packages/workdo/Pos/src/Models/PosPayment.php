@@ -2,11 +2,13 @@
 
 namespace Workdo\Pos\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PosPayment extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'pos_id',
         'discount',

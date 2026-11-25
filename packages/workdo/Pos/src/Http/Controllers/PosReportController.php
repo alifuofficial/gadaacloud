@@ -12,9 +12,11 @@ use Workdo\ProductService\Models\ProductServiceItem;
 use App\Models\Warehouse;
 use Carbon\Carbon;
 use Workdo\Pos\Models\Pos;
+use Workdo\Pos\Traits\PosDateHelpers;
 
 class PosReportController extends Controller
 {
+    use PosDateHelpers;
     public function sales(Request $request)
     {
         if(Auth::user()->can('manage-pos-reports')){

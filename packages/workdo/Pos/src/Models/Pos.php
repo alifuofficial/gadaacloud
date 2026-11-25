@@ -2,6 +2,7 @@
 
 namespace Workdo\Pos\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use App\Models\Warehouse;
 
 class Pos extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'sale_number',
         'customer_id',
