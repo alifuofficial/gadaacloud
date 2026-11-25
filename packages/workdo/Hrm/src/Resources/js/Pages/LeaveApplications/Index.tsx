@@ -23,6 +23,7 @@ import View from './View';
 import StatusUpdate from './StatusUpdate';
 import NoRecordsFound from '@/components/no-records-found';
 import { LeaveApplication, LeaveApplicationsIndexProps, LeaveApplicationFilters, LeaveApplicationModalState } from './types';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath } from '@/utils/helpers';
 
@@ -352,19 +353,17 @@ export default function Index() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('Start Date')}</label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.start_date}
-                                    onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
+                                    onChange={(val) => setFilters({ ...filters, start_date: val })}
                                     placeholder={t('Filter by Start Date')}
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('End Date')}</label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.end_date}
-                                    onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
+                                    onChange={(val) => setFilters({ ...filters, end_date: val })}
                                     placeholder={t('Filter by End Date')}
                                 />
                             </div>

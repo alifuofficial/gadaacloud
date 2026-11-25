@@ -1,12 +1,12 @@
-import { NavItem } from '@/types';
 import { Calendar } from 'lucide-react';
+import { NavItem } from '@/types';
 
 export const ethiopianCalendarMenu = (t: (key: string) => string): NavItem[] => [
     {
         title: t('Ethiopian Calendar'),
-        href: route('settings.index'),
+        href: route('ethiopian-calendar.index'),
         icon: Calendar,
-        permission: 'manage-settings',
+        permission: 'manage-ethiopian-calendar',
         order: 2987,
     },
 ];

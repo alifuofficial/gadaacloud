@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
+import { EthiopianFiscalPresets } from '@/components/ethiopian-fiscal-presets';
 import { Printer, FileText } from 'lucide-react';
 import { formatDate, formatCurrency } from '@/utils/helpers';
 import NoRecordsFound from '@/components/no-records-found';
@@ -59,6 +60,12 @@ export default function TaxSummary({ financialYear }: any) {
                         )}
                     </div>
                 </div>
+                <EthiopianFiscalPresets
+                    onSelectRange={(from, to) => {
+                        setFromDate(from);
+                        setToDate(to);
+                    }}
+                />
             </CardContent>
 
             <CardContent className="p-0">

@@ -145,7 +145,7 @@
             </div>
             <div class="voucher-meta">
                 <h2>TERM-{{ $termination->id }}</h2>
-                <p>Date: <strong>{{ date('d/m/Y') }}</strong></p>
+                <p>Date: <strong>{{ tenant_date(now(), 'd/m/Y', true) }}</strong></p>
                 <p>Type: <strong>{{ $termination->terminationType->termination_type ?? 'Termination' }}</strong></p>
             </div>
         </div>
@@ -160,9 +160,9 @@
             </div>
             <div class="card">
                 <h3>SERVICE DURATION (የስራ ዘመን)</h3>
-                <p><strong>Date of Joining:</strong> {{ $employee && $employee->date_of_joining ? $employee->date_of_joining->format('d/m/Y') : 'N/A' }}</p>
-                <p><strong>Termination Date:</strong> {{ $termination->termination_date ? $termination->termination_date->format('d/m/Y') : 'N/A' }}</p>
-                <p><strong>Notice Date:</strong> {{ $termination->notice_date ? $termination->notice_date->format('d/m/Y') : 'No Notice' }}</p>
+                <p><strong>Date of Joining:</strong> {{ $employee && $employee->date_of_joining ? tenant_date($employee->date_of_joining, 'd/m/Y', true) : 'N/A' }}</p>
+                <p><strong>Termination Date:</strong> {{ $termination->termination_date ? tenant_date($termination->termination_date, 'd/m/Y', true) : 'N/A' }}</p>
+                <p><strong>Notice Date:</strong> {{ $termination->notice_date ? tenant_date($termination->notice_date, 'd/m/Y', true) : 'No Notice' }}</p>
                 <p><strong>Total Duration:</strong> <strong>{{ $serviceDuration }}</strong></p>
             </div>
         </div>

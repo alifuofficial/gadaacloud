@@ -217,6 +217,11 @@ class SettingController extends Controller
                 'settings.enableEmailVerification' => 'required|string|in:on,off',
                 'settings.landingPageEnabled' => 'required|string|in:on,off',
                 'settings.termsConditionsUrl' => 'nullable|url|max:500',
+                'settings.useEthiopianCalendar' => 'nullable|string|in:on,off',
+                'settings.ethiopianDateStyle' => 'nullable|string|in:numeric,month_name,amharic',
+                'settings.showEthiopianEra' => 'nullable|string|in:on,off',
+                'settings.useEthiopianTime' => 'nullable|string|in:on,off',
+                'settings.useEthiopianTax' => 'nullable|string|in:on,off',
             ], [
                 'settings.defaultLanguage.required' => __('Default language is required.'),
                 'settings.defaultLanguage.string' => __('Default language must be a valid string.'),

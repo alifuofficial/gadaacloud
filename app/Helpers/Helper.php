@@ -910,5 +910,85 @@ if (!function_exists('parseBrowserData')) {
     }
 }
 
+if (!function_exists('tenant_date')) {
+    /**
+     * Format a date respecting the tenant's active calendar preference (Gregorian or Ethiopian Ge'ez),
+     * degrading gracefully to Gregorian if EthiopianCalendar is inactive or disabled.
+     */
+    function tenant_date($date, ?string $format = null, bool $includeDual = false, $userId = null): string
+    {
+        if (empty($date)) {
+            return '';
+        }
+
+        try {
+            $carbon = $date instanceof \DateTimeInterface ? \Carbon\Carbon::instance($date) : \Carbon\Carbon::parse((string) $date);
+        } catch (\Throwable $e) {
+            return (string) $date;
+        }
+
+        $targetFormat = $format ?: (company_setting('dateFormat', $userId) ?: 'Y-m-d');
+        $gregorian = $carbon->format($targetFormat);
+
+        if (
+            module_is_active('EthiopianCalendar', $userId)
+            && company_setting('useEthiopianCalendar', $userId) === 'on'
+            && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
+        ) {
+            try {
+                $service = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
+                if ($includeDual) {
+                    return $service->formatDual($carbon, $targetFormat);
+                }
+                $style = company_setting('ethiopianDateStyle', $userId) ?: 'numeric';
+                $showEra = company_setting('showEthiopianEra', $userId) === 'on';
+                return $service->format($carbon, $targetFormat, $style, $showEra);
+            } catch (\Throwable $e) {
+                return $gregorian;
+            }
+        }
+
+        return $gregorian;
+    }
+}
+
+if (!function_exists('tenant_datetime')) {
+    /**
+     * Format a date + time respecting tenant calendar & time format preferences.
+     */
+    function tenant_datetime($date, ?string $dateFormat = null, ?string $timeFormat = null, $userId = null): string
+    {
+        if (empty($date)) {
+            return '';
+        }
+
+        try {
+            $carbon = $date instanceof \DateTimeInterface ? \Carbon\Carbon::instance($date) : \Carbon\Carbon::parse((string) $date);
+        } catch (\Throwable $e) {
+            return (string) $date;
+        }
+
+        $formattedDate = tenant_date($carbon, $dateFormat, false, $userId);
+        $tf = $timeFormat ?: (company_setting('timeFormat', $userId) ?: 'H:i');
+
+        if (
+            module_is_active('EthiopianCalendar', $userId)
+            && company_setting('useEthiopianCalendar', $userId) === 'on'
+            && company_setting('useEthiopianTime', $userId) === 'on'
+            && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
+        ) {
+            try {
+                $ethTime = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)->formatEthiopianTime($carbon);
+                return trim("{$formattedDate} {$ethTime}");
+            } catch (\Throwable $e) {
+                // fallback to standard time
+            }
+        }
+
+        return trim($formattedDate . ' ' . $carbon->format($tf));
+    }
+}
+
+
 
 

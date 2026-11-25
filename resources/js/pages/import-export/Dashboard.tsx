@@ -3,6 +3,7 @@ import { Head, router } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -894,7 +895,7 @@ export default function IEDashboard({
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                                 <Label className="text-xs">{t('Discharge Date')}</Label>
-                                <Input type="date" value={dischargeDate} onChange={(e) => setDischargeDate(e.target.value)} required className="h-9 text-xs" />
+                                <DatePicker value={dischargeDate} onChange={(val) => setDischargeDate(val)} required />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs">{t('Daily Demurrage ($)')}</Label>
@@ -1041,7 +1042,7 @@ export default function IEDashboard({
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs">{t('Expiry Date')}</Label>
-                                <Input type="date" value={newLcExpiry} onChange={(e) => setNewLcExpiry(e.target.value)} required className="h-9 text-xs" />
+                                <DatePicker value={newLcExpiry} onChange={(val) => setNewLcExpiry(val)} required />
                             </div>
                         </div>
                         <DialogFooter className="pt-2">

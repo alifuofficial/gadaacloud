@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import Kenat from 'kenat';
+import Kenat, { monthNames as kenatMonthNames } from 'kenat';
 
 // Add window type declaration
 declare global {
@@ -7,6 +7,107 @@ declare global {
     location: Location;
   }
 }
+
+export const ETHIOPIAN_MONTH_NAMES = {
+  english: [
+    'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+    'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
+  ],
+  amharic: kenatMonthNames?.amharic || [
+    'መስከረም', 'ጥቅምት', 'ኅዳር', 'ታኅሣሥ', 'ጥር', 'የካቲት',
+    'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሐሴ', 'ጳጉሜን'
+  ],
+};
+
+/**
+ * Parse date-only ISO strings (YYYY-MM-DD) in local timezone to avoid UTC midnight day-shifts,
+ * and return null cleanly on invalid input.
+ */
+const parseDateSafely = (date: string | Date | null | undefined): Date | null => {
+  if (!date) return null;
+  if (date instanceof Date) {
+    return Number.isNaN(date.getTime()) ? null : new Date(date.getTime());
+  }
+
+  const raw = String(date).trim();
+  const isoDateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (isoDateOnly) {
+    const [, y, m, d] = isoDateOnly;
+    const local = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+    return Number.isNaN(local.getTime()) ? null : local;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Resolve safe React/Inertia props when available.
+ */
+const resolvePageProps = (pageProps?: any): any => {
+  if (pageProps) return pageProps;
+  try {
+    const { props } = usePage();
+    return props || {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Check whether Ethiopian Calendar add-on is both subscribed and enabled by tenant settings.
+ */
+const isEthiopianCalendarEnabled = (pageProps?: any): boolean => {
+  const props = resolvePageProps(pageProps);
+  const activatedPackages: string[] = props?.auth?.user?.activatedPackages || [];
+  const ethSetting = getCompanySetting('useEthiopianCalendar', props);
+  return activatedPackages.includes('EthiopianCalendar') && ethSetting === 'on';
+};
+
+/**
+ * Format an Ethiopian date object according to tenant style and era preferences.
+ */
+const formatEthiopianParts = (
+  ethDate: { year: number; month: number; day: number },
+  dateFormat: string,
+  style: string,
+  showEra: boolean
+): string => {
+  if (style === 'amharic') {
+    const monthName = ETHIOPIAN_MONTH_NAMES.amharic[ethDate.month - 1] || String(ethDate.month);
+    const base = `${monthName} ${ethDate.day}, ${ethDate.year}`;
+    return showEra ? `${base} ዓ.ም.` : base;
+  }
+
+  if (style === 'month_name') {
+    const monthName = ETHIOPIAN_MONTH_NAMES.english[ethDate.month - 1] || String(ethDate.month);
+    const base = `${monthName} ${ethDate.day}, ${ethDate.year}`;
+    return showEra ? `${base} E.C.` : base;
+  }
+
+  const year = String(ethDate.year);
+  const month = String(ethDate.month).padStart(2, '0');
+  const day = String(ethDate.day).padStart(2, '0');
+  const base = (dateFormat || 'Y-m-d')
+    .replace('Y', year)
+    .replace('m', month)
+    .replace('d', day);
+
+  return showEra ? `${base} E.C.` : base;
+};
+
+/**
+ * Format Gregorian 24h hour/minute into 12-hour Ethiopian local clock (06:00 AM = 12:00 Day).
+ */
+const formatEthiopianLocalTime = (hour24: number, minute: number): string => {
+  const shifted = (hour24 + 18) % 24;
+  const ethHour = shifted % 12 === 0 ? 12 : shifted % 12;
+  const m = String(minute).padStart(2, '0');
+  const period = hour24 >= 6 && hour24 < 18
+    ? (hour24 < 12 ? 'ጠዋት' : 'ከሰዓት')
+    : (hour24 >= 18 ? 'ምሽት' : 'ሌሊት');
+  return `${ethHour}:${m} ${period}`;
+};
 
 /**
  * Get company setting value
@@ -52,39 +153,20 @@ const getAdminSetting = (key: string, pageProps?: any) => {
  * Format date to readable format
  */
 const formatDate = (date: string | Date, pageProps?: any): string => {
-  if (!date) return '';
-  const format = getCompanySetting('dateFormat', pageProps) || 'Y-m-d';
-  const d = new Date(date);
+  const d = parseDateSafely(date);
+  if (!d) return typeof date === 'string' && date.trim() ? date : '';
 
-  // Check if Ethiopian Calendar is both subscribed AND enabled in company settings
-  let activatedPackages: string[] = [];
-  let useEthiopianCalendar = false;
-  try {
-    if (pageProps?.auth?.user?.activatedPackages) {
-      activatedPackages = pageProps.auth.user.activatedPackages;
-    } else {
-      const { props } = usePage();
-      activatedPackages = (props as any).auth?.user?.activatedPackages || [];
-    }
-    const ethSetting = getCompanySetting('useEthiopianCalendar', pageProps);
-    useEthiopianCalendar = activatedPackages.includes('EthiopianCalendar') && ethSetting === 'on';
-  } catch {
-    // Fallback if usePage is called outside of React context
-  }
+  const props = resolvePageProps(pageProps);
+  const format = getCompanySetting('dateFormat', props) || 'Y-m-d';
 
-  if (useEthiopianCalendar) {
+  if (isEthiopianCalendarEnabled(props)) {
     try {
       const kenatDate = new Kenat(d);
       const ethDate = kenatDate.getEthiopian();
-      const year = ethDate.year;
-      const month = String(ethDate.month).padStart(2, '0');
-      const day = String(ethDate.day).padStart(2, '0');
-
-      return format
-        .replace('Y', String(year))
-        .replace('m', month)
-        .replace('d', day);
-    } catch (err) {
+      const style = getCompanySetting('ethiopianDateStyle', props) || 'numeric';
+      const showEra = getCompanySetting('showEthiopianEra', props) === 'on';
+      return formatEthiopianParts(ethDate, format, style, showEra);
+    } catch {
       // Fallback to Gregorian if conversion fails
     }
   }
@@ -97,6 +179,33 @@ const formatDate = (date: string | Date, pageProps?: any): string => {
     .replace('Y', String(year))
     .replace('m', month)
     .replace('d', day);
+};
+
+/**
+ * Format dual Ethiopian + Gregorian date label when Ethiopian calendar is enabled.
+ */
+const formatDualDate = (date: string | Date, pageProps?: any): string => {
+  const d = parseDateSafely(date);
+  if (!d) return '';
+
+  const props = resolvePageProps(pageProps);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const format = getCompanySetting('dateFormat', props) || 'Y-m-d';
+  const greg = format.replace('Y', String(year)).replace('m', month).replace('d', day);
+
+  if (!isEthiopianCalendarEnabled(props)) {
+    return greg;
+  }
+
+  try {
+    const ethDate = new Kenat(d).getEthiopian();
+    const eth = formatEthiopianParts(ethDate, format, 'month_name', true);
+    return `${eth} (${greg})`;
+  } catch {
+    return greg;
+  }
 };
 
 /**
@@ -124,60 +233,42 @@ const formatTime = (time: string, pageProps?: any): string => {
  * Format date and time to readable format
  */
 const formatDateTime = (date: string | Date, pageProps?: any): string => {
-  if (!date) return '';
-  const dateFormat = getCompanySetting('dateFormat', pageProps) || 'Y-m-d';
-  const timeFormat = getCompanySetting('timeFormat', pageProps) || 'H:i';
+  const d = parseDateSafely(date);
+  if (!d) return typeof date === 'string' && date.trim() ? date : '';
 
-  const d = new Date(date);
+  const props = resolvePageProps(pageProps);
+  const dateFormat = getCompanySetting('dateFormat', props) || 'Y-m-d';
+  const timeFormat = getCompanySetting('timeFormat', props) || 'H:i';
+  const useEth = isEthiopianCalendarEnabled(props);
 
-  // Check if Ethiopian Calendar is both subscribed AND enabled in company settings
-  let activatedPackages: string[] = [];
-  let useEthiopianCalendar = false;
-  try {
-    if (pageProps?.auth?.user?.activatedPackages) {
-      activatedPackages = pageProps.auth.user.activatedPackages;
-    } else {
-      const { props } = usePage();
-      activatedPackages = (props as any).auth?.user?.activatedPackages || [];
-    }
-    const ethSetting = getCompanySetting('useEthiopianCalendar', pageProps);
-    useEthiopianCalendar = activatedPackages.includes('EthiopianCalendar') && ethSetting === 'on';
-  } catch {
-    // Fallback if usePage is called outside of React context
-  }
-
-  let year: number;
-  let month: string;
-  let day: string;
-
-  if (useEthiopianCalendar) {
+  let formattedDate: string;
+  if (useEth) {
     try {
-      const kenatDate = new Kenat(d);
-      const ethDate = kenatDate.getEthiopian();
-      year = ethDate.year;
-      month = String(ethDate.month).padStart(2, '0');
-      day = String(ethDate.day).padStart(2, '0');
-    } catch (err) {
-      year = d.getFullYear();
-      month = String(d.getMonth() + 1).padStart(2, '0');
-      day = String(d.getDate()).padStart(2, '0');
+      const ethDate = new Kenat(d).getEthiopian();
+      const style = getCompanySetting('ethiopianDateStyle', props) || 'numeric';
+      const showEra = getCompanySetting('showEthiopianEra', props) === 'on';
+      formattedDate = formatEthiopianParts(ethDate, dateFormat, style, showEra);
+    } catch {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      formattedDate = dateFormat.replace('Y', String(year)).replace('m', month).replace('d', day);
     }
   } else {
-    year = d.getFullYear();
-    month = String(d.getMonth() + 1).padStart(2, '0');
-    day = String(d.getDate()).padStart(2, '0');
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    formattedDate = dateFormat.replace('Y', String(year)).replace('m', month).replace('d', day);
   }
 
   const h = d.getHours();
   const m = String(d.getMinutes()).padStart(2, '0');
+  const useEthClock = useEth && getCompanySetting('useEthiopianTime', props) === 'on';
 
-  const formattedDate = dateFormat
-    .replace('Y', String(year))
-    .replace('m', month)
-    .replace('d', day);
-
-  let formattedTime;
-  if (timeFormat === 'g:i A') {
+  let formattedTime: string;
+  if (useEthClock) {
+    formattedTime = formatEthiopianLocalTime(h, d.getMinutes());
+  } else if (timeFormat === 'g:i A') {
     const period = h >= 12 ? 'PM' : 'AM';
     const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
     formattedTime = `${displayHour}:${m} ${period}`;
@@ -526,8 +617,13 @@ const getSubscriptionDetails = (userId?: number, pageProps?: any): SubscriptionD
 
 export {
     formatDate,
+    formatDualDate,
     formatTime,
     formatDateTime,
+    formatEthiopianParts,
+    formatEthiopianLocalTime,
+    parseDateSafely,
+    isEthiopianCalendarEnabled,
     getImagePath,
     formatCurrency,
     formatAdminCurrency,

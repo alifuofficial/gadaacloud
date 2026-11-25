@@ -11,8 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { CreatePayrollProps, CreatePayrollFormData } from './types';
 import { usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import Kenat, { toGC } from 'kenat';
+import { ETHIOPIAN_MONTH_NAMES, isEthiopianCalendarEnabled } from '@/utils/helpers';
 import { useFormFields } from '@/hooks/useFormFields';
 
 
@@ -36,6 +38,44 @@ export default function Create({ onSuccess }: CreatePayrollProps) {
 
     // Bank Account Field
     const bankAccountField = useFormFields('bankAccountField', data, setData, errors);
+
+    const ethEnabled = isEthiopianCalendarEnabled();
+    const ethPayrollMonths = useMemo(() => {
+        if (!ethEnabled) return [];
+        try {
+            const currentEthYear = new Kenat().getEthiopian().year;
+            return Array.from({ length: 12 }, (_, idx) => {
+                const m = idx + 1;
+                const startG = toGC(currentEthYear, m, 1);
+                const endG = m === 12
+                    ? toGC(currentEthYear, 13, currentEthYear % 4 === 3 ? 6 : 5)
+                    : toGC(currentEthYear, m, 30);
+                const startIso = `${startG.year}-${String(startG.month).padStart(2, '0')}-${String(startG.day).padStart(2, '0')}`;
+                const endIso = `${endG.year}-${String(endG.month).padStart(2, '0')}-${String(endG.day).padStart(2, '0')}`;
+                return {
+                    value: String(m),
+                    label: `${ETHIOPIAN_MONTH_NAMES.english[idx]} ${currentEthYear} E.C.`,
+                    startIso,
+                    endIso,
+                };
+            });
+        } catch {
+            return [];
+        }
+    }, [ethEnabled]);
+
+    const applyEthiopianPayrollMonth = (monthVal: string) => {
+        const match = ethPayrollMonths.find((m) => m.value === monthVal);
+        if (!match) return;
+        setData((prev) => ({
+            ...prev,
+            payroll_frequency: 'monthly',
+            title: prev.title || `${match.label} Payroll`,
+            pay_period_start: match.startIso,
+            pay_period_end: match.endIso,
+            pay_date: match.endIso,
+        }));
+    };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,6 +119,26 @@ export default function Create({ onSuccess }: CreatePayrollProps) {
                     </Select>
                     <InputError message={errors.payroll_frequency} />
                 </div>
+
+                {ethEnabled && data.payroll_frequency === 'monthly' && ethPayrollMonths.length > 0 && (
+                    <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 space-y-1.5">
+                        <Label className="text-xs font-medium text-amber-900">
+                            {t('Quick Fill: Ethiopian Payroll Month')}
+                        </Label>
+                        <Select onValueChange={applyEthiopianPayrollMonth}>
+                            <SelectTrigger className="bg-white">
+                                <SelectValue placeholder={t('Select Ethiopian Month (Meskerem - Pagume)')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ethPayrollMonths.map((m) => (
+                                    <SelectItem key={m.value} value={m.value}>
+                                        {m.label} ({m.startIso} → {m.endIso})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
 
                 <div>
                     <Label required>{t('Pay Period Start')}</Label>

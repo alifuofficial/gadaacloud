@@ -652,7 +652,25 @@ class PayrollController extends Controller
 
         $payroll->load(['payrollEntries']);
 
-        $filename = "MOR_Tax_Declaration_Payroll_" . $payroll->id . "_" . date('Y-m-d') . ".csv";
+        $periodSuffix = date('Y-m-d');
+        if (
+            function_exists('ethiopian_calendar_active')
+            && ethiopian_calendar_active()
+            && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
+            && $payroll->pay_period_start
+        ) {
+            try {
+                $ethSvc = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
+                $ethPeriod = $ethSvc->toEthiopian($payroll->pay_period_start);
+                if ($ethPeriod) {
+                    $periodSuffix = preg_replace('/[^A-Za-z0-9_\-]/', '_', $ethPeriod['month_name'] . '_' . $ethPeriod['year'] . '_EC');
+                }
+            } catch (\Throwable $e) {
+                // fallback to date('Y-m-d')
+            }
+        }
+
+        $filename = "MOR_Tax_Declaration_Payroll_" . $payroll->id . "_" . $periodSuffix . ".csv";
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",

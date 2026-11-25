@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -1078,11 +1079,11 @@ export default function InventoryDashboard({
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
                                                     <Label>{t('Manufacture / Harvest Date')}</Label>
-                                                    <Input type="date" value={batchForm.manufacture_date} onChange={(e) => setBatchForm({ ...batchForm, manufacture_date: e.target.value })} />
+                                                    <DatePicker value={batchForm.manufacture_date} onChange={(date) => setBatchForm({ ...batchForm, manufacture_date: date })} placeholder={t('Select date')} />
                                                 </div>
                                                 <div>
                                                     <Label>{t('Expiry / Best-Before Date')}</Label>
-                                                    <Input type="date" value={batchForm.expiry_date} onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })} />
+                                                    <DatePicker value={batchForm.expiry_date} onChange={(date) => setBatchForm({ ...batchForm, expiry_date: date })} placeholder={t('Select date')} />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">

@@ -151,7 +151,7 @@
             </div>
             <div class="waybill-meta">
                 <h2>{{ $transfer->waybill_number }}</h2>
-                <p>Date: <strong>{{ $transfer->date ? $transfer->date->format('d/m/Y') : date('d/m/Y') }}</strong></p>
+                <p>Date: <strong>{{ tenant_date($transfer->date ?: now(), 'd/m/Y', true) }}</strong></p>
                 <p>Status: <span class="badge badge-{{ $transfer->status }}">{{ strtoupper(str_replace('_', ' ', $transfer->status)) }}</span></p>
             </div>
         </div>
@@ -161,13 +161,13 @@
                 <h3>DISPATCH FROM (ላኪ መጋዘን / ቅርንጫፍ)</h3>
                 <p><strong>Warehouse:</strong> {{ $transfer->fromWarehouse->name ?? 'N/A' }}</p>
                 <p><strong>Address:</strong> {{ $transfer->fromWarehouse->address ?? 'N/A' }}, {{ $transfer->fromWarehouse->city ?? '' }}</p>
-                <p><strong>Dispatched At:</strong> {{ $transfer->dispatched_at ? $transfer->dispatched_at->format('Y-m-d H:i') : 'N/A' }}</p>
+                <p><strong>Dispatched At:</strong> {{ $transfer->dispatched_at ? tenant_datetime($transfer->dispatched_at, 'Y-m-d', 'H:i') : 'N/A' }}</p>
             </div>
             <div class="card">
                 <h3>DELIVER TO (ተቀባይ መጋዘን / ቅርንጫፍ)</h3>
                 <p><strong>Warehouse:</strong> {{ $transfer->toWarehouse->name ?? 'N/A' }}</p>
                 <p><strong>Address:</strong> {{ $transfer->toWarehouse->address ?? 'N/A' }}, {{ $transfer->toWarehouse->city ?? '' }}</p>
-                <p><strong>Received At:</strong> {{ $transfer->received_at ? $transfer->received_at->format('Y-m-d H:i') : 'Pending Arrival' }}</p>
+                <p><strong>Received At:</strong> {{ $transfer->received_at ? tenant_datetime($transfer->received_at, 'Y-m-d', 'H:i') : 'Pending Arrival' }}</p>
             </div>
         </div>
 

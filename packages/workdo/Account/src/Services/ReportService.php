@@ -165,8 +165,28 @@ class ReportService
 
     public function getTaxSummary($filters = [])
     {
-        $fromDate = $filters['from_date'] ?? date('Y-01-01');
-        $toDate = $filters['to_date'] ?? date('Y-12-31');
+        $defaultFrom = date('Y-01-01');
+        $defaultTo = date('Y-12-31');
+
+        if (
+            empty($filters['from_date'])
+            && empty($filters['to_date'])
+            && function_exists('ethiopian_calendar_active')
+            && ethiopian_calendar_active()
+            && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
+        ) {
+            try {
+                $ethSvc = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
+                $fyRange = $ethSvc->getFiscalYearRange($ethSvc->getCurrentFiscalYear());
+                $defaultFrom = $fyRange['start_date'];
+                $defaultTo = $fyRange['end_date'];
+            } catch (\Throwable $e) {
+                // fallback to Gregorian year bounds
+            }
+        }
+
+        $fromDate = $filters['from_date'] ?? $defaultFrom;
+        $toDate = $filters['to_date'] ?? $defaultTo;
 
         // Get tax collected from sales invoices
         $taxCollected = DB::table('sales_invoice_item_taxes')

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,11 +152,10 @@ export default function Create() {
 
                                 <div>
                                     <Label htmlFor="credit_note_date">{t('Date')}</Label>
-                                    <Input
+                                    <DatePicker
                                         id="credit_note_date"
-                                        type="date"
                                         value={data.credit_note_date}
-                                        onChange={(e) => setData('credit_note_date', e.target.value)}
+                                        onChange={(val) => setData('credit_note_date', val)}
                                     />
                                     {errors.credit_note_date && <p className="text-sm text-red-600">{errors.credit_note_date}</p>}
                                 </div>

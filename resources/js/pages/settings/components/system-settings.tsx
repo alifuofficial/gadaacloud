@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
 import { router, usePage } from '@inertiajs/react';
 import languagesData from '@/../lang/language.json';
+import Kenat from 'kenat';
+import { formatEthiopianParts, formatEthiopianLocalTime } from '@/utils/helpers';
 
 interface Language {
     code: string;
@@ -37,6 +39,9 @@ interface SystemSettings {
   landingPageEnabled: string;
   termsConditionsUrl: string;
   useEthiopianCalendar: string;
+  ethiopianDateStyle: string;
+  showEthiopianEra: string;
+  useEthiopianTime: string;
   useEthiopianTax: string;
 }
 
@@ -65,6 +70,9 @@ export default function SystemSettings({ userSettings, auth }: SystemSettingsPro
     landingPageEnabled: userSettings?.landingPageEnabled === 'on' || userSettings?.landingPageEnabled === '1' ? 'on' : 'off',
     termsConditionsUrl: userSettings?.termsConditionsUrl || '',
     useEthiopianCalendar: userSettings?.useEthiopianCalendar === 'on' ? 'on' : 'off',
+    ethiopianDateStyle: userSettings?.ethiopianDateStyle || 'numeric',
+    showEthiopianEra: userSettings?.showEthiopianEra === 'on' ? 'on' : 'off',
+    useEthiopianTime: userSettings?.useEthiopianTime === 'on' ? 'on' : 'off',
     useEthiopianTax: userSettings?.useEthiopianTax === 'on' ? 'on' : 'off',
   });
 
@@ -80,6 +88,9 @@ export default function SystemSettings({ userSettings, auth }: SystemSettingsPro
         landingPageEnabled: userSettings?.landingPageEnabled === 'on' || userSettings?.landingPageEnabled === '1' ? 'on' : 'off',
         termsConditionsUrl: userSettings?.termsConditionsUrl || '',
         useEthiopianCalendar: userSettings?.useEthiopianCalendar === 'on' ? 'on' : 'off',
+        ethiopianDateStyle: userSettings?.ethiopianDateStyle || 'numeric',
+        showEthiopianEra: userSettings?.showEthiopianEra === 'on' ? 'on' : 'off',
+        useEthiopianTime: userSettings?.useEthiopianTime === 'on' ? 'on' : 'off',
         useEthiopianTax: userSettings?.useEthiopianTax === 'on' ? 'on' : 'off',
       });
     }
@@ -296,6 +307,86 @@ export default function SystemSettings({ userSettings, auth }: SystemSettingsPro
                   className="shrink-0 mt-1"
                 />
               </div>
+
+              {settings.useEthiopianCalendar === 'on' && (
+                <div className="mt-4 pt-4 border-t border-amber-200/80 dark:border-amber-800/70 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-amber-900 dark:text-amber-100">
+                        {t('Ethiopian Date Style')}
+                      </Label>
+                      <Select
+                        value={settings.ethiopianDateStyle || 'numeric'}
+                        onValueChange={(value) => handleSelectChange('ethiopianDateStyle', value)}
+                        disabled={!canEdit}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-amber-950/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="numeric">{t('Numeric (e.g. 2019-03-16)')}</SelectItem>
+                          <SelectItem value="month_name">{t('English Month (e.g. Hidar 16, 2019)')}</SelectItem>
+                          <SelectItem value="amharic">{t("Amharic Ge'ez (e.g. ኅዳር 16, 2019)")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border border-amber-200/80 dark:border-amber-800/70 bg-white/80 dark:bg-amber-950/40 px-3 py-2">
+                      <div>
+                        <Label htmlFor="showEthiopianEra" className="text-xs font-medium cursor-pointer">
+                          {t('Show Era Badge')}
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">{t('Append E.C. / ዓ.ም. suffix')}</p>
+                      </div>
+                      <Switch
+                        id="showEthiopianEra"
+                        checked={settings.showEthiopianEra === 'on'}
+                        onCheckedChange={(checked) => handleSwitchChange('showEthiopianEra', checked)}
+                        disabled={!canEdit}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border border-amber-200/80 dark:border-amber-800/70 bg-white/80 dark:bg-amber-950/40 px-3 py-2">
+                      <div>
+                        <Label htmlFor="useEthiopianTime" className="text-xs font-medium cursor-pointer">
+                          {t('Ethiopian Local Clock')}
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">{t('12-hour day/night (06:00 = 12:00)')}</p>
+                      </div>
+                      <Switch
+                        id="useEthiopianTime"
+                        checked={settings.useEthiopianTime === 'on'}
+                        onCheckedChange={(checked) => handleSwitchChange('useEthiopianTime', checked)}
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{t('Live Preview')}:</span>
+                    <span className="px-2 py-0.5 rounded bg-white dark:bg-amber-900/50 border border-amber-200 dark:border-amber-700 font-mono">
+                      {(() => {
+                        try {
+                          const now = new Date();
+                          const eth = new Kenat(now).getEthiopian();
+                          const dStr = formatEthiopianParts(
+                            eth,
+                            settings.dateFormat || 'Y-m-d',
+                            settings.ethiopianDateStyle || 'numeric',
+                            settings.showEthiopianEra === 'on'
+                          );
+                          const tStr = settings.useEthiopianTime === 'on'
+                            ? formatEthiopianLocalTime(now.getHours(), now.getMinutes())
+                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                          return `${dStr} ${tStr}`;
+                        } catch {
+                          return '2019-03-16';
+                        }
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
