@@ -2,13 +2,14 @@
 
 namespace Workdo\Goal\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GoalContribution extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'goal_id',
@@ -17,6 +18,7 @@ class GoalContribution extends Model
         'contribution_type',
         'reference_type',
         'reference_id',
+        'reversal_of_id',
         'notes',
         'creator_id',
         'created_by',
@@ -33,5 +35,10 @@ class GoalContribution extends Model
     public function goal(): BelongsTo
     {
         return $this->belongsTo(Goal::class, 'goal_id');
+    }
+
+    public function reversalOf(): BelongsTo
+    {
+        return $this->belongsTo(GoalContribution::class, 'reversal_of_id');
     }
 }

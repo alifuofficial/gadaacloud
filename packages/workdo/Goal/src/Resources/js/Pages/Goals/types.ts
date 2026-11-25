@@ -5,23 +5,36 @@ export interface Goal {
     goal_name: string;
     goal_description?: string;
     category_id: number;
-    goal_type: 'savings' | 'investment' | 'debt_reduction' | 'revenue' | 'expense_reduction';
+    goal_type: 'savings' | 'debt_reduction' | 'expense_reduction' | 'revenue_target' | 'investment' | 'revenue';
     target_amount: number;
     current_amount: number;
     start_date: string;
     target_date: string;
+    ethiopian_fiscal_year?: string;
+    ethiopian_quarter?: string;
     priority: 'low' | 'medium' | 'high' | 'critical';
     status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
     account_id?: number;
+    bank_account_id?: number;
     category?: {
         id: number;
         category_name: string;
-        color_code: string;
+        color_code?: string;
     };
     account?: {
         id: number;
-        name: string;
+        account_name?: string;
+        account_code?: string;
+        name?: string;
+        normal_balance?: string;
     };
+    bank_account?: {
+        id: number;
+        bank_name: string;
+        holder_name: string;
+    };
+    milestones?: any[];
+    contributions?: any[];
     created_at: string;
 }
 
@@ -29,28 +42,34 @@ export interface CreateGoalFormData {
     goal_name: string;
     goal_description: string;
     category_id: number;
-    goal_type: 'savings' | 'investment' | 'debt_reduction' | 'revenue' | 'expense_reduction';
+    goal_type: 'savings' | 'debt_reduction' | 'expense_reduction' | 'revenue_target';
     target_amount: number;
     current_amount: number;
     start_date: string;
     target_date: string;
+    ethiopian_fiscal_year?: string;
+    ethiopian_quarter?: string;
     priority: 'low' | 'medium' | 'high' | 'critical';
     status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
     account_id?: number;
+    bank_account_id?: number;
 }
 
 export interface EditGoalFormData {
     goal_name: string;
     goal_description: string;
     category_id: number;
-    goal_type: 'savings' | 'investment' | 'debt_reduction' | 'revenue' | 'expense_reduction';
+    goal_type: 'savings' | 'debt_reduction' | 'expense_reduction' | 'revenue_target';
     target_amount: number;
     current_amount: number;
     start_date: string;
     target_date: string;
+    ethiopian_fiscal_year?: string;
+    ethiopian_quarter?: string;
     priority: 'low' | 'medium' | 'high' | 'critical';
     status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
     account_id?: number;
+    bank_account_id?: number;
 }
 
 export interface GoalFilters {
@@ -61,22 +80,16 @@ export interface GoalFilters {
     category_id: string;
 }
 
-export type PaginatedGoals = PaginatedData<Goal>;
-export type GoalModalState = ModalState<Goal>;
-
 export interface GoalsIndexProps {
-    goals: PaginatedGoals;
-    categories: Array<{
-        id: number;
-        category_name: string;
-        color_code: string;
-    }>;
-    chartOfAccounts: Array<{
-        id: number;
-        name: string;
-    }>;
+    goals: PaginatedData<Goal>;
+    categories: Array<{ id: number; category_name: string; is_active: boolean }>;
+    chartOfAccounts: Array<{ id: number; account_code: string; account_name: string; normal_balance: string }>;
+    bankAccounts?: Array<{ id: number; bank_name: string; holder_name: string; opening_balance: number }>;
     auth: AuthContext;
-    [key: string]: unknown;
+}
+
+export interface GoalModalState extends ModalState {
+    data?: Goal | null;
 }
 
 export interface CreateGoalProps {
@@ -86,4 +99,9 @@ export interface CreateGoalProps {
 export interface EditGoalProps {
     goal: Goal;
     onSuccess: () => void;
+}
+
+export interface ViewGoalProps {
+    goal: Goal;
+    onClose: () => void;
 }

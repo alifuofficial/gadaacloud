@@ -2,14 +2,16 @@
 
 namespace Workdo\Goal\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Workdo\Account\Models\BankAccount;
 use Workdo\Account\Models\ChartOfAccount;
 
 class Goal extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'goal_name',
@@ -20,9 +22,12 @@ class Goal extends Model
         'current_amount',
         'start_date',
         'target_date',
+        'ethiopian_fiscal_year',
+        'ethiopian_quarter',
         'priority',
         'status',
         'account_id',
+        'bank_account_id',
         'creator_id',
         'created_by',
     ];
@@ -45,6 +50,11 @@ class Goal extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'account_id');
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class, 'bank_account_id');
     }
 
     public function milestones()

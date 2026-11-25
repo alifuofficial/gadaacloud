@@ -2,13 +2,14 @@
 
 namespace Workdo\Goal\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GoalMilestone extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'goal_id',
@@ -27,10 +28,9 @@ class GoalMilestone extends Model
     {
         return [
             'target_amount' => 'decimal:2',
-            'current_amount' => 'decimal:2',
+            'achieved_amount' => 'decimal:2',
             'target_date' => 'date',
             'achieved_date' => 'date',
-            'achieved_amount' => 'decimal:2',
         ];
     }
 

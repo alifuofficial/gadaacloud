@@ -1,16 +1,16 @@
 <?php
 
-use Workdo\Goal\Http\Controllers\GoalCategoryController;
-use Workdo\Goal\Http\Controllers\GoalController;
-use Workdo\Goal\Http\Controllers\GoalMilestoneController;
-use Workdo\Goal\Http\Controllers\GoalContributionController;
-use Workdo\Goal\Http\Controllers\GoalTrackingController;
-
 use Illuminate\Support\Facades\Route;
 use Workdo\Goal\Http\Controllers\DashboardController;
-use Workdo\Goal\Http\Controllers\GoalItemController;
+use Workdo\Goal\Http\Controllers\GoalCategoryController;
+use Workdo\Goal\Http\Controllers\GoalContributionController;
+use Workdo\Goal\Http\Controllers\GoalController;
+use Workdo\Goal\Http\Controllers\GoalMilestoneController;
+use Workdo\Goal\Http\Controllers\GoalTrackingController;
 
 Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Goal'])->group(function () {
+
+    Route::get('goal/dashboard', [DashboardController::class, 'index'])->name('goal.dashboard');
 
     Route::prefix('goal/categories')->name('goal.categories.')->group(function () {
         Route::get('/', [GoalCategoryController::class, 'index'])->name('index');
@@ -25,6 +25,7 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Goal'])->group(fu
         Route::get('/{goal}', [GoalController::class, 'show'])->name('show');
         Route::put('/{goal}', [GoalController::class, 'update'])->name('update');
         Route::delete('/{goal}', [GoalController::class, 'destroy'])->name('destroy');
+        Route::post('/{goal}/activate', [GoalController::class, 'active'])->name('activate');
         Route::post('/{goal}', [GoalController::class, 'active'])->name('active');
     });
 

@@ -1,4 +1,4 @@
-import {  Target , Tag } from 'lucide-react';
+import { LayoutDashboard, Target, Tag, Flag, Layers, DollarSign } from 'lucide-react';
 
 declare global {
     function route(name: string): string;
@@ -11,6 +11,11 @@ export const goalCompanyMenu = (t: (key: string) => string) => [
         permission: 'manage-goal',
         order: 415,
         children: [
+            {
+                title: t('Dashboard'),
+                href: route('goal.dashboard'),
+                permission: 'manage-goals',
+            },
             {
                 title: t('Goals'),
                 href: route('goal.goals.index'),

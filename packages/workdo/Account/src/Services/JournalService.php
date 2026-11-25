@@ -2,7 +2,7 @@
 
 namespace Workdo\Account\Services;
 
-use App\Events\UpdateBudgetSpending;
+use Workdo\Account\Events\UpdateBudgetSpending;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;

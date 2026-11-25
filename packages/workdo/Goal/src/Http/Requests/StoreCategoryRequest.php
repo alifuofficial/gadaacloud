@@ -3,6 +3,7 @@
 namespace Workdo\Goal\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCategoryRequest extends FormRequest
 {
@@ -14,10 +15,17 @@ class StoreCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_name' => 'required|max:100',
-            'category_code' => 'required|string|max:255',
-            'description' => 'nullable',
-            'is_active' => 'required'
+            'category_name' => 'required|string|max:100',
+            'category_code' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('goal_categories', 'category_code')->where(function ($q) {
+                    return $q->where('created_by', creatorId());
+                }),
+            ],
+            'description' => 'nullable|string',
+            'is_active' => 'required',
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace Workdo\Goal\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateContributionRequest extends FormRequest
 {
@@ -14,7 +15,10 @@ class UpdateContributionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'goal_id' => 'required|exists:goals,id',
+            'goal_id' => [
+                'required',
+                Rule::exists('goals', 'id')->where(fn($q) => $q->where('created_by', creatorId())),
+            ],
             'contribution_date' => 'required|date',
             'contribution_amount' => 'required|numeric|min:0.01',
             'contribution_type' => 'required|in:manual,automatic,journal_entry',

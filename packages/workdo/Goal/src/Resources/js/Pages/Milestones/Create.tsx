@@ -14,8 +14,10 @@ import { CreateMilestoneFormData, CreateMilestoneProps } from './types';
 export default function Create({ goals, onSuccess }: CreateMilestoneProps) {
     const { t } = useTranslation();
 
+    const initialGoalId = (goals || []).length > 0 ? goals[0].id.toString() : '0';
+
     const { data, setData, post, processing, errors } = useForm<CreateMilestoneFormData>({
-        goal_id: '',
+        goal_id: initialGoalId,
         milestone_name: '',
         milestone_description: '',
         target_amount: 0,
@@ -41,23 +43,24 @@ export default function Create({ goals, onSuccess }: CreateMilestoneProps) {
             <form onSubmit={submit} className="space-y-4">
                 <div>
                     <Label htmlFor="goal_id" required>{t('Goal')}</Label>
-                    <Select value={data.goal_id} onValueChange={(value) => setData('goal_id', value)}>
+                    <Select value={data.goal_id || '0'} onValueChange={(value) => setData('goal_id', value)}>
                         <SelectTrigger>
                             <SelectValue placeholder={t('Select Goal')} />
                         </SelectTrigger>
                         <SelectContent>
-                            {goals?.map((goal) => (
+                            <SelectItem value="0" disabled>{t('Select Goal')}</SelectItem>
+                            {(goals || []).map((goal) => (
                                 <SelectItem key={goal.id} value={goal.id.toString()}>
                                     {goal.goal_name}
                                 </SelectItem>
-                            )) || []}
+                            ))}
                         </SelectContent>
                     </Select>
                     <InputError message={errors.goal_id} />
                 </div>
 
                 <div>
-                    <Label htmlFor="milestone_name">{t('Milestone Name')}</Label>
+                    <Label htmlFor="milestone_name" required>{t('Milestone Name')}</Label>
                     <Input
                         id="milestone_name"
                         type="text"
@@ -101,12 +104,12 @@ export default function Create({ goals, onSuccess }: CreateMilestoneProps) {
                     <InputError message={errors.milestone_description} />
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" variant="outline" onClick={onSuccess}>
                         {t('Cancel')}
                     </Button>
                     <Button type="submit" disabled={processing}>
-                        {processing ? t('Creating...') : t('Create')}
+                        {processing ? t('Saving...') : t('Create Milestone')}
                     </Button>
                 </div>
             </form>

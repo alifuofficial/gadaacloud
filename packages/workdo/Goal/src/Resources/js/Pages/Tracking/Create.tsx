@@ -13,9 +13,12 @@ import { CreateTrackingFormData, CreateTrackingProps } from './types';
 export default function Create({ goals, onSuccess }: CreateTrackingProps) {
     const { t } = useTranslation();
 
+    const safeGoals = goals || [];
+    const initialGoalId = safeGoals.length > 0 ? safeGoals[0].id.toString() : '0';
+
     const { data, setData, post, processing, errors } = useForm<CreateTrackingFormData>({
-        goal_id: '',
-        tracking_date: '',
+        goal_id: initialGoalId,
+        tracking_date: new Date().toISOString().split('T')[0],
         previous_amount: 0,
         contribution_amount: 0,
         current_amount: 0,
@@ -41,17 +44,18 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
             </DialogHeader>
             <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <Label htmlFor="goal_id">{t('Goal')}</Label>
-                    <Select value={data.goal_id} onValueChange={(value) => setData('goal_id', value)}>
+                    <Label htmlFor="goal_id" required>{t('Goal')}</Label>
+                    <Select value={data.goal_id || '0'} onValueChange={(value) => setData('goal_id', value)}>
                         <SelectTrigger>
                             <SelectValue placeholder={t('Select Goal')} />
                         </SelectTrigger>
                         <SelectContent>
-                            {goals?.map((goal) => (
+                            <SelectItem value="0" disabled>{t('Select Goal')}</SelectItem>
+                            {safeGoals.map((goal) => (
                                 <SelectItem key={goal.id} value={goal.id.toString()}>
                                     {goal.goal_name}
                                 </SelectItem>
-                            )) || []}
+                            ))}
                         </SelectContent>
                     </Select>
                     <InputError message={errors.goal_id} />
@@ -67,7 +71,7 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                     <InputError message={errors.tracking_date} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <CurrencyInput
                             label={t('Previous Amount')}
@@ -77,7 +81,6 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                             required
                         />
                     </div>
-
                     <div>
                         <CurrencyInput
                             label={t('Contribution Amount')}
@@ -87,9 +90,6 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                             required
                         />
                     </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <CurrencyInput
                             label={t('Current Amount')}
@@ -99,7 +99,9 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                             required
                         />
                     </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="progress_percentage">{t('Progress Percentage')}</Label>
                         <Input
@@ -110,28 +112,27 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                             step="0.01"
                             value={data.progress_percentage}
                             onChange={(e) => setData('progress_percentage', parseFloat(e.target.value) || 0)}
-                            placeholder={t('Enter progress percentage')}
+                            placeholder={t('Enter Progress Percentage')}
                             required
                         />
                         <InputError message={errors.progress_percentage} />
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="days_remaining">{t('Days Remaining')}</Label>
                         <Input
                             id="days_remaining"
                             type="number"
-                            min="0"
                             value={data.days_remaining}
                             onChange={(e) => setData('days_remaining', parseInt(e.target.value) || 0)}
-                            placeholder={t('Enter days remaining')}
+                            placeholder={t('Enter Days Remaining')}
                             required
                         />
                         <InputError message={errors.days_remaining} />
                     </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <Label>{t('Projected Completion Date')}</Label>
                         <DatePicker
@@ -141,30 +142,30 @@ export default function Create({ goals, onSuccess }: CreateTrackingProps) {
                         />
                         <InputError message={errors.projected_completion_date} />
                     </div>
+
+                    <div>
+                        <Label htmlFor="on_track_status">{t('On Track Status')}</Label>
+                        <Select value={data.on_track_status} onValueChange={(value: any) => setData('on_track_status', value)}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ahead">{t('Ahead')}</SelectItem>
+                                <SelectItem value="on_track">{t('On Track')}</SelectItem>
+                                <SelectItem value="behind">{t('Behind')}</SelectItem>
+                                <SelectItem value="critical">{t('Critical')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.on_track_status} />
+                    </div>
                 </div>
 
-                <div>
-                    <Label htmlFor="on_track_status">{t('Status')}</Label>
-                    <Select value={data.on_track_status} onValueChange={(value) => setData('on_track_status', value)}>
-                        <SelectTrigger>
-                            <SelectValue placeholder={t('Select Status')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="ahead">{t('Ahead')}</SelectItem>
-                            <SelectItem value="on_track">{t('On Track')}</SelectItem>
-                            <SelectItem value="behind">{t('Behind')}</SelectItem>
-                            <SelectItem value="critical">{t('Critical')}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.on_track_status} />
-                </div>
-
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-3 pt-2">
                     <Button type="button" variant="outline" onClick={onSuccess}>
                         {t('Cancel')}
                     </Button>
                     <Button type="submit" disabled={processing}>
-                        {processing ? t('Creating...') : t('Create')}
+                        {processing ? t('Saving...') : t('Create Tracking')}
                     </Button>
                 </div>
             </form>
