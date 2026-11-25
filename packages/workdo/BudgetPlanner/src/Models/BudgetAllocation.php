@@ -2,6 +2,7 @@
 
 namespace Workdo\BudgetPlanner\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Account\Models\ChartOfAccount;
@@ -9,7 +10,7 @@ use App\Models\User;
 
 class BudgetAllocation extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'budget_id',

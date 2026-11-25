@@ -15,7 +15,7 @@ class UpdateBudgetPeriodRequest extends FormRequest
     {
         return [
             'period_name' => 'required|max:100',
-            'financial_year' => 'required|max:4',
+            'financial_year' => 'required|string|max:30',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'status' => 'required|in:draft,approved,active,closed'

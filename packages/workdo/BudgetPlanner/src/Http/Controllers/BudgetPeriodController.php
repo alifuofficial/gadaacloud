@@ -2,6 +2,8 @@
 
 namespace Workdo\BudgetPlanner\Http\Controllers;
 
+
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 use Workdo\BudgetPlanner\Models\BudgetPeriod;
 use Workdo\BudgetPlanner\Http\Requests\StoreBudgetPeriodRequest;
 use Workdo\BudgetPlanner\Http\Requests\UpdateBudgetPeriodRequest;
@@ -18,6 +20,7 @@ use Workdo\BudgetPlanner\Events\UpdateBudgetPeriod;
 
 class BudgetPeriodController extends Controller
 {
+    use BudgetPlannerControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-budget-periods')){
@@ -54,8 +57,8 @@ class BudgetPeriodController extends Controller
                               ->orWhereDate('end_date', '<=', request('date_to'));
                     });
                 })
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('BudgetPlanner/BudgetPeriods/Index', [

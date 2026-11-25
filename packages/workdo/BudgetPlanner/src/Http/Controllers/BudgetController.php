@@ -2,6 +2,8 @@
 
 namespace Workdo\BudgetPlanner\Http\Controllers;
 
+
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 use Workdo\BudgetPlanner\Models\Budget;
 use Workdo\BudgetPlanner\Models\BudgetPeriod;
 use Workdo\BudgetPlanner\Http\Requests\StoreBudgetRequest;
@@ -18,6 +20,7 @@ use Workdo\BudgetPlanner\Events\UpdateBudget;
 
 class BudgetController extends Controller
 {
+    use BudgetPlannerControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-budgets')){
@@ -38,8 +41,8 @@ class BudgetController extends Controller
                 ->when(request('budget_type') && request('budget_type') !== '', fn($q) => $q->where('budget_type', request('budget_type')))
                 ->when(request('status') && request('status') !== '', fn($q) => $q->where('status', request('status')))
                 ->when(request('period_id') && request('period_id') !== '', fn($q) => $q->where('period_id', request('period_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $budgetPeriods = BudgetPeriod::where('created_by', creatorId())

@@ -2,6 +2,8 @@
 
 namespace Workdo\BudgetPlanner\Http\Controllers;
 
+
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class BudgetMonitoringController extends Controller
 {
+    use BudgetPlannerControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-budget-monitoring')){
@@ -29,8 +32,8 @@ class BudgetMonitoringController extends Controller
                 ->when(request('budget_id'), fn($q) => $q->whereHas('budget', fn($query) => $query->where('id', request('budget_id'))))
                 ->when(request('date_from'), fn($q) => $q->whereDate('monitoring_date', '>=', request('date_from')))
                 ->when(request('date_to'), fn($q) => $q->whereDate('monitoring_date', '<=', request('date_to')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->orderBy('monitoring_date', 'desc'))
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q, ['monitoring_date' => 'monitoring_date', 'total_allocated' => 'total_allocated', 'total_spent' => 'total_spent', 'variance_amount' => 'variance_amount', 'created_at' => 'created_at'], 'monitoring_date'))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $budgets = Budget::where('created_by', creatorId())

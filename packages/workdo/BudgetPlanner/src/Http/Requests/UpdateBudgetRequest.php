@@ -3,6 +3,7 @@
 namespace Workdo\BudgetPlanner\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 
 class UpdateBudgetRequest extends FormRequest
 {
@@ -15,9 +16,8 @@ class UpdateBudgetRequest extends FormRequest
     {
         return [
             'budget_name' => 'required|string|max:255',
-            'period_id' => 'required|exists:budget_periods,id',
+            'period_id' => ['required', 'integer', BudgetPlannerControllerHelpers::tenantExists('budget_periods', 'id')],
             'budget_type' => 'required|in:operational,capital,cash_flow',
-
         ];
     }
 }

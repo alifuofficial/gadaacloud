@@ -2,6 +2,8 @@
 
 namespace Workdo\BudgetPlanner\Http\Controllers;
 
+
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 use Workdo\BudgetPlanner\Models\BudgetAllocation;
 use Workdo\BudgetPlanner\Models\Budget;
 use Workdo\BudgetPlanner\Http\Requests\StoreBudgetAllocationRequest;
@@ -16,6 +18,7 @@ use Workdo\BudgetPlanner\Events\UpdateBudgetAllocation;
 
 class BudgetAllocationController extends Controller
 {
+    use BudgetPlannerControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-budget-allocations')){
@@ -37,8 +40,8 @@ class BudgetAllocationController extends Controller
                 })
                 ->when(request('budget_id'), fn($q) => $q->where('budget_id', request('budget_id')))
                 ->when(request('account_id'), fn($q) => $q->where('account_id', request('account_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $budgets = Budget::where('created_by', creatorId())

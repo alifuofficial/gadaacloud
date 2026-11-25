@@ -3,6 +3,7 @@
 namespace Workdo\BudgetPlanner\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 
 class StoreBudgetRequest extends FormRequest
 {
@@ -17,16 +18,16 @@ class StoreBudgetRequest extends FormRequest
             'budget_name' => 'required|string|max:255',
             'period_id' => [
                 'required',
-                'exists:budget_periods,id',
+                'integer',
+                BudgetPlannerControllerHelpers::tenantExists('budget_periods', 'id'),
                 function ($attribute, $value, $fail) {
-                    $period = \Workdo\BudgetPlanner\Models\BudgetPeriod::find($value);
+                    $period = \Workdo\BudgetPlanner\Models\BudgetPeriod::where('created_by', creatorId())->find($value);
                     if ($period && $period->status !== 'active') {
                         $fail('Budget can only be created in active periods.');
                     }
                 },
             ],
             'budget_type' => 'required|in:operational,capital,cash_flow',
-
         ];
     }
 }

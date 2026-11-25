@@ -2,11 +2,13 @@
 
 namespace Workdo\BudgetPlanner\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 
 class BudgetMonitoring extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'budget_id',
         'monitoring_date',

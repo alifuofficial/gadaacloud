@@ -3,6 +3,7 @@
 namespace Workdo\BudgetPlanner\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\BudgetPlanner\Traits\BudgetPlannerControllerHelpers;
 
 class StoreBudgetAllocationRequest extends FormRequest
 {
@@ -14,8 +15,8 @@ class StoreBudgetAllocationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'budget_id' => 'required|exists:budgets,id',
-            'account_id' => 'required|exists:chart_of_accounts,id',
+            'budget_id' => ['required', 'integer', BudgetPlannerControllerHelpers::tenantExists('budgets', 'id')],
+            'account_id' => ['required', 'integer', BudgetPlannerControllerHelpers::tenantExists('chart_of_accounts', 'id')],
             'allocated_amount' => 'required|numeric|min:0',
         ];
     }
