@@ -2,6 +2,8 @@
 
 namespace Workdo\Taskly\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Taskly\Models\BugStage;
@@ -9,7 +11,7 @@ use App\Models\User;
 
 class ProjectBug extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'project_id',

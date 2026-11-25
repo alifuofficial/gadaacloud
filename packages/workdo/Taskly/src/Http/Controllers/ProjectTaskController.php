@@ -23,9 +23,11 @@ use Workdo\Taskly\Models\TaskSubtask;
 use Workdo\Taskly\Events\CreateTaskSubtask;
 use Workdo\Taskly\Events\DestroyTaskComment;
 use Workdo\Taskly\Events\UpdateProjectTaskStage;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class ProjectTaskController extends Controller
 {
+    use TasklyControllerHelpers;
     public function index(Request $request)
     {
         if (Auth::user()->can('manage-project-task')) {
@@ -33,7 +35,7 @@ class ProjectTaskController extends Controller
             $project = null;
 
             if ($projectId) {
-                $project = Project::with(['teamMembers:id,name'])->findOrFail($projectId);
+                $project = Project::where('created_by', creatorId())->with(['teamMembers:id,name'])->findOrFail($projectId);
             }
 
             $query = ProjectTask::select('project_tasks.id', 'project_id', 'milestone_id', 'title', 'priority', 'assigned_to', 'duration', 'description', 'stage_id', 'created_at')
@@ -54,8 +56,13 @@ class ProjectTaskController extends Controller
             $tasks = $query->when($projectId, fn($q) => $q->where('project_id', $projectId))
                 ->when(request('title'), fn($q) => $q->where('title', 'like', '%' . request('title') . '%'))
                 ->when(request('priority'), fn($q) => $q->where('priority', request('priority')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q, [
+                    'title' => 'title',
+                    'priority' => 'priority',
+                    'stage_id' => 'stage_id',
+                    'created_at' => 'created_at',
+                ], 'latest'))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Parse duration and add assignedUsers

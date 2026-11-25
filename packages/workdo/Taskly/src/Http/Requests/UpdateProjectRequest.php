@@ -2,6 +2,8 @@
 
 namespace Workdo\Taskly\Http\Requests;
 
+
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProjectRequest extends FormRequest
@@ -18,7 +20,7 @@ class UpdateProjectRequest extends FormRequest
             'project_type' => 'nullable|string|in:general,construction,manufacturing,import_export,consulting',
             'project_scope' => 'nullable|string|in:client,internal',
             'internal_category' => 'nullable|string|in:capex,opex,rd,maintenance,strategic',
-            'project_sponsor_id' => 'nullable|exists:users,id',
+            'project_sponsor_id' => ['nullable', TasklyControllerHelpers::tenantExists('users', 'id')],
             'business_case' => 'nullable|string',
             'target_roi_savings' => 'nullable|string|max:255',
             'currency_code' => 'nullable|string|max:10',

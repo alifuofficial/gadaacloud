@@ -30,9 +30,11 @@ use Workdo\Taskly\Models\ProjectBug;
 use Workdo\Taskly\Models\ProjectClient;
 use Workdo\Taskly\Models\ProjectUser;
 use Workdo\Taskly\Models\ProjectFile;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class ProjectController extends Controller
 {
+    use TasklyControllerHelpers;
     public function index()
     {
         if (Auth::user()->can('manage-project')) {
@@ -67,9 +69,15 @@ class ProjectController extends Controller
                 ->when(request('status'), fn($q) => $q->where('status', request('status')))
                 ->when(request('scope'), fn($q, $s) => $q->where('project_scope', $s))
                 ->when(request('date'), fn($q) => $q->where('start_date', '<=', request('date'))->where('end_date', '>=', request('date')))
-
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->when(true, fn($q) => $this->applySafeSort($q, [
+                    'name' => 'name',
+                    'budget' => 'budget',
+                    'start_date' => 'start_date',
+                    'end_date' => 'end_date',
+                    'status' => 'status',
+                    'created_at' => 'created_at',
+                ], 'latest'))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $creatorId = creatorId();

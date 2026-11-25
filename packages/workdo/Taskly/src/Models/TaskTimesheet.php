@@ -2,13 +2,15 @@
 
 namespace Workdo\Taskly\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
 
 class TaskTimesheet extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'project_id',

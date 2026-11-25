@@ -2,13 +2,15 @@
 
 namespace Workdo\Taskly\Models;
 
+
+use App\Traits\TenantScoped;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BugStage extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',
