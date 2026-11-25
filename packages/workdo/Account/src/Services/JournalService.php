@@ -1063,47 +1063,131 @@ class JournalService
      */
     public function createPayrollJournal($payrollEntry)
     {
-        $bankGLAccount = BankAccount::where('id', $payrollEntry->payroll->bank_account_id)->first()->glAccount;
+        $bankAccount = BankAccount::where('id', $payrollEntry->payroll->bank_account_id)->first();
+        $bankGLAccount = $bankAccount?->glAccount;
         if (!$bankGLAccount) {
             throw new \Exception("Bank account must have a GL account assigned");
         }
 
+        $companyId = (int) ($payrollEntry->created_by ?? creatorId());
         $this->validateAccounts(['5200']);
-        $salaryExpenseAccount = ChartOfAccount::where('account_code', '5200')->where('created_by', creatorId())->first();
-        $this->validateBalance($payrollEntry->net_pay, $payrollEntry->net_pay);
+        $salaryExpenseAccount = ChartOfAccount::where('account_code', '5200')->where('created_by', $companyId)->first();
+        $benefitsExpenseAccount = ChartOfAccount::where('account_code', '5210')->where('created_by', $companyId)->first() ?: $salaryExpenseAccount;
+        $taxPayableAccount = ChartOfAccount::where('account_code', '2200')->where('created_by', $companyId)->first();
+        $payrollLiabilityAccount = ChartOfAccount::where('account_code', '2400')->where('created_by', $companyId)->first()
+            ?: ($taxPayableAccount ?: $bankGLAccount);
+        $taxPayableAccount = $taxPayableAccount ?: $payrollLiabilityAccount;
+
+        // Read statutory components from persisted columns first, falling back cleanly to deductions JSON
+        $deductions = is_array($payrollEntry->deductions_breakdown)
+            ? $payrollEntry->deductions_breakdown
+            : (json_decode($payrollEntry->deductions_breakdown ?? '[]', true) ?: []);
+
+        $netPay = round((float) $payrollEntry->net_pay, 2);
+        $grossPay = round((float) ($payrollEntry->gross_pay ?? $netPay), 2);
+        $pitAmount = round((float) (($payrollEntry->income_tax ?? 0) > 0
+            ? $payrollEntry->income_tax
+            : ($deductions['Income Tax (PIT) / የስራ ግብር'] ?? $deductions['Employment Income Tax (PIT)'] ?? 0)), 2);
+        $empPension = round((float) (($payrollEntry->employee_pension ?? 0) > 0
+            ? $payrollEntry->employee_pension
+            : ($deductions['Employee Pension (7%) / የሰራተኛ ጡረታ'] ?? $deductions['Pension Contribution (7%)'] ?? 0)), 2);
+        $emprPension = round((float) (($payrollEntry->employer_pension ?? 0) > 0
+            ? $payrollEntry->employer_pension
+            : ($deductions['Employer Pension (11% Cost) / የአሰሪ ጡረታ'] ?? $deductions['Employer Pension (11% - Cost)'] ?? 0)), 2);
+
+        $otherWithholdings = max(0.0, round($grossPay - $netPay - $pitAmount - $empPension, 2));
+        $totalPensionPayable = round($empPension + $emprPension, 2);
+        $totalPayrollLiabilities = round($totalPensionPayable + $otherWithholdings, 2);
+
+        $totalDebit = round($grossPay + $emprPension, 2);
+        $totalCredit = round($netPay + $pitAmount + $totalPayrollLiabilities, 2);
+
+        // Defensive balance guard for legacy payslips created prior to statutory columns
+        if (abs($totalDebit - $totalCredit) > 0.02 || $grossPay <= 0) {
+            $grossPay = $netPay;
+            $emprPension = 0.0;
+            $pitAmount = 0.0;
+            $totalPayrollLiabilities = 0.0;
+            $totalDebit = $netPay;
+            $totalCredit = $netPay;
+        }
+
+        $this->validateBalance($totalDebit, $totalCredit);
+        $empName = $payrollEntry->employee?->user?->name ?? 'Employee';
 
         $journalEntry = JournalEntry::create([
             'journal_date' => now(),
             'entry_type' => 'automatic',
             'reference_type' => 'payroll',
             'reference_id' => $payrollEntry->id,
-            'description' => 'Salary Payment - ' . $payrollEntry->employee->user->name,
-            'total_debit' => $payrollEntry->net_pay,
-            'total_credit' => $payrollEntry->net_pay,
+            'description' => 'Payroll Disbursement & Statutory Accrual - ' . $empName,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
             'status' => 'posted',
             'creator_id' => Auth::id(),
-            'created_by' => creatorId()
+            'created_by' => $companyId
         ]);
 
+        // Dr Salaries Expense (Gross Earnings)
         JournalEntryItem::create([
             'journal_entry_id' => $journalEntry->id,
             'account_id' => $salaryExpenseAccount->id,
-            'description' => 'Salary paid to ' . $payrollEntry->employee->user->name,
-            'debit_amount' => $payrollEntry->net_pay,
+            'description' => 'Gross salary expense - ' . $empName,
+            'debit_amount' => $grossPay,
             'credit_amount' => 0,
             'creator_id' => Auth::id(),
-            'created_by' => creatorId()
+            'created_by' => $companyId
         ]);
 
+        // Dr Employer Pension Benefits Expense (11%)
+        if ($emprPension > 0) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $benefitsExpenseAccount->id,
+                'description' => 'Employer pension contribution (11%) - ' . $empName,
+                'debit_amount' => $emprPension,
+                'credit_amount' => 0,
+                'creator_id' => Auth::id(),
+                'created_by' => $companyId
+            ]);
+        }
+
+        // Cr Bank Account (Net Salary Disbursed)
         JournalEntryItem::create([
             'journal_entry_id' => $journalEntry->id,
             'account_id' => $bankGLAccount->id,
-            'description' => 'Salary payment',
+            'description' => 'Net salary payment - ' . $empName,
             'debit_amount' => 0,
-            'credit_amount' => $payrollEntry->net_pay,
+            'credit_amount' => $netPay,
             'creator_id' => Auth::id(),
-            'created_by' => creatorId()
+            'created_by' => $companyId
         ]);
+
+        // Cr Income Tax (PIT) Payable (2200)
+        if ($pitAmount > 0) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $taxPayableAccount->id,
+                'description' => 'MoR Employment Income Tax (PIT) withheld - ' . $empName,
+                'debit_amount' => 0,
+                'credit_amount' => $pitAmount,
+                'creator_id' => Auth::id(),
+                'created_by' => $companyId
+            ]);
+        }
+
+        // Cr Payroll & Pension Liabilities (2400) for 18% POESSA/PSSSA Pension + Other Deductions/Loans
+        if ($totalPayrollLiabilities > 0) {
+            JournalEntryItem::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $payrollLiabilityAccount->id,
+                'description' => 'Pension payable (18%) & statutory/loan withholdings - ' . $empName,
+                'debit_amount' => 0,
+                'credit_amount' => $totalPayrollLiabilities,
+                'creator_id' => Auth::id(),
+                'created_by' => $companyId
+            ]);
+        }
 
         try {
             UpdateBudgetSpending::dispatch($journalEntry);

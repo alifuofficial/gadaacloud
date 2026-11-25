@@ -181,6 +181,20 @@
                     <td>Labour Proc. 1156/2019, Art. 39</td>
                     <td style="text-align: right; color: #16a34a; font-weight: 600;">+ {{ number_format($severancePay, 2) }}</td>
                 </tr>
+                @if(($noticeCompensation ?? 0) > 0)
+                <tr>
+                    <td><strong>Notice Shortfall Compensation ({{ $noticeShortfallDays ?? 0 }} Days / የማስጠንቀቂያ ጊዜ ክፍያ)</strong></td>
+                    <td>Labour Proc. 1156/2019, Art. 35</td>
+                    <td style="text-align: right; color: #16a34a; font-weight: 600;">+ {{ number_format($noticeCompensation, 2) }}</td>
+                </tr>
+                @endif
+                @if(($leaveEncashment ?? 0) > 0)
+                <tr>
+                    <td><strong>Unused Annual Leave Encashment ({{ $unusedLeaveDays ?? 0 }} Days / ያልተወሰደ ዓመታዊ ፈቃድ)</strong></td>
+                    <td>Labour Proc. 1156/2019, Art. 77</td>
+                    <td style="text-align: right; color: #16a34a; font-weight: 600;">+ {{ number_format($leaveEncashment, 2) }}</td>
+                </tr>
+                @endif
                 @if($outstandingLoans > 0)
                 <tr>
                     <td><strong>Outstanding Staff Loan Deduction (ያልተከፈለ ብድር ተቀናሽ)</strong></td>

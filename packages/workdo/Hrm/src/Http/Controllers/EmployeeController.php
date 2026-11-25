@@ -150,6 +150,8 @@ class EmployeeController extends Controller
             $employee->bank_branch = $validated['bank_branch'];
             $employee->tax_payer_id = $validated['tax_payer_id'] ?? null;
             $employee->basic_salary = $validated['basic_salary'];
+            $employee->is_pension_applicable = $request->boolean('is_pension_applicable', true);
+            $employee->is_tax_exempt = $request->boolean('is_tax_exempt', false);
             $employee->hours_per_day = $validated['hours_per_day'];
             $employee->days_per_week = $validated['days_per_week'];
             $employee->rate_per_hour = $validated['rate_per_hour'];
@@ -267,6 +269,12 @@ class EmployeeController extends Controller
             $employee->bank_branch = $validated['bank_branch'];
             $employee->tax_payer_id = $validated['tax_payer_id'];
             $employee->basic_salary = $validated['basic_salary'];
+            if ($request->has('is_pension_applicable')) {
+                $employee->is_pension_applicable = $request->boolean('is_pension_applicable');
+            }
+            if ($request->has('is_tax_exempt')) {
+                $employee->is_tax_exempt = $request->boolean('is_tax_exempt');
+            }
             $employee->hours_per_day = $validated['hours_per_day'];
             $employee->days_per_week = $validated['days_per_week'];
             $employee->rate_per_hour = $validated['rate_per_hour'];

@@ -157,6 +157,86 @@ class TerminationController extends Controller
     }
 
     /**
+     * Unified Ethiopian Statutory Severance, Notice & Accrued Annual Leave Settlement Calculator (Proc. No. 1156/2019).
+     */
+    private function computeStatutorySettlementData(Employee $employee, Carbon $terminationDate, ?Carbon $noticeDate = null): array
+    {
+        $joinDate = $employee->date_of_joining ? Carbon::parse($employee->date_of_joining) : Carbon::today();
+        $diff = $joinDate->diff($terminationDate);
+        $totalYears = $diff->y;
+        $totalMonths = $diff->m;
+        $totalDays = $diff->d;
+
+        $basicSalary = (float) ($employee->basic_salary ?? 0);
+        $dailyWage = round($basicSalary / 30, 2);
+
+        // Article 35: Statutory Notice Period
+        if ($totalYears < 1) {
+            $requiredNoticeDays = 30;
+        } elseif ($totalYears <= 9) {
+            $requiredNoticeDays = 60;
+        } else {
+            $requiredNoticeDays = 90;
+        }
+
+        $actualNoticeDays = $noticeDate ? $noticeDate->diffInDays($terminationDate) : 0;
+        $noticeShortfallDays = max(0, $requiredNoticeDays - $actualNoticeDays);
+        $noticeCompensation = round($dailyWage * $noticeShortfallDays, 2);
+
+        // Article 39: Statutory Severance Pay (1st year = 1 month; subsequent = 1/3 month per year; capped at 12 months)
+        if ($totalYears < 1) {
+            $severancePay = round(($totalMonths / 12) * $basicSalary, 2);
+        } else {
+            $firstYearPay = $basicSalary;
+            $subsequentYearsPay = ($totalYears - 1) * ($basicSalary / 3);
+            $proratedMonthsPay = ($totalMonths / 12) * ($basicSalary / 3);
+            $severancePay = round($firstYearPay + $subsequentYearsPay + $proratedMonthsPay, 2);
+        }
+        $severancePay = min($severancePay, $basicSalary * 12);
+
+        // Article 77: Statutory Annual Leave (16 working days Year 1 + 1 day per 2 years service), prorated unused leave cashout
+        $annualEntitlementDays = 16 + intdiv($totalYears, 2);
+        $usedAnnualDays = 0;
+        if (class_exists(\Workdo\Hrm\Models\LeaveApplication::class)) {
+            $usedAnnualDays = (float) \Workdo\Hrm\Models\LeaveApplication::where('created_by', $employee->created_by)
+                ->where('employee_id', $employee->user_id)
+                ->where('status', 'approved')
+                ->whereYear('start_date', $terminationDate->year)
+                ->whereHas('leave_type', fn ($q) => $q->where('is_paid', true))
+                ->sum('total_days');
+        }
+        $unusedLeaveDays = max(0, $annualEntitlementDays - $usedAnnualDays);
+        $leaveEncashment = round($unusedLeaveDays * $dailyWage, 2);
+
+        // Unpaid / Active Loans deduction (remaining principal = amount - paid_amount)
+        $outstandingLoans = (float) Loan::where('employee_id', $employee->user_id)
+            ->where('created_by', $employee->created_by)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', 'active');
+            })
+            ->get()
+            ->sum(fn ($l) => max(0, (float) $l->amount - (float) ($l->paid_amount ?? 0)));
+
+        $netFinalSettlement = max(0, ($severancePay + $noticeCompensation + $leaveEncashment) - $outstandingLoans);
+
+        return [
+            'joinDate' => $joinDate,
+            'serviceDuration' => "{$totalYears} Years, {$totalMonths} Months, {$totalDays} Days",
+            'basicSalary' => $basicSalary,
+            'dailyWage' => $dailyWage,
+            'requiredNoticeDays' => $requiredNoticeDays,
+            'actualNoticeDays' => $actualNoticeDays,
+            'noticeShortfallDays' => $noticeShortfallDays,
+            'noticeCompensation' => $noticeCompensation,
+            'severancePay' => $severancePay,
+            'unusedLeaveDays' => $unusedLeaveDays,
+            'leaveEncashment' => $leaveEncashment,
+            'outstandingLoans' => round($outstandingLoans, 2),
+            'netFinalSettlement' => round($netFinalSettlement, 2),
+        ];
+    }
+
+    /**
      * Calculate Ethiopian Statutory Severance Pay & Notice Settlement (Labour Proclamation No. 1156/2019).
      */
     public function calculateStatutorySettlement(\Illuminate\Http\Request $request, $employeeId)
@@ -171,69 +251,29 @@ class TerminationController extends Controller
 
         $terminationDate = $request->termination_date ? Carbon::parse($request->termination_date) : Carbon::today();
         $noticeDate = $request->notice_date ? Carbon::parse($request->notice_date) : null;
-        $joinDate = $employee->date_of_joining ? Carbon::parse($employee->date_of_joining) : Carbon::today();
-
-        $diff = $joinDate->diff($terminationDate);
-        $totalYears = $diff->y;
-        $totalMonths = $diff->m;
-        $totalDays = $diff->d;
-
-        $basicSalary = (float) $employee->basic_salary;
-        $dailyWage = round($basicSalary / 30, 2);
-
-        // Statutory Notice Period (Article 35)
-        if ($totalYears < 1) {
-            $requiredNoticeDays = 30; // 1 month
-        } elseif ($totalYears <= 9) {
-            $requiredNoticeDays = 60; // 2 months
-        } else {
-            $requiredNoticeDays = 90; // 3 months
-        }
-
-        $actualNoticeDays = $noticeDate ? $noticeDate->diffInDays($terminationDate) : 0;
-        $noticeShortfallDays = max(0, $requiredNoticeDays - $actualNoticeDays);
-        $noticeCompensation = round($dailyWage * $noticeShortfallDays, 2);
-
-        // Statutory Severance Pay (Article 39)
-        if ($totalYears < 1) {
-            $severancePay = round(($totalMonths / 12) * $basicSalary, 2);
-        } else {
-            $firstYearPay = $basicSalary;
-            $subsequentYearsPay = ($totalYears - 1) * ($basicSalary / 3);
-            $proratedMonthsPay = ($totalMonths / 12) * ($basicSalary / 3);
-            $severancePay = round($firstYearPay + $subsequentYearsPay + $proratedMonthsPay, 2);
-        }
-
-        // Maximum statutory severance ceiling: 12 months basic wage (Article 39(2))
-        $maxSeveranceCap = $basicSalary * 12;
-        $severancePay = min($severancePay, $maxSeveranceCap);
-
-        // Outstanding Loans deduction
-        $outstandingLoans = Loan::where('employee_id', $employeeId)
-            ->where('created_by', creatorId())
-            ->sum('amount');
-
-        $netFinalSettlement = max(0, ($severancePay + $noticeCompensation) - $outstandingLoans);
+        $calc = $this->computeStatutorySettlementData($employee, $terminationDate, $noticeDate);
 
         return response()->json([
             'employee' => [
                 'id' => $employee->id,
                 'name' => $employee->user->name ?? 'Employee',
-                'joining_date' => $joinDate->format('Y-m-d'),
+                'joining_date' => $calc['joinDate']->format('Y-m-d'),
                 'termination_date' => $terminationDate->format('Y-m-d'),
-                'service_duration' => "{$totalYears} Years, {$totalMonths} Months, {$totalDays} Days",
-                'basic_salary' => $basicSalary,
-                'daily_wage' => $dailyWage,
+                'service_duration' => $calc['serviceDuration'],
+                'basic_salary' => $calc['basicSalary'],
+                'daily_wage' => $calc['dailyWage'],
             ],
             'settlement' => [
-                'required_notice_days' => $requiredNoticeDays,
-                'actual_notice_days' => $actualNoticeDays,
-                'notice_shortfall_days' => $noticeShortfallDays,
-                'notice_shortfall_compensation' => $noticeCompensation,
-                'severance_pay' => $severancePay,
-                'outstanding_loan_deductions' => (float) $outstandingLoans,
-                'net_final_settlement' => $netFinalSettlement,
-                'legal_reference' => 'FDRE Labour Proclamation No. 1156/2019 (Articles 35, 39 & 40)'
+                'required_notice_days' => $calc['requiredNoticeDays'],
+                'actual_notice_days' => $calc['actualNoticeDays'],
+                'notice_shortfall_days' => $calc['noticeShortfallDays'],
+                'notice_shortfall_compensation' => $calc['noticeCompensation'],
+                'severance_pay' => $calc['severancePay'],
+                'unused_leave_days' => $calc['unusedLeaveDays'],
+                'unused_leave_encashment' => $calc['leaveEncashment'],
+                'outstanding_loan_deductions' => $calc['outstandingLoans'],
+                'net_final_settlement' => $calc['netFinalSettlement'],
+                'legal_reference' => 'FDRE Labour Proclamation No. 1156/2019 (Articles 35, 39, 40 & 77)'
             ]
         ]);
     }
@@ -247,37 +287,31 @@ class TerminationController extends Controller
             return back()->with('error', __('Permission denied'));
         }
 
-        if (!Auth::user()->hasRole('superadmin') && $termination->created_by !== creatorId()) {
+        if (!Auth::user()->hasRole('superadmin') && (int) $termination->created_by !== (int) creatorId()) {
             return back()->with('error', __('Permission denied'));
         }
 
         $termination->load(['employee', 'terminationType']);
-        $employeeModel = Employee::where('user_id', $termination->employee_id)->first();
+        $employeeModel = Employee::where('user_id', $termination->employee_id)
+            ->where('created_by', $termination->created_by)
+            ->first();
 
-        $joinDate = $employeeModel && $employeeModel->date_of_joining ? Carbon::parse($employeeModel->date_of_joining) : Carbon::today();
         $termDate = $termination->termination_date ? Carbon::parse($termination->termination_date) : Carbon::today();
-        $diff = $joinDate->diff($termDate);
+        $noticeDate = $termination->notice_date ? Carbon::parse($termination->notice_date) : null;
 
-        $basicSalary = $employeeModel ? (float) $employeeModel->basic_salary : 0;
-        $totalYears = $diff->y;
-        $totalMonths = $diff->m;
-
-        // Severance calculation
-        if ($totalYears < 1) {
-            $severancePay = round(($totalMonths / 12) * $basicSalary, 2);
-        } else {
-            $firstYearPay = $basicSalary;
-            $subsequentYearsPay = ($totalYears - 1) * ($basicSalary / 3);
-            $proratedMonthsPay = ($totalMonths / 12) * ($basicSalary / 3);
-            $severancePay = round($firstYearPay + $subsequentYearsPay + $proratedMonthsPay, 2);
-        }
-        $severancePay = min($severancePay, $basicSalary * 12);
-
-        $outstandingLoans = Loan::where('employee_id', $termination->employee_id)
-            ->where('created_by', creatorId())
-            ->sum('amount');
-
-        $netSettlement = max(0, $severancePay - $outstandingLoans);
+        $calc = $employeeModel
+            ? $this->computeStatutorySettlementData($employeeModel, $termDate, $noticeDate)
+            : [
+                'serviceDuration' => '0 Years, 0 Months, 0 Days',
+                'basicSalary' => 0.0,
+                'severancePay' => 0.0,
+                'noticeShortfallDays' => 0,
+                'noticeCompensation' => 0.0,
+                'unusedLeaveDays' => 0,
+                'leaveEncashment' => 0.0,
+                'outstandingLoans' => 0.0,
+                'netFinalSettlement' => 0.0,
+            ];
 
         $settings = getCompanyAllSetting($termination->created_by);
         $companyName = $settings['company_name'] ?? config('app.name', 'GadaaCloud');
@@ -286,11 +320,15 @@ class TerminationController extends Controller
         return response()->view('terminations.settlement_voucher', [
             'termination' => $termination,
             'employee' => $employeeModel,
-            'serviceDuration' => "{$diff->y} Years, {$diff->m} Months, {$diff->d} Days",
-            'basicSalary' => $basicSalary,
-            'severancePay' => $severancePay,
-            'outstandingLoans' => $outstandingLoans,
-            'netSettlement' => $netSettlement,
+            'serviceDuration' => $calc['serviceDuration'],
+            'basicSalary' => $calc['basicSalary'],
+            'severancePay' => $calc['severancePay'],
+            'noticeShortfallDays' => $calc['noticeShortfallDays'],
+            'noticeCompensation' => $calc['noticeCompensation'],
+            'unusedLeaveDays' => $calc['unusedLeaveDays'],
+            'leaveEncashment' => $calc['leaveEncashment'],
+            'outstandingLoans' => $calc['outstandingLoans'],
+            'netSettlement' => $calc['netFinalSettlement'],
             'companyName' => $companyName,
             'companyVat' => $companyVat,
         ]);

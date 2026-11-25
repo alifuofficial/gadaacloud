@@ -17,6 +17,7 @@ import { Eye, Trash2 } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { getImagePath } from '@/utils/helpers';
 import { useFormFields } from '@/hooks/useFormFields';
+import { EmployeeStatutoryControls } from '../../Components/EmployeeStatutoryControls';
 
 export default function Edit() {
     const { employee, users, branches, departments, designations, shifts, existingDocuments, documentTypes, employees } = usePage<any>().props;
@@ -50,6 +51,8 @@ export default function Edit() {
         bank_branch: employee.bank_branch ?? '',
         tax_payer_id: employee.tax_payer_id ?? '',
         basic_salary: employee.basic_salary?.toString() || '',
+        is_pension_applicable: employee.is_pension_applicable ?? true,
+        is_tax_exempt: employee.is_tax_exempt ?? false,
         hours_per_day: employee.hours_per_day?.toString() || '',
         days_per_week: employee.days_per_week?.toString() || '',
         rate_per_hour: employee.rate_per_hour?.toString() || '',
@@ -718,6 +721,15 @@ export default function Edit() {
                                         <InputError message={errors.rate_per_hour} />
                                     </div>
                                 </div>
+
+                                <EmployeeStatutoryControls
+                                    basicSalary={data.basic_salary}
+                                    hoursPerDay={data.hours_per_day}
+                                    daysPerWeek={data.days_per_week}
+                                    isPensionApplicable={Boolean(data.is_pension_applicable)}
+                                    isTaxExempt={Boolean(data.is_tax_exempt)}
+                                    onChange={(field, value) => setData(field, value)}
+                                />
 
                                 <div className="flex justify-between">
                                     <Button type="button" variant="outline" onClick={() => setActiveTab('banking')}>

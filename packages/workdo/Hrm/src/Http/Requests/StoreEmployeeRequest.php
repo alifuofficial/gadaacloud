@@ -63,6 +63,8 @@ class StoreEmployeeRequest extends FormRequest
             'bank_branch' => 'required|max:100',
             'tax_payer_id' => 'nullable|max:50',
             'basic_salary' => 'required|numeric|min:0',
+            'is_pension_applicable' => 'nullable|boolean',
+            'is_tax_exempt' => 'nullable|boolean',
             'hours_per_day' => 'required|numeric|min:0|max:24',
             'days_per_week' => 'required|numeric|min:0|max:7',
             'rate_per_hour' => 'required|numeric|min:0',

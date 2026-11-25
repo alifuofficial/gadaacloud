@@ -2,12 +2,13 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Deduction extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'employee_id',

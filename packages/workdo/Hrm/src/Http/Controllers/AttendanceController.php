@@ -295,23 +295,23 @@ class AttendanceController extends Controller
                 return redirect()->back()->with('error', __('Attendance record already exists for this employee and date.'));
             }
 
-            // Validate working day, leave, and holiday
-            $date = \Carbon\Carbon::today();
+            // Validate against the submitted attendance date (not today's date)
+            $date = Carbon::parse($validated['date']);
 
             $workingDays = getCompanyAllSetting(creatorId())['working_days'] ?? '';
             $workingDaysArray = json_decode($workingDays, true) ?? [];
-            $isWorkingDay = in_array($date->dayOfWeek, $workingDaysArray);
-            
+            $isWorkingDay = empty($workingDaysArray) || in_array($date->dayOfWeek, $workingDaysArray, false);
+
             $isOnLeave = LeaveApplication::where('created_by', creatorId())
                 ->where('employee_id', $validated['employee_id'])
                 ->where('status', 'approved')
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
+                ->where('start_date', '<=', $date->toDateString())
+                ->where('end_date', '>=', $date->toDateString())
                 ->exists();
-                
+
             $isHoliday = Holiday::where('created_by', creatorId())
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
+                ->where('start_date', '<=', $date->toDateString())
+                ->where('end_date', '>=', $date->toDateString())
                 ->exists();
 
             if (!$isWorkingDay) {
@@ -324,22 +324,21 @@ class AttendanceController extends Controller
                 return redirect()->back()->with('error', __('Attendance cannot be created on holidays.'));
             }
 
-            $employee = Employee::with('shift')->where('user_id', $validated['employee_id'])->where('created_by', creatorId())->first();
-            $shift = $employee ? $employee->shift : null;
+            $employee = Employee::where('user_id', $validated['employee_id'])->where('created_by', creatorId())->first();
+            $shiftId = $employee ? $employee->getShiftIdValue() : null;
 
             // Calculate attendance data first
             $calculatedData = $this->calculateAttendanceData(
                 $validated['clock_in'],
                 $validated['clock_out'],
                 $validated['break_hour'] ?? 0,
-                $shift,
+                $shiftId,
                 $employee
             );
 
-
             $attendance = new Attendance();
             $attendance->employee_id = $validated['employee_id'];
-            $attendance->shift_id = $shift;
+            $attendance->shift_id = $shiftId;
             $attendance->date = $validated['date'];
             $attendance->clock_in = $validated['clock_in'];
             $attendance->clock_out = $validated['clock_out'];
@@ -367,6 +366,9 @@ class AttendanceController extends Controller
     public function update(UpdateAttendanceRequest $request, Attendance $attendance)
     {
         if (Auth::user()->can('edit-attendances')) {
+            if (!Auth::user()->hasRole('superadmin') && (int) $attendance->created_by !== (int) creatorId()) {
+                return redirect()->route('hrm.attendances.index')->with('error', __('Permission denied'));
+            }
             $validated = $request->validated();
 
 
@@ -383,23 +385,23 @@ class AttendanceController extends Controller
                     return redirect()->back()->with('error', __('Attendance record already exists for this employee and date.'));
                 }
             }
-            // Validate working day, leave, and holiday
-            $date = \Carbon\Carbon::today();
+            // Validate against the submitted attendance date (not today's date)
+            $date = Carbon::parse($validated['date']);
 
             $workingDays = getCompanyAllSetting(creatorId())['working_days'] ?? '';
             $workingDaysArray = json_decode($workingDays, true) ?? [];
-            $isWorkingDay = in_array($date->dayOfWeek, $workingDaysArray);
-            
+            $isWorkingDay = empty($workingDaysArray) || in_array($date->dayOfWeek, $workingDaysArray, false);
+
             $isOnLeave = LeaveApplication::where('created_by', creatorId())
                 ->where('employee_id', $validated['employee_id'])
                 ->where('status', 'approved')
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
+                ->where('start_date', '<=', $date->toDateString())
+                ->where('end_date', '>=', $date->toDateString())
                 ->exists();
-                
+
             $isHoliday = Holiday::where('created_by', creatorId())
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
+                ->where('start_date', '<=', $date->toDateString())
+                ->where('end_date', '>=', $date->toDateString())
                 ->exists();
 
             if (!$isWorkingDay) {
@@ -412,15 +414,15 @@ class AttendanceController extends Controller
                 return redirect()->back()->with('error', __('Attendance cannot be created on holidays.'));
             }
 
-            $employee = Employee::with('shift')->where('user_id', $validated['employee_id'])->where('created_by', creatorId())->first();
-            $shift = $employee ? $employee->shift : null;
+            $employee = Employee::where('user_id', $validated['employee_id'])->where('created_by', creatorId())->first();
+            $shiftId = $employee ? $employee->getShiftIdValue() : null;
 
             // Calculate attendance data first
             $calculatedData = $this->calculateAttendanceData(
                 $validated['clock_in'],
                 $validated['clock_out'],
                 $validated['break_hour'] ?? 0,
-                $shift,
+                $shiftId,
                 $employee
             );
 
@@ -513,6 +515,9 @@ class AttendanceController extends Controller
 
     private function breakDuration($shift)
     {
+        if (!$shift || empty($shift->break_start_time) || empty($shift->break_end_time)) {
+            return 0;
+        }
         $breakStart = \Carbon\Carbon::parse($shift->break_start_time);
         $breakEnd = \Carbon\Carbon::parse($shift->break_end_time);
         if ($breakEnd->lt($breakStart)) {
@@ -540,14 +545,15 @@ class AttendanceController extends Controller
 
     private function calculateAttendanceData($clockIn, $clockOut, $breakHour, $shift, $employee)
     {
-        $shift = Shift::where('id', $shift)->where('created_by', creatorId())->first();
+        $shiftObj = $shift instanceof Shift
+            ? $shift
+            : ($shift ? Shift::where('id', $shift)->where('created_by', creatorId())->first() : null);
         // Step 1: Calculate total working hours
-        $totalHourData = $this->calculateTotalHours($clockIn, $clockOut, $shift);
+        $totalHourData = $this->calculateTotalHours($clockIn, $clockOut, $shiftObj);
         $totalHour = $totalHourData['total_working_hours'];
 
-
         // Step 2: Calculate overtime
-        $standardHours = ($shift && $this->getWorkingHour($shift) > 0) ? $this->getWorkingHour($shift) : 8;
+        $standardHours = ($shiftObj && $this->getWorkingHour($shiftObj) > 0) ? $this->getWorkingHour($shiftObj) : 8;
         $overtimeHours = max(0, round($totalHour - $standardHours, 2));
 
         // Step 3: Calculate overtime amount
@@ -611,8 +617,9 @@ class AttendanceController extends Controller
 
             if ($pendingClockOuts) {
                 foreach ($pendingClockOuts as $pendingClockOut) {
-                    $employee = Employee::where('user_id', $employeeId)->where('created_by', creatorId())->first();
-                    $shift = $employee ? Shift::find($employee->shift) : null;
+                    $empRecord = Employee::where('user_id', $employeeId)->where('created_by', creatorId())->first();
+                    $shiftId = $empRecord ? $empRecord->getShiftIdValue() : null;
+                    $shift = $shiftId ? Shift::where('id', $shiftId)->where('created_by', creatorId())->first() : null;
 
                     if ($shift) {
                         $clockInDate = \Carbon\Carbon::parse($pendingClockOut->clock_in)->format('Y-m-d');
@@ -628,8 +635,8 @@ class AttendanceController extends Controller
                             $pendingClockOut->clock_in,
                             $shiftEndDateTime,
                             0,
-                            $shift->id,
-                            $employee
+                            $shift,
+                            $empRecord
                         );
 
 
@@ -665,11 +672,11 @@ class AttendanceController extends Controller
                 $existingAttendance->update(['clock_in' => $clockInTime]);
             } else {
                 $employee = Employee::where('user_id', $employeeId)->where('created_by', creatorId())->first();
-                $shift = $employee ? $employee->shift : null;
+                $shiftId = $employee ? $employee->getShiftIdValue() : null;
 
                 Attendance::create([
                     'employee_id' => $employeeId,
-                    'shift_id' => $shift,
+                    'shift_id' => $shiftId,
                     'date' => $today,
                     'clock_in' => $clockInTime,
                     'creator_id' => Auth::id(),
@@ -726,15 +733,15 @@ class AttendanceController extends Controller
 
             // $clockOutTime = now()->format('H:i:s');
             $clockOutTime = now();
-            $employee = Employee::with('shift')->where('user_id', $employeeId)->where('created_by', creatorId())->first();
-            $shift = $employee ? $employee->shift : null;
+            $employee = Employee::where('user_id', $employeeId)->where('created_by', creatorId())->first();
+            $shiftId = $employee ? $employee->getShiftIdValue() : null;
 
             // Calculate attendance data using existing logic
             $calculatedData = $this->calculateAttendanceData(
                 $attendance->clock_in,
                 $clockOutTime,
                 0, // break_hour
-                $shift,
+                $shiftId,
                 $employee
             );
 

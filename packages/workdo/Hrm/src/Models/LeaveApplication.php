@@ -2,6 +2,7 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
@@ -10,7 +11,7 @@ use Workdo\Chatter\Traits\HasChatter;
 
 class LeaveApplication extends Model
 {
-    use HasFactory, HasChatter;
+    use HasFactory, HasChatter, TenantScoped;
 
     protected $fillable = [
         'start_date',

@@ -89,8 +89,9 @@ class AttendanceApiController extends Controller
 
             if ($pendingClockOuts) {
                 foreach ($pendingClockOuts as $pendingClockOut) {
-                    $employee = Employee::where('user_id', $employeeId)->where('created_by', $creatorId)->first();
-                    $shift    = $employee ? Shift::find($employee->shift) : null;
+                    $empRecord = Employee::where('user_id', $employeeId)->where('created_by', $creatorId)->first();
+                    $shiftId   = $empRecord ? $empRecord->getShiftIdValue() : null;
+                    $shift     = $shiftId ? Shift::where('id', $shiftId)->where('created_by', $creatorId)->first() : null;
 
                     if ($shift) {
                         $clockInDate      = Carbon::parse($pendingClockOut->clock_in)->format('Y-m-d');
@@ -106,8 +107,8 @@ class AttendanceApiController extends Controller
                             $pendingClockOut->clock_in,
                             $shiftEndDateTime,
                             0,
-                            $shift->id,
-                            $employee
+                            $shift,
+                            $empRecord
                         );
 
                         $pendingClockOut->update([
@@ -138,12 +139,12 @@ class AttendanceApiController extends Controller
                 $attendance = $existingAttendance;
             } else {
                 $employee = Employee::where('user_id', $employeeId)->where('created_by', $creatorId)->first();
-                $shift    = $employee ? $employee->shift : null;
+                $shiftId  = $employee ? $employee->getShiftIdValue() : null;
 
 
                 $attendance = Attendance::create([
                     'employee_id' => $employeeId,
-                    'shift_id'    => $shift,
+                    'shift_id'    => $shiftId,
                     'date'        => $today,
                     'clock_in'    => $clockInTime,
                     'creator_id'  => Auth::id(),
@@ -205,15 +206,15 @@ class AttendanceApiController extends Controller
             }
 
             $clockOutTime = now();
-            $employee     = Employee::with('shift')->where('user_id', $employeeId)->where('created_by', $creatorId)->first();
-            $shift        = $employee ? $employee->shift : null;
+            $employee     = Employee::where('user_id', $employeeId)->where('created_by', $creatorId)->first();
+            $shiftId      = $employee ? $employee->getShiftIdValue() : null;
 
             // Calculate attendance data using existing logic
             $calculatedData = $this->calculateAttendanceData(
                 $attendance->clock_in,
                 $clockOutTime,
                 0,  // break_hour
-                $shift,
+                $shiftId,
                 $employee
             );
 
@@ -292,6 +293,9 @@ class AttendanceApiController extends Controller
 
     private function breakDuration($shift)
     {
+        if (!$shift || empty($shift->break_start_time) || empty($shift->break_end_time)) {
+            return 0;
+        }
         $breakStart = Carbon::parse($shift->break_start_time);
         $breakEnd   = Carbon::parse($shift->break_end_time);
         if ($breakEnd->lt($breakStart)) {
@@ -319,12 +323,14 @@ class AttendanceApiController extends Controller
 
     private function calculateAttendanceData($clockIn, $clockOut, $breakHour, $shift, $employee)
     {
-        $shift = Shift::where('id', $shift)->where('created_by', creatorId())->first();
+        $shiftObj = $shift instanceof Shift
+            ? $shift
+            : ($shift ? Shift::where('id', $shift)->where('created_by', creatorId())->first() : null);
         // Step 1: Calculate total working hours
-        $totalHourData = $this->calculateTotalHours($clockIn, $clockOut, $shift);
+        $totalHourData = $this->calculateTotalHours($clockIn, $clockOut, $shiftObj);
         $totalHour     = $totalHourData['total_working_hours'];
         // Step 2: Calculate overtime
-        $standardHours = ($shift && $this->getWorkingHour($shift) > 0) ? $this->getWorkingHour($shift) : 8;
+        $standardHours = ($shiftObj && $this->getWorkingHour($shiftObj) > 0) ? $this->getWorkingHour($shiftObj) : 8;
         $overtimeHours = max(0, round($totalHour - $standardHours, 2));
 
         // Step 3: Calculate overtime amount

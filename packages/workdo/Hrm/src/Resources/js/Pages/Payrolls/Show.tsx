@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Calculator, Users, DollarSign, Calendar, Download, Eye, Trash2, CreditCard } from "lucide-react";
+import { Calculator, Users, DollarSign, Calendar, Download, Eye, Trash2, CreditCard, FileSpreadsheet, Landmark, CheckCheck } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDate, formatCurrency } from '@/utils/helpers';
 
@@ -248,6 +248,48 @@ export default function Show() {
             ]}
             pageTitle={t('Payroll Details')}
             backUrl={route('hrm.payrolls.index')}
+            pageActions={
+                <div className="flex flex-wrap items-center gap-2">
+                    {auth.user?.permissions?.includes('pay-payslip') &&
+                        (payroll.payroll_entries || []).some((e: any) => e.status !== 'paid') && (
+                            <Button
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => router.post(route('hrm.payrolls.bulk-pay', payroll.id), {}, { preserveScroll: true })}
+                            >
+                                <CheckCheck className="h-4 w-4" />
+                                {t('Pay All Unpaid')}
+                            </Button>
+                        )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => window.open(route('hrm.payrolls.export-mor-tax', payroll.id), '_blank')}
+                    >
+                        <FileSpreadsheet className="h-4 w-4 text-amber-600" />
+                        {t('MoR PIT CSV')}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => window.open(route('hrm.payrolls.export-poessa-pension', payroll.id), '_blank')}
+                    >
+                        <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                        {t('POESSA Pension CSV')}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => window.open(route('hrm.payrolls.export-bank-advice', payroll.id), '_blank')}
+                    >
+                        <Landmark className="h-4 w-4 text-sky-600" />
+                        {t('Bank / CBE CSV')}
+                    </Button>
+                </div>
+            }
         >
             <Head title={`${t('Payroll')} - ${payroll.title}`} />
 

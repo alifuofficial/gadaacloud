@@ -2,6 +2,7 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
@@ -10,7 +11,7 @@ use Workdo\Hrm\Models\Shift;
 
 class Attendance extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'employee_id',

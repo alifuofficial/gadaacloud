@@ -2,12 +2,13 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PayrollEntry extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'payroll_id',
@@ -16,6 +17,9 @@ class PayrollEntry extends Model
         'total_allowances',
         'total_manual_overtimes',
         'total_deductions',
+        'employee_pension',
+        'employer_pension',
+        'income_tax',
         'total_loans',
         'gross_pay',
         'net_pay',

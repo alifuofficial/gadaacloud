@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2 } from 'lucide-react';
 import { CreateEmployeeFormData } from './types';
 import { useFormFields } from '@/hooks/useFormFields';
+import { EmployeeStatutoryControls } from '../../Components/EmployeeStatutoryControls';
 
 export default function Create() {
     const { users, branches, departments, designations, shifts, documentTypes, generatedEmployeeId, employees } = usePage<any>().props;
@@ -50,6 +51,8 @@ export default function Create() {
         bank_branch: '',
         tax_payer_id: '',
         basic_salary: '',
+        is_pension_applicable: true,
+        is_tax_exempt: false,
         hours_per_day: '',
         days_per_week: '',
         rate_per_hour: '',
@@ -744,6 +747,15 @@ export default function Create() {
                                         <InputError message={errors.rate_per_hour} />
                                     </div>
                                 </div>
+
+                                <EmployeeStatutoryControls
+                                    basicSalary={data.basic_salary}
+                                    hoursPerDay={data.hours_per_day}
+                                    daysPerWeek={data.days_per_week}
+                                    isPensionApplicable={Boolean(data.is_pension_applicable)}
+                                    isTaxExempt={Boolean(data.is_tax_exempt)}
+                                    onChange={(field, value) => setData(field, value)}
+                                />
 
                                 <div className="flex justify-between">
                                     <Button type="button" variant="outline" onClick={() => setActiveTab('banking')}>

@@ -2,16 +2,18 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 class Payroll extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'title',
+        'ethiopian_period',
         'payroll_frequency',
         'pay_period_start',
         'pay_period_end',

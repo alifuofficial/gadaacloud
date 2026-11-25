@@ -65,44 +65,68 @@ class LeaveApplicationController extends Controller
         }
     }
 
+    /**
+     * Validate and count chargeable working leave days across the requested date span,
+     * excluding non-working days and company holidays (Ethiopian Labor Proc. No. 1156/2019).
+     */
+    private function countChargeableLeaveDays(string $startDateStr, string $endDateStr, int $tenantId): int
+    {
+        $start = \Carbon\Carbon::parse($startDateStr)->startOfDay();
+        $end = \Carbon\Carbon::parse($endDateStr)->startOfDay();
+        if ($end->lt($start)) {
+            return 0;
+        }
+
+        $workingDaysJson = getCompanyAllSetting($tenantId)['working_days'] ?? '';
+        $workingDaysArray = json_decode($workingDaysJson, true);
+        $hasWorkingDaysConfig = is_array($workingDaysArray) && count($workingDaysArray) > 0;
+
+        $holidays = Holiday::where('created_by', $tenantId)
+            ->where('start_date', '<=', $end->toDateString())
+            ->where('end_date', '>=', $start->toDateString())
+            ->get(['start_date', 'end_date']);
+
+        $chargeable = 0;
+        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
+            if ($hasWorkingDaysConfig && !in_array($cursor->dayOfWeek, $workingDaysArray, false)) {
+                continue;
+            }
+
+            $isHoliday = $holidays->contains(function ($h) use ($cursor) {
+                return \Carbon\Carbon::parse($h->start_date)->lte($cursor)
+                    && \Carbon\Carbon::parse($h->end_date)->gte($cursor);
+            });
+            if ($isHoliday) {
+                continue;
+            }
+
+            $chargeable++;
+        }
+
+        return $chargeable;
+    }
+
     public function store(StoreLeaveApplicationRequest $request)
     {
         if (Auth::user()->can('create-leave-applications')) {
             $validated = $request->validated();
+            $tenantId = (int) creatorId();
 
-            // Calculate total days automatically
-            $startDate = new \DateTime($validated['start_date']);
-            $endDate = new \DateTime($validated['end_date']);
-            $totalDays = $startDate->diff($endDate)->days + 1;
-
-            // Get leave type details
-            $leaveType = LeaveType::find($validated['leave_type_id']);
+            // Get leave type details scoped to tenant
+            $leaveType = LeaveType::where('created_by', $tenantId)->find($validated['leave_type_id']);
             if (!$leaveType) {
                 return redirect()
                     ->back()
                     ->withErrors(['leave_type_id' => __('Invalid leave type selected.')]);
             }
-            // Validate working day, leave, and holiday
-            $date = \Carbon\Carbon::today();
 
-            $workingDays = getCompanyAllSetting(creatorId())['working_days'] ?? '';
-            $workingDaysArray = json_decode($workingDays, true) ?? [];
-            $isWorkingDay = in_array($date->dayOfWeek, $workingDaysArray);
-                
-            $isHoliday = Holiday::where('created_by', creatorId())
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
-                ->exists();
+            // Count working days actually covered by the requested leave range
+            $totalDays = $this->countChargeableLeaveDays($validated['start_date'], $validated['end_date'], $tenantId);
+            if ($totalDays <= 0) {
+                return redirect()->back()->with('error', __('Leave cannot be created exclusively on non-working days or holidays.'));
+            }
 
-            if (!$isWorkingDay) {
-                return redirect()->back()->with('error', __('Leave cannot be created for non-working days.'));
-            }
-        
-            if ($isHoliday) {
-                return redirect()->back()->with('error', __('Leave cannot be created on holidays.'));
-            }
-            // Get current year
-            $currentYear = date('Y');
+            $currentYear = (int) \Carbon\Carbon::parse($validated['start_date'])->year;
 
             // Calculate used leaves for this employee, leave type and current year
             $usedLeaves = LeaveApplication::where('employee_id', $validated['employee_id'])
@@ -173,41 +197,26 @@ class LeaveApplicationController extends Controller
     public function update(UpdateLeaveApplicationRequest $request, LeaveApplication $leaveapplication)
     {
         if (Auth::user()->can('edit-leave-applications')) {
+            $tenantId = (int) creatorId();
+            if (!Auth::user()->hasRole('superadmin') && (int) $leaveapplication->created_by !== $tenantId) {
+                return redirect()->route('hrm.leave-applications.index')->with('error', __('Permission denied'));
+            }
+
             $validated = $request->validated();
 
-            // Calculate total days automatically
-            $startDate = new \DateTime($validated['start_date']);
-            $endDate = new \DateTime($validated['end_date']);
-            $totalDays = $startDate->diff($endDate)->days + 1;
-
-            // Get leave type details
-            $leaveType = LeaveType::find($validated['leave_type_id']);
+            $leaveType = LeaveType::where('created_by', $tenantId)->find($validated['leave_type_id']);
             if (!$leaveType) {
                 return redirect()
                     ->back()
                     ->withErrors(['leave_type_id' => __('Invalid leave type selected.')]);
             }
-            // Validate working day, leave, and holiday
-            $date = \Carbon\Carbon::today();
 
-            $workingDays = getCompanyAllSetting(creatorId())['working_days'] ?? '';
-            $workingDaysArray = json_decode($workingDays, true) ?? [];
-            $isWorkingDay = in_array($date->dayOfWeek, $workingDaysArray);
-                
-            $isHoliday = Holiday::where('created_by', creatorId())
-                ->where('start_date', '<=', $date)
-                ->where('end_date', '>=', $date)
-                ->exists();
+            $totalDays = $this->countChargeableLeaveDays($validated['start_date'], $validated['end_date'], $tenantId);
+            if ($totalDays <= 0) {
+                return redirect()->back()->with('error', __('Leave cannot be scheduled exclusively on non-working days or holidays.'));
+            }
 
-            if (!$isWorkingDay) {
-                return redirect()->back()->with('error', __('Leave cannot be created for non-working days.'));
-            }
-        
-            if ($isHoliday) {
-                return redirect()->back()->with('error', __('Leave cannot be created on holidays.'));
-            }
-            // Get current year
-            $currentYear = date('Y');
+            $currentYear = (int) \Carbon\Carbon::parse($validated['start_date'])->year;
 
             // Calculate used leaves for this employee, leave type and current year (excluding current application)
             $usedLeaves = LeaveApplication::where('employee_id', $validated['employee_id'])
@@ -276,6 +285,9 @@ class LeaveApplicationController extends Controller
     public function destroy(LeaveApplication $leaveapplication)
     {
         if (Auth::user()->can('delete-leave-applications')) {
+            if (!Auth::user()->hasRole('superadmin') && (int) $leaveapplication->created_by !== (int) creatorId()) {
+                return redirect()->route('hrm.leave-applications.index')->with('error', __('Permission denied'));
+            }
             DestroyLeaveApplication::dispatch($leaveapplication);
             $leaveapplication->delete();
 
@@ -288,6 +300,9 @@ class LeaveApplicationController extends Controller
     public function updateStatus(Request $request, LeaveApplication $leaveapplication)
     {
         if (Auth::user()->can('manage-leave-status')) {
+            if (!Auth::user()->hasRole('superadmin') && (int) $leaveapplication->created_by !== (int) creatorId()) {
+                return redirect()->route('hrm.leave-applications.index')->with('error', __('Permission denied'));
+            }
             $request->validate([
                 'status' => 'required|in:pending,approved,rejected',
                 'approver_comment' => 'nullable|string',

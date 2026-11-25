@@ -2,12 +2,13 @@
 
 namespace Workdo\Hrm\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Loan extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'title',
@@ -15,15 +16,18 @@ class Loan extends Model
         'loan_type_id',
         'type',
         'amount',
+        'paid_amount',
         'start_date',
         'end_date',
         'reason',
+        'status',
         'creator_id',
         'created_by',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
         'start_date' => 'date',
         'end_date' => 'date',
     ];
