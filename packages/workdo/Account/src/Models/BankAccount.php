@@ -17,6 +17,7 @@ class BankAccount extends Model
         'bank_name',
         'branch_name',
         'account_type',
+        'currency_code',
         'payment_gateway',
         'opening_balance',
         'current_balance',

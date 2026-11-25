@@ -7,6 +7,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Workdo\Account\Models\Customer;
+use Workdo\Account\Helpers\AccountUtility;
 use Workdo\Account\Http\Requests\StoreCustomerRequest;
 use Workdo\Account\Http\Requests\UpdateCustomerRequest;
 use Workdo\Account\Events\CreateCustomer;
@@ -17,6 +18,13 @@ class CustomerController extends Controller
 {
     public function index()
     {
+        [$sortCol, $sortDir] = AccountUtility::sanitizeSort(
+            request('sort'),
+            ['customer_code', 'company_name', 'contact_person_name', 'tax_number', 'created_at'],
+            'created_at',
+            request('direction', 'desc')
+        );
+
         if(Auth::user()->can('manage-customers')){
             $customers = Customer::query()
                 ->with('user:id,name,avatar,is_disable')
@@ -32,13 +40,13 @@ class CustomerController extends Controller
                 ->when(request('company_name'), fn($q) => $q->where('company_name', 'like', '%' . request('company_name') . '%'))
                 ->when(request('customer_code'), fn($q) => $q->where('customer_code', 'like', '%' . request('customer_code') . '%'))
                 ->when(request('tax_number'), fn($q) => $q->where('tax_number', 'like', '%' . request('tax_number') . '%'))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
+                ->when(request('sort'), fn($q) => $q->orderBy($sortCol, $sortDir), fn($q) => $q->latest())
                 ->paginate(request('per_page', 10))
                 ->withQueryString();
 
             $users = User::where('type', 'client')
                 ->where('created_by', creatorId())
-                ->whereNotIn('id', Customer::pluck('user_id')->filter())
+                ->whereNotIn('id', Customer::where('created_by', creatorId())->pluck('user_id')->filter())
                 ->select('id', 'name', 'email', 'mobile_no')
                 ->get();
 
@@ -80,7 +88,7 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
-        if(Auth::user()->can('edit-customers')){
+        if(Auth::user()->can('edit-customers') && $customer->created_by == creatorId()){
             $validated = $request->validated();
 
             $customer->company_name = $validated['company_name'];
@@ -104,7 +112,7 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
-        if(Auth::user()->can('delete-customers')){
+        if(Auth::user()->can('delete-customers') && $customer->created_by == creatorId()){
             DestroyCustomer::dispatch($customer);
             $customer->delete();
             return back()->with('success', __('The customer has been deleted.'));

@@ -100,6 +100,7 @@ class AccountUtility
             // Other Assets
             ['type_code' => 'OA', 'account_code' => '1400', 'account_name' => 'Deposits', 'normal_balance' => 'debit', 'description' => 'Security deposits paid'],
             ['type_code' => 'OA', 'account_code' => '1500', 'account_name' => 'Tax Receivable (VAT/GST Input)', 'normal_balance' => 'debit', 'description' => 'Tax refunds due'],
+            ['type_code' => 'OA', 'account_code' => '1510', 'account_name' => 'Withholding Tax Receivable (2%)', 'normal_balance' => 'debit', 'description' => 'Withholding tax deducted by B2B/government customers on receipts'],
             // Fixed Assets
             ['type_code' => 'FA', 'account_code' => '1600', 'account_name' => 'Equipment', 'normal_balance' => 'debit', 'description' => 'Office and business equipment'],
             ['type_code' => 'FA', 'account_code' => '1610', 'account_name' => 'Accumulated Depreciation - Equipment', 'normal_balance' => 'credit', 'description' => 'Accumulated depreciation on equipment'],
@@ -111,6 +112,7 @@ class AccountUtility
             ['type_code' => 'CL', 'account_code' => '2200', 'account_name' => 'Tax Payable (Income Tax)', 'normal_balance' => 'credit', 'description' => 'Taxes owed'],
             ['type_code' => 'CL', 'account_code' => '2210', 'account_name' => 'VAT Payable (Sales Tax Output)', 'normal_balance' => 'credit', 'description' => 'VAT owed to government'],
             ['type_code' => 'CL', 'account_code' => '2220', 'account_name' => 'GST Payable', 'normal_balance' => 'credit', 'description' => 'GST owed to government'],
+            ['type_code' => 'CL', 'account_code' => '2230', 'account_name' => 'Withholding Tax Payable (2% MoR)', 'normal_balance' => 'credit', 'description' => '2% Ethiopian Withholding Tax withheld from vendor payments due to MoR'],
             ['type_code' => 'CL', 'account_code' => '2300', 'account_name' => 'Short-term Loans', 'normal_balance' => 'credit', 'description' => 'Loans due within one year'],
             ['type_code' => 'CL', 'account_code' => '2350', 'account_name' => 'Customer Deposits', 'normal_balance' => 'credit', 'description' => 'Advance payments from customers for future services'],
             ['type_code' => 'CL', 'account_code' => '2400', 'account_name' => 'Payroll Liabilities', 'normal_balance' => 'credit', 'description' => 'Unpaid employee salaries and benefits'],
@@ -130,6 +132,7 @@ class AccountUtility
             ['type_code' => 'OI', 'account_code' => '4130', 'account_name' => 'Maintenance Income', 'normal_balance' => 'credit', 'description' => 'Income from maintenance services'],
             ['type_code' => 'OI', 'account_code' => '4140', 'account_name' => 'Training Income', 'normal_balance' => 'credit', 'description' => 'Income from training services'],
             ['type_code' => 'OI', 'account_code' => '4300', 'account_name' => 'Other Income', 'normal_balance' => 'credit', 'description' => 'Miscellaneous income'],
+            ['type_code' => 'OI', 'account_code' => '4310', 'account_name' => 'Foreign Exchange Gain', 'normal_balance' => 'credit', 'description' => 'Realized foreign currency exchange gains'],
             ['type_code' => 'SR', 'account_code' => '4400', 'account_name' => 'Project Revenue', 'normal_balance' => 'credit', 'description' => 'Revenue from project-based work'],
             // Expenses
             ['type_code' => 'COGS', 'account_code' => '5100', 'account_name' => 'Cost of Goods Sold', 'normal_balance' => 'debit', 'description' => 'Direct cost of products sold'],
@@ -146,6 +149,7 @@ class AccountUtility
             ['type_code' => 'AE', 'account_code' => '5430', 'account_name' => 'Depreciation Expense', 'normal_balance' => 'debit', 'description' => 'Depreciation on fixed assets'],
             ['type_code' => 'FE', 'account_code' => '5500', 'account_name' => 'Interest Expense', 'normal_balance' => 'debit', 'description' => 'Interest on loans and debt'],
             ['type_code' => 'FE', 'account_code' => '5510', 'account_name' => 'Bank Charges', 'normal_balance' => 'debit', 'description' => 'Bank fees and charges'],
+            ['type_code' => 'FE', 'account_code' => '5520', 'account_name' => 'Foreign Exchange Loss', 'normal_balance' => 'debit', 'description' => 'Realized foreign currency exchange losses'],
             ['type_code' => 'TE', 'account_code' => '5600', 'account_name' => 'Tax Expense', 'normal_balance' => 'debit', 'description' => 'Income tax expense'],
             ['type_code' => 'OX', 'account_code' => '5700', 'account_name' => 'Bad Debt Expense', 'normal_balance' => 'debit', 'description' => 'Uncollectible accounts expense'],
             ['type_code' => 'OX', 'account_code' => '5800', 'account_name' => 'Miscellaneous Expense', 'normal_balance' => 'debit', 'description' => 'Other miscellaneous expenses']
@@ -216,5 +220,109 @@ class AccountUtility
                 }
             }
         }
+    }
+
+    /**
+     * Sanitize dynamic ORDER BY column & direction against an explicit allowlist.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function sanitizeSort(?string $field, array $allowedColumns, string $defaultColumn = 'created_at', ?string $direction = 'desc', string $defaultDirection = 'desc'): array
+    {
+        $column = ($field && in_array($field, $allowedColumns, true)) ? $field : $defaultColumn;
+        $dir = strtolower((string) $direction) === 'asc' ? 'asc' : (strtolower((string) $direction) === 'desc' ? 'desc' : $defaultDirection);
+
+        return [$column, $dir];
+    }
+
+    /**
+     * Generate collision-safe sequential document numbers beyond 999 documents.
+     */
+    public static function generateSequentialCode(string $modelClass, string $column, string $prefix, ?int $companyId = null, bool $globallyUnique = false, int $padLength = 3): string
+    {
+        $query = $globallyUnique
+            ? $modelClass::withoutGlobalScope('tenant')
+            : $modelClass::where('created_by', $companyId ?? creatorId());
+
+        $existingCodes = $query->where($column, 'like', $prefix . '%')
+            ->pluck($column);
+
+        $maxNumber = 0;
+        $prefixLen = strlen($prefix);
+        foreach ($existingCodes as $code) {
+            $suffix = substr((string) $code, $prefixLen);
+            if (ctype_digit($suffix)) {
+                $num = (int) $suffix;
+                if ($num > $maxNumber) {
+                    $maxNumber = $num;
+                }
+            }
+        }
+
+        return $prefix . str_pad((string) ($maxNumber + 1), $padLength, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Lazily ensure standard Ethiopian / FX enterprise GL accounts exist for a company.
+     */
+    public static function ensureAccountCode(string $accountCode, ?int $companyId = null): ?ChartOfAccount
+    {
+        $tenantId = $companyId ?? (auth()->check() ? creatorId() : null);
+        if (!$tenantId) {
+            return null;
+        }
+
+        $existing = ChartOfAccount::withoutGlobalScope('tenant')
+            ->where('account_code', $accountCode)
+            ->where('created_by', $tenantId)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $definitions = [
+            '1510' => ['type_code' => 'OA', 'account_name' => 'Withholding Tax Receivable (2%)', 'normal_balance' => 'debit', 'description' => 'Withholding tax deducted by B2B/government customers on receipts'],
+            '2230' => ['type_code' => 'CL', 'account_name' => 'Withholding Tax Payable (2% MoR)', 'normal_balance' => 'credit', 'description' => '2% Ethiopian Withholding Tax withheld from vendor payments due to MoR'],
+            '4310' => ['type_code' => 'OI', 'account_name' => 'Foreign Exchange Gain', 'normal_balance' => 'credit', 'description' => 'Realized foreign currency exchange gains'],
+            '5510' => ['type_code' => 'FE', 'account_name' => 'Bank Charges', 'normal_balance' => 'debit', 'description' => 'Bank fees and charges'],
+            '5520' => ['type_code' => 'FE', 'account_name' => 'Foreign Exchange Loss', 'normal_balance' => 'debit', 'description' => 'Realized foreign currency exchange losses'],
+        ];
+
+        if (!isset($definitions[$accountCode])) {
+            return null;
+        }
+
+        self::createAccountCategories($tenantId);
+        self::createAccountTypes($tenantId);
+
+        $def = $definitions[$accountCode];
+        $type = AccountType::withoutGlobalScope('tenant')
+            ->where('created_by', $tenantId)
+            ->where('code', $def['type_code'])
+            ->first();
+
+        if (!$type) {
+            return null;
+        }
+
+        return ChartOfAccount::withoutGlobalScope('tenant')->firstOrCreate(
+            [
+                'account_code' => $accountCode,
+                'created_by'   => $tenantId,
+            ],
+            [
+                'account_name'      => $def['account_name'],
+                'account_type_id'   => $type->id,
+                'level'             => 1,
+                'normal_balance'    => $def['normal_balance'],
+                'opening_balance'   => 0,
+                'current_balance'   => 0,
+                'is_active'         => true,
+                'is_system_account' => 1,
+                'description'       => $def['description'],
+                'creator_id'        => $tenantId,
+            ]
+        );
     }
 }

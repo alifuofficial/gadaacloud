@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseReturn;
+use App\Traits\TenantScoped;
+use Workdo\Account\Helpers\AccountUtility;
 
 class DebitNote extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'debit_note_number',
         'debit_note_date',
@@ -89,18 +92,6 @@ class DebitNote extends Model
     {
         $year = date('Y');
         $month = date('m');
-        $lastNote = static::where('debit_note_number', 'like', "DN-{$year}-{$month}-%")
-            ->where('created_by', creatorId())
-            ->orderBy('debit_note_number', 'desc')
-            ->first();
-
-        if ($lastNote) {
-            $lastNumber = (int) substr($lastNote->debit_note_number, -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return "DN-{$year}-{$month}-" . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return AccountUtility::generateSequentialCode(static::class, 'debit_note_number', "DN-{$year}-{$month}-", null, true);
     }
 }

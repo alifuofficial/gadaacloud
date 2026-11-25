@@ -11,6 +11,7 @@ export interface BankAccount {
     account_name: string;
     account_number: string;
     bank_name: string;
+    currency_code?: string;
 }
 
 export interface PurchaseInvoice {
@@ -46,6 +47,14 @@ export interface VendorPayment {
     bank_account_id: number;
     reference_number?: string;
     payment_amount: number;
+    wht_rate?: number;
+    wht_amount?: number;
+    gross_settled_amount?: number;
+    wht_certificate_number?: string;
+    currency_code?: string;
+    exchange_rate?: number;
+    foreign_amount?: number;
+    fx_gain_loss?: number;
     status: 'pending' | 'cleared' | 'cancelled';
     notes?: string;
     vendor: Vendor;
@@ -60,6 +69,11 @@ export interface CreateVendorPaymentFormData {
     bank_account_id: string;
     reference_number: string;
     payment_amount: string;
+    wht_rate?: string;
+    wht_amount?: string;
+    currency_code?: string;
+    exchange_rate?: string;
+    foreign_amount?: string;
     notes: string;
     allocations: {
         invoice_id: number;

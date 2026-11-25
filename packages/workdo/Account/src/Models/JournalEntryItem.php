@@ -5,9 +5,11 @@ namespace Workdo\Account\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class JournalEntryItem extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'journal_entry_id',
         'account_id',

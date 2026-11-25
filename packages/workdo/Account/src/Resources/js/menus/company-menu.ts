@@ -93,7 +93,11 @@ export const accountCompanyMenu = (t: (key: string) => string) => [
                 title: t('System Setup'),
                 href: route('account.account-types.index'),
                 permission: 'manage-account-types',
-                activePaths: [route('account.revenue-categories.index'), route('account.expense-categories.index')],
+                activePaths: [
+                    route('account.revenue-categories.index'),
+                    route('account.expense-categories.index'),
+                    route('account.accounting-periods.index'),
+                ],
             },
         ],
     },

@@ -11,6 +11,13 @@ class CreateDebitNoteFromReturn
     public function handle(ApprovePurchaseReturn $event): void
     {
         $purchaseReturn = $event->return;
+        $companyId = (int) ($purchaseReturn->created_by ?? (Auth::check() ? creatorId() : 1));
+        $actorId = Auth::id() ?? $purchaseReturn->creator_id ?? $companyId;
+
+        if (DebitNote::withoutGlobalScope('tenant')->where('created_by', $companyId)->where('return_id', $purchaseReturn->id)->exists()) {
+            return;
+        }
+
         // Create debit note from purchase return in draft status
         $debitNote = new DebitNote();
         $debitNote->vendor_id = $purchaseReturn->vendor_id;
@@ -24,13 +31,13 @@ class CreateDebitNoteFromReturn
         $debitNote->total_amount = $purchaseReturn->total_amount;
         $debitNote->applied_amount = 0;
         $debitNote->balance_amount = $purchaseReturn->total_amount;
-        $debitNote->creator_id = Auth::id();
-        $debitNote->created_by = creatorId();
+        $debitNote->creator_id = $actorId;
+        $debitNote->created_by = $companyId;
         $debitNote->save();
 
-        // Copy items from return
+        // Copy items and attach taxes directly to each created item
         foreach ($purchaseReturn->items as $returnItem) {
-            $debitNote->items()->create([
+            $debitItem = $debitNote->items()->create([
                 'product_id' => $returnItem->product_id,
                 'quantity' => $returnItem->return_quantity,
                 'unit_price' => $returnItem->unit_price,
@@ -39,13 +46,12 @@ class CreateDebitNoteFromReturn
                 'tax_percentage' => $returnItem->tax_percentage ?? 0,
                 'tax_amount' => $returnItem->tax_amount,
                 'total_amount' => $returnItem->total_amount,
-                'creator_id' => Auth::id(),
-                'created_by' => creatorId()
+                'creator_id' => $actorId,
+                'created_by' => $companyId
             ]);
 
-            // Copy taxes
             foreach ($returnItem->taxes as $tax) {
-                $debitNote->items()->latest()->first()->taxes()->create([
+                $debitItem->taxes()->create([
                     'tax_name' => $tax->tax_name,
                     'tax_rate' => $tax->tax_rate
                 ]);

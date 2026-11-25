@@ -6,6 +6,7 @@ use Workdo\Account\Http\Controllers\ExpenseCategoriesController;
 use Workdo\Account\Http\Controllers\ChartOfAccountController;
 
 use Workdo\Account\Http\Controllers\BankAccountController;
+use Workdo\Account\Http\Controllers\AccountingPeriodController;
 
 use Illuminate\Support\Facades\Route;
 use Workdo\Account\Http\Controllers\AccountTypeController;
@@ -43,6 +44,12 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Account'])->group
         Route::post('/', [AccountTypeController::class, 'store'])->name('store');
         Route::put('/{accounttype}', [AccountTypeController::class, 'update'])->name('update');
         Route::delete('/{accounttype}', [AccountTypeController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('account/accounting-periods')->name('account.accounting-periods.')->group(function () {
+        Route::get('/', [AccountingPeriodController::class, 'index'])->name('index');
+        Route::post('/generate', [AccountingPeriodController::class, 'generateYear'])->name('generate');
+        Route::post('/{accountingPeriod}/status', [AccountingPeriodController::class, 'updateStatus'])->name('update-status');
     });
 
     Route::prefix('account/chart-of-accounts')->name('account.chart-of-accounts.')->group(function () {
@@ -144,6 +151,8 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Account'])->group
         Route::get('/bill-aging/print', [ReportsController::class, 'printBillAging'])->name('bill-aging.print');
         Route::get('/tax-summary', [ReportsController::class, 'taxSummary'])->name('tax-summary');
         Route::get('/tax-summary/print', [ReportsController::class, 'printTaxSummary'])->name('tax-summary.print');
+        Route::get('/income-statement', [ReportsController::class, 'incomeStatement'])->name('income-statement');
+        Route::get('/income-statement/print', [ReportsController::class, 'printIncomeStatement'])->name('income-statement.print');
         Route::get('/customer-balance', [ReportsController::class, 'customerBalance'])->name('customer-balance');
         Route::get('/customer-balance/print', [ReportsController::class, 'printCustomerBalance'])->name('customer-balance.print');
         Route::get('/vendor-balance', [ReportsController::class, 'vendorBalance'])->name('vendor-balance');

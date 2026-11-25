@@ -4,10 +4,11 @@ namespace Workdo\Account\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 
 class OpeningBalance extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'account_id',

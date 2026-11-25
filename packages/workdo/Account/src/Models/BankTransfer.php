@@ -5,10 +5,12 @@ namespace Workdo\Account\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\TenantScoped;
+use Workdo\Account\Helpers\AccountUtility;
 
 class BankTransfer extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'transfer_number',
@@ -56,18 +58,7 @@ class BankTransfer extends Model
         $year = date('Y');
         $month = date('m');
 
-        $lastTransfer = self::where('transfer_number', 'like', "BT-{$year}-{$month}-%")
-            ->orderBy('transfer_number', 'desc')
-            ->first();
-
-        if ($lastTransfer) {
-            $lastNumber = (int) substr($lastTransfer->transfer_number, -3);
-            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '001';
-        }
-
-        return "BT-{$year}-{$month}-{$newNumber}";
+        return AccountUtility::generateSequentialCode(static::class, 'transfer_number', "BT-{$year}-{$month}-", null, true);
     }
 
     public function getTotalDebitAttribute()

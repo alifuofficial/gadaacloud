@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
-import { FileText, TrendingUp, TrendingDown } from "lucide-react";
+import { FileText, TrendingUp, TrendingDown, Lock } from "lucide-react";
 
 interface SidebarItem {
     key: string;
@@ -44,6 +44,13 @@ export default function SystemSetupSidebar({ activeItem, onSectionChange }: Syst
             icon: TrendingDown,
             route: 'account.expense-categories.index',
             permission: 'manage-expense-categories'
+        },
+        {
+            key: 'accounting-periods',
+            label: t('Accounting Periods'),
+            icon: Lock,
+            route: 'account.accounting-periods.index',
+            permission: 'manage-account-types'
         },
     ];
 

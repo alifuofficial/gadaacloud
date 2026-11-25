@@ -2,11 +2,10 @@
 
 namespace Workdo\Account\Listeners;
 
-use Workdo\Account\Models\BankAccount;
+use Illuminate\Support\Facades\DB;
 use Workdo\Hrm\Events\PaySalary;
 use Workdo\Account\Services\JournalService;
 use Workdo\Account\Services\BankTransactionsService;
-use Workdo\Account\Models\ChartOfAccount;
 
 class PaySalaryListener
 {
@@ -21,10 +20,11 @@ class PaySalaryListener
 
     public function handle(PaySalary $event)
     {
-        if (Module_is_active('Account'))
-        {
-            $this->journalService->createPayrollJournal($event->payrollEntry);
-            $this->bankTransactionsService->createPayrollPayment($event->payrollEntry);
+        if (Module_is_active('Account')) {
+            DB::transaction(function () use ($event) {
+                $this->journalService->createPayrollJournal($event->payrollEntry);
+                $this->bankTransactionsService->createPayrollPayment($event->payrollEntry);
+            });
         }
     }
 }

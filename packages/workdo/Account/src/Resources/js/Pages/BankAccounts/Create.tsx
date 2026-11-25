@@ -25,6 +25,7 @@ export default function Create({ onSuccess }: CreateBankAccountProps) {
         bank_name: '',
         branch_name: '',
         account_type: '0',
+        currency_code: 'ETB',
         //        payment_gateway: '',
         opening_balance: '',
         current_balance: '',
@@ -130,13 +131,30 @@ export default function Create({ onSuccess }: CreateBankAccountProps) {
                 </div>
 
                 <div>
+                    <Label htmlFor="currency_code">{t('Currency')}</Label>
+                    <Select value={data.currency_code || 'ETB'} onValueChange={(value) => setData('currency_code', value)}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="ETB" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {['ETB', 'USD', 'EUR', 'GBP', 'AED', 'CNY', 'KES', 'DJF'].map((code) => (
+                                <SelectItem key={code} value={code}>
+                                    {code}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.currency_code} />
+                </div>
+
+                <div>
                     <Label htmlFor="gl_account_id" required>{t('Gl Account')}</Label>
                     <Select value={data.gl_account_id?.toString() || ''} onValueChange={(value) => setData('gl_account_id', value)}>
                         <SelectTrigger>
                             <SelectValue placeholder={t('Select Gl Account')} />
                         </SelectTrigger>
                         <SelectContent>
-                            {chartofaccounts.map((item: any) => (
+                            {(chartofaccounts || []).map((item: any) => (
                                 <SelectItem key={item.id} value={item.id.toString()}>
                                     {item.account_code} - {item.account_name}
                                 </SelectItem>

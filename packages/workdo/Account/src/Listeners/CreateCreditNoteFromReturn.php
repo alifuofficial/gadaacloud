@@ -11,7 +11,14 @@ class CreateCreditNoteFromReturn
     public function handle(ApproveSalesReturn $event): void
     {
         $salesReturn = $event->salesReturn;
-        // Create credit note from sales return in approved status
+        $companyId = (int) ($salesReturn->created_by ?? (Auth::check() ? creatorId() : 1));
+        $actorId = Auth::id() ?? $salesReturn->creator_id ?? $companyId;
+
+        if (CreditNote::withoutGlobalScope('tenant')->where('created_by', $companyId)->where('return_id', $salesReturn->id)->exists()) {
+            return;
+        }
+
+        // Create credit note from sales return in draft status
         $creditNote = new CreditNote();
         $creditNote->customer_id = $salesReturn->customer_id;
         $creditNote->invoice_id = $salesReturn->original_invoice_id;
@@ -24,13 +31,13 @@ class CreateCreditNoteFromReturn
         $creditNote->total_amount = $salesReturn->total_amount;
         $creditNote->applied_amount = 0;
         $creditNote->balance_amount = $salesReturn->total_amount;
-        $creditNote->creator_id = Auth::id();
-        $creditNote->created_by = creatorId();
+        $creditNote->creator_id = $actorId;
+        $creditNote->created_by = $companyId;
         $creditNote->save();
 
-        // Copy items from return
+        // Copy items and attach taxes directly to each created item
         foreach ($salesReturn->items as $returnItem) {
-            $creditNote->items()->create([
+            $creditItem = $creditNote->items()->create([
                 'product_id' => $returnItem->product_id,
                 'quantity' => $returnItem->return_quantity,
                 'unit_price' => $returnItem->unit_price,
@@ -41,9 +48,8 @@ class CreateCreditNoteFromReturn
                 'total_amount' => $returnItem->total_amount
             ]);
 
-            // Copy taxes
             foreach ($returnItem->taxes as $tax) {
-                $creditNote->items()->latest()->first()->taxes()->create([
+                $creditItem->taxes()->create([
                     'tax_name' => $tax->tax_name,
                     'tax_rate' => $tax->tax_rate
                 ]);

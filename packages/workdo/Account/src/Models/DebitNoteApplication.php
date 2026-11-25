@@ -4,9 +4,11 @@ namespace Workdo\Account\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\TenantScoped;
 
 class DebitNoteApplication extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'debit_note_id',
         'payment_id',

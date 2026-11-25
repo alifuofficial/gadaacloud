@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceReturn;
+use App\Traits\TenantScoped;
+use Workdo\Account\Helpers\AccountUtility;
 
 class CreditNote extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'credit_note_number',
         'credit_note_date',
@@ -89,18 +92,6 @@ class CreditNote extends Model
     {
         $year = date('Y');
         $month = date('m');
-        $lastNote = static::where('credit_note_number', 'like', "CN-{$year}-{$month}-%")
-            ->where('created_by', creatorId())
-            ->orderBy('credit_note_number', 'desc')
-            ->first();
-
-        if ($lastNote) {
-            $lastNumber = (int) substr($lastNote->credit_note_number, -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return "CN-{$year}-{$month}-" . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return AccountUtility::generateSequentialCode(static::class, 'credit_note_number', "CN-{$year}-{$month}-");
     }
 }

@@ -5,9 +5,12 @@ namespace Workdo\Account\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class BankTransaction extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'bank_account_id',
         'transaction_date',
@@ -18,6 +21,11 @@ class BankTransaction extends Model
         'running_balance',
         'transaction_status',
         'reconciliation_status',
+        'matched_type',
+        'matched_id',
+        'reconciled_at',
+        'reconciled_by',
+        'batch_reference',
         'creator_id',
         'created_by'
     ];
@@ -25,7 +33,8 @@ class BankTransaction extends Model
     protected $casts = [
         'transaction_date' => 'date',
         'amount' => 'decimal:2',
-        'running_balance' => 'decimal:2'
+        'running_balance' => 'decimal:2',
+        'reconciled_at' => 'datetime',
     ];
 
     public function bankAccount(): BelongsTo

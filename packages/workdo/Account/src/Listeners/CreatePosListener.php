@@ -2,11 +2,11 @@
 
 namespace Workdo\Account\Listeners;
 
+use Illuminate\Support\Facades\DB;
 use Workdo\Account\Models\BankAccount;
 use Workdo\Pos\Events\CreatePos;
 use Workdo\Account\Services\JournalService;
 use Workdo\Account\Services\BankTransactionsService;
-use Workdo\Account\Models\ChartOfAccount;
 
 class CreatePosListener
 {
@@ -22,17 +22,20 @@ class CreatePosListener
     public function handle(CreatePos $event)
     {
         if (Module_is_active('Account')) {
+            DB::transaction(function () use ($event) {
+                $companyId = (int) ($event->posSale->created_by ?? creatorId());
+                $bankAccount = BankAccount::withoutGlobalScope('tenant')
+                    ->where('id', $event->posSale->bank_account_id)
+                    ->where('created_by', $companyId)
+                    ->first();
 
-            $bankAccount = BankAccount::where('id', $event->posSale->bank_account_id)
-                ->where('created_by', creatorId())
-                ->first();
+                if ($bankAccount) {
+                    $this->bankTransactionsService->createPosPayment($event->posSale, $bankAccount->id);
+                }
 
-            if ($bankAccount) {
-                $this->bankTransactionsService->createPosPayment($event->posSale, $bankAccount->id);
-            }
-
-            $this->journalService->createPosJournal($event->posSale);
-            $this->journalService->createPosCOGSJournal($event->posSale);
+                $this->journalService->createPosJournal($event->posSale);
+                $this->journalService->createPosCOGSJournal($event->posSale);
+            });
         }
     }
 }

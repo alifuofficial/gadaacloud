@@ -68,27 +68,8 @@ class Revenue extends Model
     {
         $year = date('Y');
         $month = date('m');
-        
-        if ($createdBy) {
-            $userId = $createdBy;
-        } elseif (auth()->check()) {
-            $userId = creatorId();
-        } else {
-            $userId = 1;
-        }
-        
-        $lastRevenue = static::where('revenue_number', 'like', "REV-{$year}-{$month}-%")
-            ->where('created_by', $userId)
-            ->orderBy('revenue_number', 'desc')
-            ->first();
+        $userId = $createdBy ?: (auth()->check() ? creatorId() : 1);
 
-        if ($lastRevenue) {
-            $lastNumber = (int) substr($lastRevenue->revenue_number, -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return "REV-{$year}-{$month}-" . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return AccountUtility::generateSequentialCode(static::class, 'revenue_number', "REV-{$year}-{$month}-", $userId);
     }
 }

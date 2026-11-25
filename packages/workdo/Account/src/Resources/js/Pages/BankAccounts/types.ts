@@ -12,6 +12,7 @@ export interface BankAccount {
     bank_name: string;
     branch_name?: string;
     account_type: string;
+    currency_code?: string;
     //    payment_gateway?: string;
     opening_balance: number;
     current_balance: number;
@@ -30,6 +31,7 @@ export interface CreateBankAccountFormData {
     bank_name: string;
     branch_name: string;
     account_type: string;
+    currency_code: string;
     //    payment_gateway: string;
     opening_balance: string;
     current_balance: string;
@@ -46,6 +48,7 @@ export interface EditBankAccountFormData {
     bank_name: string;
     branch_name: string;
     account_type: string;
+    currency_code: string;
     //    payment_gateway: string;
     opening_balance: string;
     current_balance: string;

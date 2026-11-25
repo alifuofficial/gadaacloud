@@ -6,6 +6,8 @@ use App\Events\ApprovePurchaseReturn;
 use App\Events\ApproveSalesReturn;
 use App\Events\CreateTransfer;
 use App\Events\DefaultData;
+use App\Events\DestroyPurchaseInvoice;
+use App\Events\DestroySalesInvoice;
 use App\Events\DestroyTransfer;
 use App\Events\GivePermissionToRole;
 use App\Events\PostPurchaseInvoice;
@@ -14,6 +16,7 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Workdo\Account\Listeners\BankAccountFieldUpdate;
 use Workdo\Account\Listeners\CreateDebitNoteFromReturn;
 use Workdo\Account\Listeners\CreateCreditNoteFromReturn;
+use Workdo\Account\Listeners\ReverseInvoiceJournalListener;
 use Workdo\Account\Listeners\UpdateMobileServicePaymentStatusLis;
 use Workdo\Account\Listeners\DataDefault;
 use Workdo\Account\Listeners\PostPurchaseInvoiceListener;
@@ -70,8 +73,14 @@ class EventServiceProvider extends ServiceProvider
         PostPurchaseInvoice::class => [
             PostPurchaseInvoiceListener::class,
         ],
+        DestroyPurchaseInvoice::class => [
+            ReverseInvoiceJournalListener::class,
+        ],
         PostSalesInvoice::class => [
             PostSalesInvoiceListener::class,
+        ],
+        DestroySalesInvoice::class => [
+            ReverseInvoiceJournalListener::class,
         ],
         CreateTransfer::class => [
             CreateTransferListener::class,

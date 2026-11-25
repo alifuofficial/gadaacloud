@@ -86,6 +86,11 @@ class PermissionTableSeeder extends Seeder
             ['name' => 'manage-bank-transactions', 'module' => 'bank-transaction', 'label' => 'Manage Bank Transaction'],
             ['name' => 'reconcile-bank-transactions', 'module' => 'bank-transaction', 'label' => 'Reconcile Bank Transaction'],
 
+            // Accounting Periods & Income Statement
+            ['name' => 'manage-accounting-periods', 'module' => 'accounting-periods', 'label' => 'Manage Accounting Periods'],
+            ['name' => 'view-income-statement', 'module' => 'account-reports', 'label' => 'View Income Statement'],
+            ['name' => 'print-income-statement', 'module' => 'account-reports', 'label' => 'Print Income Statement'],
+
             // DebitNote management
             ['name' => 'manage-debit-notes', 'module' => 'debit-notes', 'label' => 'Manage Debit Notes'],
             ['name' => 'manage-any-debit-notes', 'module' => 'debit-notes', 'label' => 'Manage All Debit Notes'],

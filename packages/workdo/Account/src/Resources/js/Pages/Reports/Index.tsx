@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InvoiceAging from './InvoiceAging';
 import BillAging from './BillAging';
 import TaxSummary from './TaxSummary';
+import IncomeStatement from './IncomeStatement';
 import CustomerBalance from './CustomerBalance';
 import VendorBalance from './VendorBalance';
 
@@ -14,33 +15,45 @@ interface ReportsIndexProps {
     auth: {
         user?: {
             permissions?: string[];
-        }
-    }
+        };
+    };
     financialYear?: {
         year_start_date: string;
         year_end_date: string;
-    }
+        calendar_mode?: string;
+        fiscal_year?: string;
+    };
 }
 
 export default function Index() {
     const { t } = useTranslation();
     const { auth, financialYear } = usePage<ReportsIndexProps>().props;
-    const [activeTab, setActiveTab] = useState('invoice-aging');
-
+    const permissions = auth?.user?.permissions || [];
 
     const tabs = [
         { id: 'invoice-aging', label: t('Invoice Aging'), permission: 'view-invoice-aging' },
         { id: 'bill-aging', label: t('Bill Aging'), permission: 'view-bill-aging' },
         { id: 'tax-summary', label: t('Tax Summary'), permission: 'view-tax-summary' },
+        { id: 'income-statement', label: t('Income Statement'), permission: 'view-income-statement', fallbackPermission: 'manage-account-reports' },
         { id: 'customer-balance', label: t('Customer Balance'), permission: 'view-customer-balance' },
         { id: 'vendor-balance', label: t('Vendor Balance'), permission: 'view-vendor-balance' },
-    ].filter(tab => auth.user?.permissions?.includes(tab.permission));
+    ].filter(tab =>
+        permissions.includes(tab.permission) || (tab.fallbackPermission && permissions.includes(tab.fallbackPermission))
+    );
+
+    const [activeTab, setActiveTab] = useState(tabs[0]?.id || 'invoice-aging');
+
+    useEffect(() => {
+        if (tabs.length > 0 && !tabs.some(tab => tab.id === activeTab)) {
+            setActiveTab(tabs[0].id);
+        }
+    }, [tabs.length]);
 
     return (
         <AuthenticatedLayout
             breadcrumbs={[
-                {label: t('Accounting'), url: route('account.index')},
-                { label: t('Reports') }
+                { label: t('Accounting'), url: route('account.index') },
+                { label: t('Reports') },
             ]}
             pageTitle={t('Reports')}
         >
@@ -50,7 +63,7 @@ export default function Index() {
                 <CardContent className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="w-full justify-start overflow-x-auto overflow-y-hidden h-auto p-1">
-                            {tabs.map(tab => (
+                            {(tabs || []).map(tab => (
                                 <TabsTrigger key={tab.id} value={tab.id} className="whitespace-nowrap flex-shrink-0">
                                     {tab.label}
                                 </TabsTrigger>
@@ -67,6 +80,10 @@ export default function Index() {
 
                         <TabsContent value="tax-summary" className="mt-4">
                             <TaxSummary financialYear={financialYear} />
+                        </TabsContent>
+
+                        <TabsContent value="income-statement" className="mt-4">
+                            <IncomeStatement financialYear={financialYear} />
                         </TabsContent>
 
                         <TabsContent value="customer-balance" className="mt-4">

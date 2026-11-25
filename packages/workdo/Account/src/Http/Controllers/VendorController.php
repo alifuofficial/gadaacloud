@@ -7,6 +7,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Workdo\Account\Models\Vendor;
+use Workdo\Account\Helpers\AccountUtility;
 use Workdo\Account\Http\Requests\StoreVendorRequest;
 use Workdo\Account\Http\Requests\UpdateVendorRequest;
 use Workdo\Account\Events\CreateVendor;
@@ -17,6 +18,13 @@ class VendorController extends Controller
 {
     public function index()
     {
+        [$sortCol, $sortDir] = AccountUtility::sanitizeSort(
+            request('sort'),
+            ['vendor_code', 'company_name', 'contact_person_name', 'tax_number', 'created_at'],
+            'created_at',
+            request('direction', 'desc')
+        );
+
         if(Auth::user()->can('manage-vendors')){
             $vendors = Vendor::query()
                 ->with('user:id,name,avatar,is_disable')
@@ -32,13 +40,13 @@ class VendorController extends Controller
                 ->when(request('company_name'), fn($q) => $q->where('company_name', 'like', '%' . request('company_name') . '%'))
                 ->when(request('vendor_code'), fn($q) => $q->where('vendor_code', 'like', '%' . request('vendor_code') . '%'))
                 ->when(request('tax_number'), fn($q) => $q->where('tax_number', 'like', '%' . request('tax_number') . '%'))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
+                ->when(request('sort'), fn($q) => $q->orderBy($sortCol, $sortDir), fn($q) => $q->latest())
                 ->paginate(request('per_page', 10))
                 ->withQueryString();
 
             $users = User::where('type', 'vendor')
                 ->where('created_by', creatorId())
-                ->whereNotIn('id', Vendor::pluck('user_id')->filter())
+                ->whereNotIn('id', Vendor::where('created_by', creatorId())->pluck('user_id')->filter())
                 ->select('id', 'name', 'email', 'mobile_no')
                 ->get();
 
@@ -82,7 +90,7 @@ class VendorController extends Controller
 
     public function update(UpdateVendorRequest $request, Vendor $vendor)
     {
-        if(Auth::user()->can('edit-vendors')){
+        if(Auth::user()->can('edit-vendors') && $vendor->created_by == creatorId()){
             $validated = $request->validated();
 
             $vendor->company_name = $validated['company_name'];
@@ -106,7 +114,7 @@ class VendorController extends Controller
 
     public function destroy(Vendor $vendor)
     {
-        if(Auth::user()->can('delete-vendors')){
+        if(Auth::user()->can('delete-vendors') && $vendor->created_by == creatorId()){
             DestroyVendor::dispatch($vendor);
             $vendor->delete();
             return back()->with('success', __('The vendor has been deleted.'));

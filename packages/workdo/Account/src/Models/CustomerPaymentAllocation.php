@@ -5,9 +5,11 @@ namespace Workdo\Account\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\SalesInvoice;
+use App\Traits\TenantScoped;
 
 class CustomerPaymentAllocation extends Model
 {
+    use TenantScoped;
     protected $fillable = [
         'payment_id',
         'invoice_id',

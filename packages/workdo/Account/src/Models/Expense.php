@@ -4,10 +4,12 @@ namespace Workdo\Account\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
+use Workdo\Account\Helpers\AccountUtility;
 
 class Expense extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'expense_number',
@@ -67,27 +69,8 @@ class Expense extends Model
     {
         $year = date('Y');
         $month = date('m');
-        
-        if ($createdBy) {
-            $userId = $createdBy;
-        } elseif (auth()->check()) {
-            $userId = creatorId();
-        } else {
-            $userId = 1;
-        }
-        
-        $lastExpense = static::where('expense_number', 'like', "EXP-{$year}-{$month}-%")
-            ->where('created_by', $userId)
-            ->orderBy('expense_number', 'desc')
-            ->first();
+        $userId = $createdBy ?: (auth()->check() ? creatorId() : 1);
 
-        if ($lastExpense) {
-            $lastNumber = (int) substr($lastExpense->expense_number, -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return "EXP-{$year}-{$month}-" . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return AccountUtility::generateSequentialCode(static::class, 'expense_number', "EXP-{$year}-{$month}-", $userId);
     }
 }

@@ -112,9 +112,30 @@ export default function TaxSummary({ financialYear }: any) {
                                     </tr>
 
                                     <tr className={`font-bold border-t-4 ${data.net_tax_liability >= 0 ? 'bg-blue-50' : 'bg-yellow-50'}`}>
-                                        <td className="px-4 py-4 text-lg">{t('Net Tax Liability')}</td>
+                                        <td className="px-4 py-4 text-lg">{t('Net VAT Liability')}</td>
                                         <td className="px-4 py-4 text-lg text-right">{formatCurrency(data.net_tax_liability)}</td>
                                     </tr>
+
+                                    {data.wht_summary && (
+                                        <>
+                                            <tr className="bg-amber-50 border-t-2">
+                                                <td className="px-4 py-3 font-semibold">{t('Withholding Tax (2% MoR WHT)')}</td>
+                                                <td className="px-4 py-3 text-right"></td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-gray-50">
+                                                <td className="px-8 py-2">{t('WHT Withheld from Vendors (2230 Payable)')}</td>
+                                                <td className="px-4 py-2 text-right">{formatCurrency(data.wht_summary.wht_withheld_from_vendors || 0)}</td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-gray-50">
+                                                <td className="px-8 py-2">{t('WHT Deducted by Customers (1510 Receivable)')}</td>
+                                                <td className="px-4 py-2 text-right">{formatCurrency(data.wht_summary.wht_deducted_by_customers || 0)}</td>
+                                            </tr>
+                                            <tr className="bg-amber-100 font-semibold border-t">
+                                                <td className="px-4 py-3">{t('Net WHT Remittance Due to MoR')}</td>
+                                                <td className="px-4 py-3 text-right">{formatCurrency(data.wht_summary.net_wht_remittance_due || 0)}</td>
+                                            </tr>
+                                        </>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

@@ -14,6 +14,7 @@ import InputError from '@/components/ui/input-error';
 import { Trash2 } from 'lucide-react';
 import { CreateCustomerPaymentFormData, CreateCustomerPaymentProps, SalesInvoice, CreditNote } from './types';
 import { formatCurrency } from '@/utils/helpers';
+import PaymentWhtAndFxControls from '../../Components/PaymentWhtAndFxControls';
 
 export default function Create({ customers, bankAccounts, onSuccess }: CreateCustomerPaymentProps) {
     const { t } = useTranslation();
@@ -21,6 +22,7 @@ export default function Create({ customers, bankAccounts, onSuccess }: CreateCus
     const [availableCreditNotes, setAvailableCreditNotes] = useState<CreditNote[]>([]);
     const [selectedAllocations, setSelectedAllocations] = useState<{invoice_id: number; amount: number}[]>([]);
     const [selectedCreditNotes, setSelectedCreditNotes] = useState<{credit_note_id: number; amount: number}[]>([]);
+    const [whtEnabled, setWhtEnabled] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm<CreateCustomerPaymentFormData>({
         payment_date: new Date().toISOString().split('T')[0],
@@ -28,6 +30,11 @@ export default function Create({ customers, bankAccounts, onSuccess }: CreateCus
         bank_account_id: '',
         reference_number: '',
         payment_amount: '',
+        wht_rate: '0',
+        wht_amount: '0',
+        currency_code: 'ETB',
+        exchange_rate: '1',
+        foreign_amount: '',
         notes: '',
         allocations: [],
         credit_notes: []
@@ -102,11 +109,33 @@ export default function Create({ customers, bankAccounts, onSuccess }: CreateCus
         updateTotalAmount(newAllocations, selectedCreditNotes);
     };
 
-    const updateTotalAmount = (allocations: {invoice_id: number; amount: number}[], creditNotes = selectedCreditNotes) => {
+    const recalculateSettlement = (
+        allocations: {invoice_id: number; amount: number}[],
+        creditNotes = selectedCreditNotes,
+        useWht = whtEnabled,
+        rateStr = data.wht_rate || '2',
+        curCode = data.currency_code || 'ETB',
+        fxRateStr = data.exchange_rate || '1'
+    ) => {
         const allocationsTotal = allocations.reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0);
         const creditNotesTotal = creditNotes.reduce((sum, creditNote) => sum + Number(creditNote.amount || 0), 0);
-        const total = allocationsTotal - creditNotesTotal; // Credit notes reduce payment amount
-        setData('payment_amount', Number(Math.max(0, total)).toFixed(2));
+        const grossNet = Math.max(0, allocationsTotal - creditNotesTotal);
+        const whtVal = useWht ? Number((grossNet * (Number(rateStr || 0) / 100)).toFixed(2)) : 0;
+        const cashEtb = Math.max(0, grossNet - whtVal);
+
+        setData((prev: any) => ({
+            ...prev,
+            wht_rate: useWht ? rateStr : '0',
+            wht_amount: whtVal.toFixed(2),
+            payment_amount: cashEtb.toFixed(2),
+            foreign_amount: curCode !== 'ETB' && Number(fxRateStr || 1) > 0
+                ? (cashEtb / Number(fxRateStr || 1)).toFixed(2)
+                : '',
+        }));
+    };
+
+    const updateTotalAmount = (allocations: {invoice_id: number; amount: number}[], creditNotes = selectedCreditNotes) => {
+        recalculateSettlement(allocations, creditNotes);
     };
 
     const submit = (e: React.FormEvent) => {
@@ -371,6 +400,50 @@ export default function Create({ customers, bankAccounts, onSuccess }: CreateCus
                         </CardContent>
                     </Card>
                 )}
+
+                <PaymentWhtAndFxControls
+                    mode="customer"
+                    grossAllocationTotal={Math.max(
+                        0,
+                        selectedAllocations.reduce((s, a) => s + Number(a.amount || 0), 0)
+                        - selectedCreditNotes.reduce((s, c) => s + Number(c.amount || 0), 0)
+                    )}
+                    whtEnabled={whtEnabled}
+                    whtRate={data.wht_rate || '2'}
+                    whtAmount={data.wht_amount || '0'}
+                    currencyCode={data.currency_code || 'ETB'}
+                    exchangeRate={data.exchange_rate || '1'}
+                    foreignAmount={data.foreign_amount || ''}
+                    onToggleWht={(enabled) => {
+                        setWhtEnabled(enabled);
+                        const nextRate = enabled ? (Number(data.wht_rate || 0) > 0 ? String(data.wht_rate) : '2') : '0';
+                        recalculateSettlement(selectedAllocations, selectedCreditNotes, enabled, nextRate, data.currency_code || 'ETB', data.exchange_rate || '1');
+                    }}
+                    onWhtRateChange={(rate) => {
+                        recalculateSettlement(selectedAllocations, selectedCreditNotes, whtEnabled, rate, data.currency_code || 'ETB', data.exchange_rate || '1');
+                    }}
+                    onWhtAmountChange={(amt) => {
+                        const allocationsTotal = selectedAllocations.reduce((s, a) => s + Number(a.amount || 0), 0);
+                        const creditTotal = selectedCreditNotes.reduce((s, c) => s + Number(c.amount || 0), 0);
+                        const grossNet = Math.max(0, allocationsTotal - creditTotal);
+                        const cashEtb = Math.max(0, grossNet - Number(amt || 0));
+                        setData((prev: any) => ({ ...prev, wht_amount: amt, payment_amount: cashEtb.toFixed(2) }));
+                    }}
+                    onCurrencyChange={(cur) => {
+                        const rate = cur === 'ETB' ? '1' : (data.exchange_rate || '1');
+                        setData('currency_code', cur);
+                        recalculateSettlement(selectedAllocations, selectedCreditNotes, whtEnabled, data.wht_rate || '2', cur, rate);
+                    }}
+                    onExchangeRateChange={(fxRate) => {
+                        const fxAmt = Number(data.foreign_amount || 0);
+                        const baseCash = fxAmt > 0 ? (fxAmt * Number(fxRate || 1)).toFixed(2) : data.payment_amount;
+                        setData((prev: any) => ({ ...prev, exchange_rate: fxRate, payment_amount: baseCash }));
+                    }}
+                    onForeignAmountChange={(fAmt) => {
+                        const baseCash = (Number(fAmt || 0) * Number(data.exchange_rate || 1)).toFixed(2);
+                        setData((prev: any) => ({ ...prev, foreign_amount: fAmt, payment_amount: baseCash }));
+                    }}
+                />
 
                 <div>
                     <CurrencyInput

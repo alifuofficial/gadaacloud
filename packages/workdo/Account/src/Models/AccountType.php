@@ -5,10 +5,11 @@ namespace Workdo\Account\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Workdo\Account\Models\AccountCategory;
+use App\Traits\TenantScoped;
 
 class AccountType extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'category_id',

@@ -6,9 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
+use Workdo\Account\Helpers\AccountUtility;
 
 class JournalEntry extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'journal_number',
         'journal_date',
@@ -18,7 +22,11 @@ class JournalEntry extends Model
         'description',
         'total_debit',
         'total_credit',
+        'currency_code',
+        'exchange_rate',
         'status',
+        'reversed_by_entry_id',
+        'reversal_reason',
         'creator_id',
         'created_by'
     ];
@@ -26,7 +34,8 @@ class JournalEntry extends Model
     protected $casts = [
         'journal_date' => 'date',
         'total_debit' => 'decimal:2',
-        'total_credit' => 'decimal:2'
+        'total_credit' => 'decimal:2',
+        'exchange_rate' => 'decimal:6',
     ];
 
     public function items(): HasMany
@@ -68,17 +77,6 @@ class JournalEntry extends Model
     public static function generateJournalNumber(): string
     {
         $year = date('Y');
-        $lastEntry = static::where('journal_number', 'like', "JE-{$year}-%")
-            ->orderBy('journal_number', 'desc')
-            ->first();
-
-        if ($lastEntry) {
-            $lastNumber = (int) substr($lastEntry->journal_number, -3);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return "JE-{$year}-" . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        return AccountUtility::generateSequentialCode(static::class, 'journal_number', "JE-{$year}-", null, true);
     }
 }
