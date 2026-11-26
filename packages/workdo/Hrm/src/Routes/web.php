@@ -154,6 +154,7 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Hrm'])->group(fun
     });
 
     Route::prefix('hrm/resignations')->name('hrm.resignations.')->group(function () {
+        Route::get('/impact/{employeeId}', [ResignationController::class, 'getOffboardingImpact'])->name('impact');
         Route::get('/', [ResignationController::class, 'index'])->name('index');
         Route::post('/', [ResignationController::class, 'store'])->name('store');
         Route::get('/{resignation}/edit', [ResignationController::class, 'edit'])->name('edit');

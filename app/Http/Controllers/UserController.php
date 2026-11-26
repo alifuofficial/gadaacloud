@@ -196,11 +196,51 @@ class UserController extends Controller
             $validated = $request->validated();
             $validated['is_enable_login'] = $request->boolean('is_enable_login', true);
 
+            $wasLoginDisabled = !$user->is_enable_login;
+            $willEnableLogin = (bool) $validated['is_enable_login'];
+            $hasLifecycleCols = \Illuminate\Support\Facades\Schema::hasColumn('users', 'deactivation_reason');
+            $deactivationReason = $hasLifecycleCols ? ($user->deactivation_reason ?? null) : null;
+
+            // Enforce HRM integrity & plan seat limits when re-enabling a deactivated account
+            if ($willEnableLogin && ((int) ($user->is_disable ?? 0) === 1 || $wasLoginDisabled)) {
+                if (in_array($deactivationReason, ['resigned', 'terminated'], true)) {
+                    return redirect()->back()->with('error', __('Cannot enable login for a resigned or terminated employee. Reverse the separation status in HRM first.'));
+                }
+                if (Auth::user()->type !== 'superadmin') {
+                    $seatCheck = canCreateUser();
+                    if (!($seatCheck['can_create'] ?? false)) {
+                        return redirect()->back()->with('error', $seatCheck['message'] ?? __('Your user limit is over, Please upgrade plan.'));
+                    }
+                }
+            }
+
             $user->name = $validated['name'];
             $user->email = $validated['email'];
             $user->mobile_no = $validated['mobile_no'];
             $user->is_enable_login = $validated['is_enable_login'];
+
+            if ($hasLifecycleCols) {
+                if (!$willEnableLogin) {
+                    $user->deactivation_reason = $user->deactivation_reason ?? 'manual';
+                    $user->deactivated_at = $user->deactivated_at ?? now();
+                } elseif (in_array($user->deactivation_reason, ['manual', null], true)) {
+                    $user->is_disable = 0;
+                    $user->deactivation_reason = null;
+                    $user->deactivated_at = null;
+                }
+            }
+
             $user->save();
+
+            // Revoke active sessions & Sanctum tokens immediately when login is disabled
+            if (!$willEnableLogin) {
+                if (method_exists($user, 'tokens') && \Illuminate\Support\Facades\Schema::hasTable('personal_access_tokens')) {
+                    $user->tokens()->delete();
+                }
+                if (\Illuminate\Support\Facades\Schema::hasTable('sessions')) {
+                    \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+                }
+            }
 
             return back()->with('success', __('The user details are updated successfully.'));
         }
@@ -258,6 +298,10 @@ class UserController extends Controller
 
             if ($user->created_by !== creatorId()) {
                 return redirect()->route('users.index')->with('error', __('Permission denied'));
+            }
+
+            if ((int) ($user->is_disable ?? 0) === 1 || !$user->is_enable_login) {
+                return redirect()->route('users.index')->with('error', __('Cannot impersonate a deactivated or disabled user.'));
             }
 
             // Store the original user ID in session

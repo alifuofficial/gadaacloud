@@ -3,6 +3,7 @@
 namespace Workdo\Hrm\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Workdo\Hrm\Console\ProcessDueSeparationsCommand;
 
 class HrmServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,12 @@ class HrmServiceProvider extends ServiceProvider
         $migrationsPath = __DIR__.'/../Database/Migrations';
         if (is_dir($migrationsPath)) {
             $this->loadMigrationsFrom($migrationsPath);
+        }
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ProcessDueSeparationsCommand::class,
+            ]);
         }
     }
 

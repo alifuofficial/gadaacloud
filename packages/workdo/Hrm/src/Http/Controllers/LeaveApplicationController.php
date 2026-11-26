@@ -116,6 +116,30 @@ class LeaveApplicationController extends Controller
             $validated = $request->validated();
             $tenantId = (int) creatorId();
 
+            // Prevent post-separation or disabled-account leave requests
+            $employeeUser = User::find($validated['employee_id']);
+            if ($employeeUser && ((int) ($employeeUser->is_disable ?? 0) === 1 || !$employeeUser->is_enable_login)) {
+                return redirect()
+                    ->back()
+                    ->withErrors(['employee_id' => __('Cannot submit leave for a deactivated or separated employee.')]);
+            }
+
+            $employeeProfile = Employee::where('created_by', $tenantId)
+                ->where('user_id', $validated['employee_id'])
+                ->first();
+            if ($employeeProfile && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'employment_status')) {
+                if (in_array($employeeProfile->employment_status, ['resigned', 'terminated'], true)) {
+                    return redirect()
+                        ->back()
+                        ->withErrors(['employee_id' => __('Cannot submit leave for a resigned or terminated employee.')]);
+                }
+                if ($employeeProfile->separation_date && \Carbon\Carbon::parse($validated['end_date'])->gt(\Carbon\Carbon::parse($employeeProfile->separation_date))) {
+                    return redirect()
+                        ->back()
+                        ->withErrors(['end_date' => __('Leave dates cannot extend beyond the employee separation date (:date).', ['date' => $employeeProfile->separation_date->format('Y-m-d')])]);
+                }
+            }
+
             // Get leave type details scoped to tenant
             $leaveType = LeaveType::where('created_by', $tenantId)->find($validated['leave_type_id']);
             if (!$leaveType) {
@@ -391,7 +415,7 @@ class LeaveApplicationController extends Controller
 
     private function getFilteredEmployees()
     {
-        $employeeQuery = Employee::where('created_by', creatorId());
+        $employeeQuery = Employee::where('created_by', creatorId())->active();
 
         if (Auth::user()->can('manage-own-leave-applications') && !Auth::user()->can('manage-any-leave-applications')) {
             $employeeQuery->where(function ($q) {
@@ -399,7 +423,7 @@ class LeaveApplicationController extends Controller
             });
         }
 
-        return User::emp()->where('created_by', creatorId())
+        return User::activeEmp()->where('created_by', creatorId())
             ->whereIn('id', $employeeQuery->pluck('user_id'))
             ->select('id', 'name')->get();
     }

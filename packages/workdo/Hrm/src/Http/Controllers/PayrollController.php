@@ -297,35 +297,103 @@ class PayrollController extends Controller
                 }
 
                 $periodStartStr = $startDate->format('Y-m-d');
+                $periodEndStr = $endDate->format('Y-m-d');
 
-                // Exclude disabled users and already-terminated / resigned staff prior to pay period start
-                $terminatedIds = Termination::where('created_by', $tenantId)
+                // Exclude already-terminated / resigned staff prior to pay period start
+                $terminatedPriorIds = Termination::where('created_by', $tenantId)
                     ->where('status', 'approved')
-                    ->whereDate('termination_date', '<', $periodStartStr)
+                    ->where(function ($q) use ($periodStartStr) {
+                        $q->whereDate('termination_date', '<', $periodStartStr)
+                            ->orWhereNull('termination_date');
+                    })
                     ->pluck('employee_id')
                     ->toArray();
 
-                $resignedIds = Resignation::where('created_by', $tenantId)
-                    ->where('status', 'approved')
-                    ->whereDate('last_working_date', '<', $periodStartStr)
+                $resignedPriorIds = Resignation::where('created_by', $tenantId)
+                    ->whereIn('status', ['accepted', 'approved'])
+                    ->where(function ($q) use ($periodStartStr) {
+                        $q->whereDate('last_working_date', '<', $periodStartStr)
+                            ->orWhere(function ($sq) use ($periodStartStr) {
+                                $sq->whereNull('last_working_date')
+                                    ->whereDate('resignation_date', '<', $periodStartStr);
+                            });
+                    })
                     ->pluck('employee_id')
                     ->toArray();
 
-                $excludedUserIds = array_unique(array_merge($terminatedIds, $resignedIds));
+                $excludedUserIds = array_unique(array_merge($terminatedPriorIds, $resignedPriorIds));
+
+                // Identify mid-period separations (final paycheck pro-rata up to separation date even if user account is disabled)
+                $midPeriodSeparations = [];
+                $midTerminations = Termination::where('created_by', $tenantId)
+                    ->where('status', 'approved')
+                    ->whereBetween('termination_date', [$periodStartStr, $periodEndStr])
+                    ->get(['employee_id', 'termination_date']);
+                foreach ($midTerminations as $term) {
+                    $uid = (int) $term->employee_id;
+                    $dateStr = $term->termination_date ? \Carbon\Carbon::parse($term->termination_date)->format('Y-m-d') : $periodEndStr;
+                    if (!isset($midPeriodSeparations[$uid]) || $dateStr < $midPeriodSeparations[$uid]) {
+                        $midPeriodSeparations[$uid] = $dateStr;
+                    }
+                }
+
+                $midResignations = Resignation::where('created_by', $tenantId)
+                    ->whereIn('status', ['accepted', 'approved'])
+                    ->where(function ($q) use ($periodStartStr, $periodEndStr) {
+                        $q->whereBetween('last_working_date', [$periodStartStr, $periodEndStr])
+                            ->orWhere(function ($sq) use ($periodStartStr, $periodEndStr) {
+                                $sq->whereNull('last_working_date')
+                                    ->whereBetween('resignation_date', [$periodStartStr, $periodEndStr]);
+                            });
+                    })
+                    ->get(['employee_id', 'last_working_date', 'resignation_date']);
+                foreach ($midResignations as $res) {
+                    $uid = (int) $res->employee_id;
+                    $rawDate = $res->last_working_date ?? $res->resignation_date;
+                    $dateStr = $rawDate ? \Carbon\Carbon::parse($rawDate)->format('Y-m-d') : $periodEndStr;
+                    if (!isset($midPeriodSeparations[$uid]) || $dateStr < $midPeriodSeparations[$uid]) {
+                        $midPeriodSeparations[$uid] = $dateStr;
+                    }
+                }
+
+                $midPeriodUserIds = array_keys($midPeriodSeparations);
 
                 $employees = Employee::with('user')
                     ->where('created_by', $tenantId)
                     ->when(!empty($excludedUserIds), fn ($q) => $q->whereNotIn('user_id', $excludedUserIds))
-                    ->whereHas('user', fn ($q) => $q->where('is_disable', 0))
+                    ->whereHas('user', function ($q) use ($midPeriodUserIds) {
+                        $q->where('is_disable', 0);
+                        if (!empty($midPeriodUserIds)) {
+                            $q->orWhereIn('id', $midPeriodUserIds);
+                        }
+                    })
                     ->get();
 
                 $newEntriesCount = 0;
-                $entries = DB::transaction(function () use ($payroll, $employees, $workingDaysCount, $startDate, $endDate, &$newEntriesCount) {
+                $entries = DB::transaction(function () use ($payroll, $employees, $workingDaysCount, $workingDaysIndices, $startDate, $endDate, $midPeriodSeparations, &$newEntriesCount) {
                     $existingEmployeeIds = $payroll->payrollEntries()->pluck('employee_id')->all();
 
                     foreach ($employees as $employee) {
                         if (!in_array($employee->user_id, $existingEmployeeIds, true)) {
-                            $this->processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $endDate);
+                            $separationDateStr = $midPeriodSeparations[(int) $employee->user_id] ?? null;
+                            $prorationFactor = 1.0;
+                            $effectiveEndDate = $endDate;
+
+                            if ($separationDateStr !== null && $workingDaysCount > 0) {
+                                $sepDate = new \DateTime($separationDateStr);
+                                if ($sepDate < $endDate) {
+                                    $effectiveEndDate = $sepDate;
+                                    $activeDays = 0;
+                                    for ($d = clone $startDate; $d <= $effectiveEndDate; $d->modify('+1 day')) {
+                                        if (in_array((int) $d->format('w'), $workingDaysIndices, true)) {
+                                            $activeDays++;
+                                        }
+                                    }
+                                    $prorationFactor = round($activeDays / $workingDaysCount, 6);
+                                }
+                            }
+
+                            $this->processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $effectiveEndDate, $prorationFactor);
                             $newEntriesCount++;
                         }
                     }
@@ -361,10 +429,11 @@ class PayrollController extends Controller
         return redirect()->back()->with('error', __('Permission denied'));
     }
 
-    private function processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $endDate)
+    private function processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $endDate, float $prorationFactor = 1.0)
     {
-        $basicSalary = (float) ($employee->basic_salary ?? 0);
-        $perDaySalary = $workingDaysCount > 0 ? $basicSalary / $workingDaysCount : 0;
+        $fullBasicSalary = (float) ($employee->basic_salary ?? 0);
+        $basicSalary = $prorationFactor < 1.0 ? round($fullBasicSalary * $prorationFactor, 2) : $fullBasicSalary;
+        $perDaySalary = $workingDaysCount > 0 ? $fullBasicSalary / $workingDaysCount : 0;
 
         $allowanceData = $this->calculateAllowances($employee, $basicSalary);
         $deductionData = $this->calculateDeductions($employee, $basicSalary);

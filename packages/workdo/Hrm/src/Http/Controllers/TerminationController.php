@@ -19,6 +19,8 @@ use Workdo\Hrm\Events\CreateTermination;
 use Workdo\Hrm\Events\DestroyTermination;
 use Workdo\Hrm\Events\UpdateTermination;
 use Workdo\Hrm\Events\UpdateTerminationStatus;
+use Workdo\Hrm\Services\EmployeeLifecycleService;
+use Illuminate\Support\Facades\DB;
 
 class TerminationController extends Controller
 {
@@ -114,8 +116,20 @@ class TerminationController extends Controller
     public function destroy(Termination $termination)
     {
         if (Auth::user()->can('delete-terminations')) {
+            if (!$this->assertBelongsToTenant($termination)) {
+                return redirect()->route('hrm.terminations.index')->with('error', __('Permission denied'));
+            }
+
+            $wasApproved = $termination->status === 'approved';
+            $empUserId = (int) $termination->employee_id;
+            $tenantId = (int) $termination->created_by;
+
             DestroyTermination::dispatch($termination);
             $termination->delete();
+
+            if ($wasApproved) {
+                app(EmployeeLifecycleService::class)->handleReversal($empUserId, $tenantId);
+            }
 
             return redirect()->back()->with('success', __('The termination has been deleted.'));
         } else {
@@ -126,18 +140,66 @@ class TerminationController extends Controller
     public function updateStatus(\Illuminate\Http\Request $request, Termination $termination)
     {
         if (Auth::user()->can('manage-termination-status')) {
+            if (!$this->assertBelongsToTenant($termination)) {
+                return redirect()->back()->with('error', __('Permission denied'));
+            }
+
             $validated = $request->validate([
                 'status' => 'required|in:pending,approved,rejected'
             ]);
 
-            $termination->status = $validated['status'];
+            $previousStatus = $termination->status;
+            $lifecycleResult = null;
+            $reversalResult = null;
+            $lifecycleService = app(EmployeeLifecycleService::class);
 
-            if ($validated['status'] === 'approved') {
-                $termination->approved_by = Auth::id();
+            DB::transaction(function () use ($request, $termination, $validated, $previousStatus, $lifecycleService, &$lifecycleResult, &$reversalResult) {
+                $termination->status = $validated['status'];
+
+                if ($validated['status'] === 'approved') {
+                    $termination->approved_by = Auth::id();
+                } else {
+                    $termination->approved_by = null;
+                }
+
+                $termination->save();
+
+                if ($validated['status'] === 'approved') {
+                    $effectiveDate = $termination->termination_date ?? $termination->notice_date;
+                    $lifecycleResult = $lifecycleService->handleSeparation(
+                        (int) $termination->employee_id,
+                        (int) $termination->created_by,
+                        'terminated',
+                        $effectiveDate
+                    );
+                } elseif ($previousStatus === 'approved') {
+                    $reversalResult = $lifecycleService->handleReversal(
+                        (int) $termination->employee_id,
+                        (int) $termination->created_by
+                    );
+                }
+
+                UpdateTerminationStatus::dispatch($request, $termination);
+            });
+
+            if ($lifecycleResult && ($lifecycleResult['mode'] ?? '') === 'deactivated') {
+                $openCount = (int) ($lifecycleResult['impact']['total_open_items'] ?? 0);
+                $msg = $openCount > 0
+                    ? __('Termination approved and employee account deactivated. Warning: :count open item(s) across modules require handover.', ['count' => $openCount])
+                    : __('Termination approved and employee account deactivated successfully.');
+
+                return redirect()->back()->with('success', $msg);
             }
 
-            $termination->save();
-            UpdateTerminationStatus::dispatch($request, $termination);
+            if ($lifecycleResult && ($lifecycleResult['mode'] ?? '') === 'notice_period') {
+                return redirect()->back()->with('success', __('Termination approved. Employee placed on notice period until :date.', [
+                    'date' => $lifecycleResult['separation_date'],
+                ]));
+            }
+
+            if ($reversalResult && !($reversalResult['restored'] ?? true) && ($reversalResult['reason'] ?? '') === 'plan_limit') {
+                return redirect()->back()->with('warning', __('Termination status updated, but user login could not be re-enabled due to plan user seat limit.'));
+            }
 
             return redirect()->back()->with('success', __('Termination status updated successfully.'));
         } else {
@@ -146,7 +208,7 @@ class TerminationController extends Controller
     }    
     private function getFilteredEmployees()
     {
-        $employeeQuery = Employee::where('created_by', creatorId());
+        $employeeQuery = Employee::where('created_by', creatorId())->active();
 
         if (Auth::user()->can('manage-own-terminations') && !Auth::user()->can('manage-any-terminations')) {
             $employeeQuery->where(function ($q) {
@@ -154,7 +216,7 @@ class TerminationController extends Controller
             });
         }
 
-        return User::emp()->where('created_by', creatorId())
+        return User::activeEmp()->where('created_by', creatorId())
             ->whereIn('id', $employeeQuery->pluck('user_id'))
             ->select('id', 'name')->get();
     }

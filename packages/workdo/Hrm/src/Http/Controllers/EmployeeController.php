@@ -38,8 +38,12 @@ class EmployeeController extends Controller
     public function index()
     {
         if (Auth::user()->can('manage-employees')) {
+            $userRelation = \Illuminate\Support\Facades\Schema::hasColumn('users', 'deactivation_reason')
+                ? 'user:id,name,avatar,is_disable,is_enable_login,deactivation_reason'
+                : 'user:id,name,avatar,is_disable,is_enable_login';
+
             $employees = Employee::query()
-                ->with(['user:id,name,avatar,is_disable', 'branch', 'department', 'designation', 'shift'])
+                ->with([$userRelation, 'branch', 'department', 'designation', 'shift'])
                 ->where(function ($q) {
                     if (Auth::user()->can('manage-any-employees')) {
                         $q->where('created_by', creatorId());

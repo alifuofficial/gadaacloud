@@ -476,10 +476,19 @@ if (!function_exists('assignPlan')) {
             $total = $users->count();
 
             if ($plan->number_of_users == -1) {
-                $users = User::where('created_by', $user->id)->get();
+                // Only re-enable accounts disabled by plan seat limits — never re-enable resigned/terminated/manually disabled staff
+                $users = User::where('created_by', $user->id)
+                    ->where('is_disable', 1)
+                    ->where(function ($q) {
+                        $q->whereNull('deactivation_reason')
+                            ->orWhere('deactivation_reason', 'plan_limit');
+                    })
+                    ->get();
                 foreach ($users as $item) {
                     $item->is_disable = 0;
                     $item->is_enable_login = 1;
+                    $item->deactivation_reason = null;
+                    $item->deactivated_at = null;
                     $item->save();
                 }
             } elseif ($plan->number_of_users > 0) {
@@ -493,18 +502,26 @@ if (!function_exists('assignPlan')) {
                     foreach ($usersToDisable as $userItem) {
                         $userItem->is_disable = 1;
                         $userItem->is_enable_login = 0;
+                        $userItem->deactivation_reason = 'plan_limit';
+                        $userItem->deactivated_at = now();
                         $userItem->save();
                     }
                 } else {
                     $count = $plan->number_of_users - $total;
                     $usersToEnable = User::where('created_by', $user->id)
                         ->where('is_disable', 1)
+                        ->where(function ($q) {
+                            $q->whereNull('deactivation_reason')
+                                ->orWhere('deactivation_reason', 'plan_limit');
+                        })
                         ->take($count)
                         ->get();
 
                     foreach ($usersToEnable as $userItem) {
                         $userItem->is_disable = 0;
                         $userItem->is_enable_login = 1;
+                        $userItem->deactivation_reason = null;
+                        $userItem->deactivated_at = null;
                         $userItem->save();
                     }
                 }

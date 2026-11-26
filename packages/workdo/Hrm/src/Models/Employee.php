@@ -47,6 +47,8 @@ class Employee extends Model
         'department_id',
         'designation_id',
         'manager_id',
+        'employment_status',
+        'separation_date',
         'creator_id',
         'created_by',
     ];
@@ -56,9 +58,22 @@ class Employee extends Model
         return [
             'date_of_birth' => 'date',
             'date_of_joining' => 'date',
+            'separation_date' => 'date',
             'is_pension_applicable' => 'boolean',
             'is_tax_exempt' => 'boolean',
         ];
+    }
+
+    /**
+     * Scope employees who have not completed separation.
+     */
+    public function scopeActive($query)
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'employment_status')) {
+            return $query->whereIn('employment_status', ['active', 'notice_period']);
+        }
+
+        return $query;
     }
 
     /**

@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Workdo\Hrm\Events\UpdateResignaionStatus;
 use Workdo\Hrm\Models\Employee;
+use Workdo\Hrm\Services\EmployeeLifecycleService;
+use Illuminate\Support\Facades\DB;
 
 class ResignationController extends Controller
 {
@@ -99,7 +101,19 @@ class ResignationController extends Controller
     public function destroy(Resignation $resignation)
     {
         if (Auth::user()->can('delete-resignations')) {
+            if (!$this->assertBelongsToTenant($resignation)) {
+                return redirect()->route('hrm.resignations.index')->with('error', __('Permission denied'));
+            }
+
+            $wasAccepted = $resignation->status === 'accepted';
+            $empUserId = (int) $resignation->employee_id;
+            $tenantId = (int) $resignation->created_by;
+
             $resignation->delete();
+
+            if ($wasAccepted) {
+                app(EmployeeLifecycleService::class)->handleReversal($empUserId, $tenantId);
+            }
 
             return redirect()->back()->with('success', __('The resignation has been deleted.'));
         } else {
@@ -110,10 +124,68 @@ class ResignationController extends Controller
     public function updateStatus(Request $request, Resignation $resignation, $status)
     {
         if (Auth::user()->can('manage-resignation-status')) {
-            $resignation->status = $status;
-            $resignation->approved_by = Auth::id();
-            $resignation->save();
-            UpdateResignaionStatus::dispatch($request, $resignation);
+            if (!$this->assertBelongsToTenant($resignation)) {
+                return redirect()->route('hrm.resignations.index')->with('error', __('Permission denied'));
+            }
+
+            if (!in_array($status, ['pending', 'accepted', 'rejected'], true)) {
+                return redirect()->back()->with('error', __('Invalid resignation status.'));
+            }
+
+            $previousStatus = $resignation->status;
+            $lifecycleResult = null;
+            $reversalResult = null;
+            $lifecycleService = app(EmployeeLifecycleService::class);
+
+            DB::transaction(function () use ($request, $resignation, $status, $previousStatus, $lifecycleService, &$lifecycleResult, &$reversalResult) {
+                $resignation->status = $status;
+                $resignation->approved_by = $status === 'accepted' ? Auth::id() : null;
+                $resignation->save();
+
+                if ($status === 'accepted') {
+                    $effectiveDate = $resignation->last_working_date ?? $resignation->resignation_date;
+                    $lifecycleResult = $lifecycleService->handleSeparation(
+                        (int) $resignation->employee_id,
+                        (int) $resignation->created_by,
+                        'resigned',
+                        $effectiveDate
+                    );
+                } elseif ($previousStatus === 'accepted') {
+                    $reversalResult = $lifecycleService->handleReversal(
+                        (int) $resignation->employee_id,
+                        (int) $resignation->created_by
+                    );
+                }
+
+                UpdateResignaionStatus::dispatch($request, $resignation);
+            });
+
+            if ($lifecycleResult && ($lifecycleResult['mode'] ?? '') === 'deactivated') {
+                $openCount = (int) ($lifecycleResult['impact']['total_open_items'] ?? 0);
+                $msg = $openCount > 0
+                    ? __('Resignation accepted and employee account deactivated. Warning: :count open item(s) across projects/CRM/tickets/approvals require handover.', ['count' => $openCount])
+                    : __('Resignation accepted and employee user account has been deactivated.');
+
+                return redirect()->back()->with('success', $msg);
+            }
+
+            if ($lifecycleResult && ($lifecycleResult['mode'] ?? '') === 'notice_period') {
+                $openCount = (int) ($lifecycleResult['impact']['total_open_items'] ?? 0);
+                $msg = $openCount > 0
+                    ? __('Resignation accepted. Employee placed on notice period until :date (:count open work item(s) pending handover).', [
+                        'date' => $lifecycleResult['separation_date'],
+                        'count' => $openCount,
+                    ])
+                    : __('Resignation accepted. Employee placed on notice period until :date.', [
+                        'date' => $lifecycleResult['separation_date'],
+                    ]);
+
+                return redirect()->back()->with('success', $msg);
+            }
+
+            if ($reversalResult && !($reversalResult['restored'] ?? true) && ($reversalResult['reason'] ?? '') === 'plan_limit') {
+                return redirect()->back()->with('warning', __('Resignation status updated, but user login could not be auto-enabled because your plan seat limit is reached.'));
+            }
 
             return redirect()->back()->with('success', __('The resignation status has been updated.'));
         } else {
@@ -121,9 +193,21 @@ class ResignationController extends Controller
         }
     }
 
+    public function getOffboardingImpact($employeeId)
+    {
+        if (!Auth::user()->can('manage-resignation-status') && !Auth::user()->can('manage-termination-status')) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
+        $tenantId = (int) creatorId();
+        $impact = app(EmployeeLifecycleService::class)->getOffboardingImpactSummary((int) $employeeId, $tenantId);
+
+        return response()->json($impact);
+    }
+
     private function getFilteredUsers()
     {
-        return User::emp()->where('created_by', creatorId())
+        return User::activeEmp()->where('created_by', creatorId())
             ->when(!Auth::user()->can('manage-any-resignations'), function ($q) {
                 if (Auth::user()->can('manage-own-resignations')) {
                     $q->where('creator_id', Auth::id());
@@ -137,7 +221,7 @@ class ResignationController extends Controller
 
     private function getFilteredEmployees()
     {
-        $employeeQuery = Employee::where('created_by', creatorId());
+        $employeeQuery = Employee::where('created_by', creatorId())->active();
 
         if (Auth::user()->can('manage-own-resignations') && !Auth::user()->can('manage-any-resignations')) {
             $employeeQuery->where(function ($q) {
@@ -145,7 +229,7 @@ class ResignationController extends Controller
             });
         }
 
-        return User::emp()->where('created_by', creatorId())
+        return User::activeEmp()->where('created_by', creatorId())
             ->whereIn('id', $employeeQuery->pluck('user_id'))
             ->select('id', 'name')->get();
     }

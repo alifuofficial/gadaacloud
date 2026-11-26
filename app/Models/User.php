@@ -40,6 +40,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'storage_limit',
             'is_disable',
             'is_enable_login',
+            'deactivation_reason',
+            'deactivated_at',
             'creator_id',
             'created_by',
             'active_status',
@@ -66,6 +68,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -128,6 +131,40 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $excludeTypes = array_diff(array_merge($this->not_emp_type, $additionalTypes), $includeTypes);
         return $query->whereNotIn('type', $excludeTypes);
+    }
+
+    /**
+     * Scope employee-like users to only currently active, enabled accounts (excluding resigned, terminated, or disabled users).
+     */
+    public function scopeActiveEmp($query, $additionalTypes = [], $includeTypes = [])
+    {
+        return $query->emp($additionalTypes, $includeTypes)
+            ->where(function ($q) {
+                $q->where('is_disable', 0)->orWhereNull('is_disable');
+            })
+            ->where(function ($q) {
+                $q->where('is_enable_login', 1)->orWhereNull('is_enable_login');
+            });
+    }
+
+    public function getIsDeactivatedAttribute(): bool
+    {
+        return (int) ($this->is_disable ?? 0) === 1
+            || (int) ($this->is_enable_login ?? 1) === 0;
+    }
+
+    public function getAccountStatusLabelAttribute(): string
+    {
+        if (!$this->is_deactivated) {
+            return __('Active');
+        }
+
+        return match ($this->deactivation_reason ?? null) {
+            'resigned'   => __('Resigned'),
+            'terminated' => __('Terminated'),
+            'plan_limit' => __('Deactivated (Plan Limit)'),
+            default      => __('Deactivated'),
+        };
     }
 
     public function createdBy(): BelongsTo

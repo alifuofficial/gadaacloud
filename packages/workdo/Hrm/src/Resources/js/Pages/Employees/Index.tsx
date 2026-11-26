@@ -129,7 +129,7 @@ export default function Index() {
             header: t('Employee Name'),
             sortable: false,
             render: (value: any, row: any) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {row.user?.avatar ? (
                         <img
                             src={getImagePath(row.user.avatar)}
@@ -143,7 +143,31 @@ export default function Index() {
                             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         />
                     )}
-                    <span>{row.user?.name || '-'}</span>
+                    <span className={row.user?.is_disable === 1 ? 'text-muted-foreground line-through' : ''}>
+                        {row.user?.name || '-'}
+                    </span>
+                    {row.employment_status === 'notice_period' && (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">
+                            {t('Notice Period')}
+                        </span>
+                    )}
+                    {(row.employment_status === 'resigned' || row.user?.deactivation_reason === 'resigned') && (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700">
+                            {t('Resigned')}
+                        </span>
+                    )}
+                    {(row.employment_status === 'terminated' || row.user?.deactivation_reason === 'terminated') && (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800">
+                            {t('Terminated')}
+                        </span>
+                    )}
+                    {row.user?.is_disable === 1
+                        && !['resigned', 'terminated'].includes(row.employment_status || '')
+                        && !['resigned', 'terminated'].includes(row.user?.deactivation_reason || '') && (
+                        <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-700">
+                            {t('Deactivated')}
+                        </span>
+                    )}
                 </div>
             )
         },
