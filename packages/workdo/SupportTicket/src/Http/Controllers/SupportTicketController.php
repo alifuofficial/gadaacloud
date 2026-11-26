@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Models\EmailTemplate;
@@ -23,10 +24,14 @@ use Workdo\SupportTicket\Models\Conversion;
 use Workdo\SupportTicket\Models\SupportTicketSetting;
 use Workdo\SupportTicket\Models\SupportTicketCustomPage;
 use Workdo\SupportTicket\Models\TicketField;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
+use Workdo\SupportTicket\Traits\SupportTicketDateHelpers;
 
 
 class SupportTicketController extends Controller
 {
+    use SupportTicketControllerHelpers, SupportTicketDateHelpers;
+
     private function getSettings()
     {
         $allSettings = SupportTicketSetting::getAllByCompany(creatorId());
@@ -134,7 +139,7 @@ class SupportTicketController extends Controller
                 
                 $allowedSortFields = ['ticket_id', 'name', 'email', 'subject', 'status', 'created_at'];
                 if (in_array($sortField, $allowedSortFields)) {
-                    $query->orderBy($sortField, $sortDirection);
+                    $this->applySafeSort($query, $sortField, $sortDirection);
                 } else {
                     $query->orderBy('created_at', 'desc');
                 }
@@ -142,7 +147,7 @@ class SupportTicketController extends Controller
                 $query->orderBy('created_at', 'desc');
             }
 
-            $perPage = $request->get('per_page', 10);
+            $perPage = $this->safePerPage(10, 100);
             $tickets = $query->paginate($perPage);
 
             $tickets->getCollection()->transform(function ($ticket) {
@@ -287,14 +292,22 @@ class SupportTicketController extends Controller
                 $validated['attachments'] = '[]';
             }
 
-            $ticket = Ticket::create($validated);
-            
-            // Save custom field data
-            if ($request->has('fields') && !empty($request->fields)) {
-                TicketField::saveData($ticket, $request->fields);
-            }
+            $ticket = DB::transaction(function () use ($validated, $request) {
+                $ticket = Ticket::create($validated);
 
-            CreateTicket::dispatch($request, $ticket);
+                // Save custom field data
+                if ($request->has('fields') && !empty($request->fields)) {
+                    TicketField::saveData($ticket, $request->fields);
+                }
+
+                return $ticket;
+            });
+
+            try {
+                CreateTicket::dispatch($request, $ticket);
+            } catch (\Throwable $e) {
+                // Non-blocking event dispatch
+            }
 
             // Send email notification for new ticket
             if (!empty(company_setting('New Ticket')) && company_setting('New Ticket') == true) {
@@ -423,6 +436,10 @@ class SupportTicketController extends Controller
             if (!$ticket) {
                 return redirect()->route('support-tickets.index')->with('error', __('Ticket not found'));
             }
+
+            if (!$this->assertBelongsToTenant($ticket)) {
+                return redirect()->route('support-tickets.index')->with('error', __('Permission denied'));
+            }
             
             $validated = $request->validated();
 
@@ -454,14 +471,20 @@ class SupportTicketController extends Controller
                     }
                 }
 
-                $ticket->update($validated);
-                
-                // Save custom field data
-                if ($request->has('fields') && !empty($request->fields)) {
-                    TicketField::saveData($ticket, $request->fields);
-                }
+                DB::transaction(function () use ($ticket, $validated, $request) {
+                    $ticket->update($validated);
 
-                UpdateTicket::dispatch($request, $ticket);
+                    // Save custom field data
+                    if ($request->has('fields') && !empty($request->fields)) {
+                        TicketField::saveData($ticket, $request->fields);
+                    }
+                });
+
+                try {
+                    UpdateTicket::dispatch($request, $ticket);
+                } catch (\Throwable $e) {
+                    // Non-blocking event dispatch
+                }
 
             return redirect()->back()->with('success', __('The ticket details are updated successfully.'));
         }
@@ -476,8 +499,13 @@ class SupportTicketController extends Controller
             if (!$ticket) {
                 return redirect()->route('support-tickets.index')->with('error', __('Ticket not found'));
             }
+
+            if (!$this->assertBelongsToTenant($ticket)) {
+                return redirect()->route('support-tickets.index')->with('error', __('Permission denied'));
+            }
             
-            Conversion::where('ticket_id', $ticket->id)->delete();
+            DB::transaction(function () use ($ticket) {
+                Conversion::where('ticket_id', $ticket->id)->delete();
 
                 $attachments = json_decode($ticket->attachments, true) ?? [];
                 foreach ($attachments as $attachment) {
@@ -488,9 +516,14 @@ class SupportTicketController extends Controller
 
                 Storage::disk('public')->deleteDirectory('tickets/' . $ticket->ticket_id);
 
-                DestroyTicket::dispatch($ticket);
+                try {
+                    DestroyTicket::dispatch($ticket);
+                } catch (\Throwable $e) {
+                    // Non-blocking event dispatch
+                }
 
                 $ticket->delete();
+            });
 
             return back()->with('success', __('The ticket has been deleted.'));
         }
@@ -499,7 +532,7 @@ class SupportTicketController extends Controller
 
     public function destroyAttachment(Ticket $ticket, $attachmentIndex)
     {
-        if(Auth::user()->can('edit-support-tickets')){
+        if(Auth::user()->can('edit-support-tickets') && $this->assertBelongsToTenant($ticket)){
                 $attachments = is_array($ticket->attachments) ? $ticket->attachments : (json_decode($ticket->attachments, true) ?? []);
                 
                 if (isset($attachments[$attachmentIndex])) {

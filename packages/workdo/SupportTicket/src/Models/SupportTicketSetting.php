@@ -2,10 +2,13 @@
 
 namespace Workdo\SupportTicket\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 class SupportTicketSetting extends Model
 {
+    use HasFactory, TenantScoped;
     protected $fillable = [
         'key',
         'value',

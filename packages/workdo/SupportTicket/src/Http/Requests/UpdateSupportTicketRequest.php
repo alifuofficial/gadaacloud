@@ -3,6 +3,7 @@
 namespace Workdo\SupportTicket\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
 
 class UpdateSupportTicketRequest extends FormRequest
 {
@@ -18,10 +19,10 @@ class UpdateSupportTicketRequest extends FormRequest
             'email' => 'sometimes|email|max:255',
             'subject' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
-            'category' => 'sometimes|exists:ticket_categories,id',
+            'category' => ['sometimes', SupportTicketControllerHelpers::tenantExists('ticket_categories', 'id')],
             'status' => 'sometimes|in:open,In Progress,Closed,On Hold',
             'account_type' => 'sometimes|in:custom,staff,client,vendor',
-            'user_id' => 'nullable|exists:users,id',
+            'user_id' => ['nullable', SupportTicketControllerHelpers::tenantExists('users', 'id')],
             'note' => 'nullable|string',
             'attachments' => 'nullable|array'
         ];

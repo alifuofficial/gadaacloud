@@ -9,10 +9,14 @@ use Inertia\Inertia;
 use Workdo\SupportTicket\Models\Faq;
 use Workdo\SupportTicket\Http\Requests\StoreFaqRequest;
 use Workdo\SupportTicket\Http\Requests\UpdateFaqRequest;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
+use Workdo\SupportTicket\Traits\SupportTicketDateHelpers;
 
 
 class FaqController extends Controller
 {
+    use SupportTicketControllerHelpers, SupportTicketDateHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-faq')) {
@@ -38,7 +42,7 @@ class FaqController extends Controller
                 }, function($q) {
                     $q->latest();
                 })
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('SupportTicket/FAQ/Index', [

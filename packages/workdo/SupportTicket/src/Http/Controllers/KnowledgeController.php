@@ -12,10 +12,14 @@ use Workdo\SupportTicket\Events\CreateKnowledgeBase;
 use Workdo\SupportTicket\Events\DestroyKnowledgeBase;
 use Workdo\SupportTicket\Http\Requests\StoreKnowledgeBaseRequest;
 use Workdo\SupportTicket\Http\Requests\UpdateKnowledgeBaseRequest;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
+use Workdo\SupportTicket\Traits\SupportTicketDateHelpers;
 
 
 class KnowledgeController extends Controller
 {
+    use SupportTicketControllerHelpers, SupportTicketDateHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-knowledge-base')) {
@@ -45,7 +49,7 @@ class KnowledgeController extends Controller
                 }, function($q) {
                     $q->latest();
                 })
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $categories = KnowledgeBaseCategory::where(function ($q) {

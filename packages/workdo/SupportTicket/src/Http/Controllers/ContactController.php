@@ -10,9 +10,13 @@ use Workdo\SupportTicket\Models\Contact;
 use Workdo\SupportTicket\Http\Requests\StoreContactRequest;
 use Workdo\SupportTicket\Events\CreateContact;
 use Workdo\SupportTicket\Events\DestroyContact;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
+use Workdo\SupportTicket\Traits\SupportTicketDateHelpers;
 
 class ContactController extends Controller
 {
+    use SupportTicketControllerHelpers, SupportTicketDateHelpers;
+
     public function index(Request $request)
     {
         if (Auth::user()->can('manage-contact')) {
@@ -43,13 +47,13 @@ class ContactController extends Controller
             $sortDirection = $request->get('direction', 'desc');
 
             if (in_array($sortField, ['first_name', 'last_name', 'email', 'subject', 'created_at'])) {
-                $query->orderBy($sortField, $sortDirection);
+                $this->applySafeSort($query, $sortField, $sortDirection);
             } else {
                 $query->orderBy('created_at', 'desc');
             }
 
             // Pagination
-            $perPage = $request->get('per_page', 10);
+            $perPage = $this->safePerPage(10, 100);
             $contacts = $query->paginate($perPage)->withQueryString();
 
             return Inertia::render('SupportTicket/Contact/Index', [

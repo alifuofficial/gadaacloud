@@ -2,10 +2,13 @@
 
 namespace Workdo\SupportTicket\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 class QuickLink extends Model
 {
+    use HasFactory, TenantScoped;
     protected $table = 'support_ticket_quick_links';
 
     protected $fillable = [

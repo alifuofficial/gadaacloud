@@ -5,10 +5,11 @@ namespace Workdo\SupportTicket\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class TicketField extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name', 'type', 'placeholder', 'width', 'order', 'status', 'is_required', 'custom_id', 'creator_id', 'created_by'

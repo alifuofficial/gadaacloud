@@ -4,10 +4,11 @@ namespace Workdo\SupportTicket\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 
 class SupportTicketCustomPage extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'title',
