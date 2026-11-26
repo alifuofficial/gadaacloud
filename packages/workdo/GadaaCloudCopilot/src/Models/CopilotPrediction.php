@@ -2,10 +2,13 @@
 
 namespace Workdo\GadaaCloudCopilot\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 class CopilotPrediction extends Model
 {
+    use HasFactory, TenantScoped;
     protected $table = 'copilot_predictions';
 
     protected $fillable = [

@@ -417,7 +417,7 @@ class CopilotController extends Controller
                     'model_type' => 'purchase_invoice',
                     'model_id'   => $purchaseInvoiceId,
                     'user_id'    => $companyId,
-                    'message'    => "📄 **Draft Purchase Invoice #${invNum}** auto-created from inbound email PDF (`{$vendorName}`). Subtotal: ETB " . number_format($totalAmt - $vatAmt, 2) . " | VAT (15%): ETB " . number_format($vatAmt, 2),
+                    'message'    => "📄 **Draft Purchase Invoice #{$invNum}** auto-created from inbound email PDF (`{$vendorName}`). Subtotal: ETB " . number_format($totalAmt - $vatAmt, 2) . " | VAT (15%): ETB " . number_format($vatAmt, 2),
                     'type'       => 'note',
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -860,6 +860,7 @@ class CopilotController extends Controller
 
                 CopilotTokenUsage::create([
                     'company_id'        => $companyId,
+                    'created_by'        => $companyId,
                     'user_id'           => $user->id,
                     'prompt_tokens'     => $promptTokens,
                     'completion_tokens' => $completionTokens,
