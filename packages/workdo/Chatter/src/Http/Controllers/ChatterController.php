@@ -10,11 +10,15 @@ use Workdo\Chatter\Models\ChatterFollower;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Workdo\Chatter\Traits\ChatterControllerHelpers;
+use Workdo\Chatter\Traits\ChatterDateHelpers;
 
 class ChatterController extends Controller
 {
+    use ChatterControllerHelpers, ChatterDateHelpers;
     /**
      * Normalize model string to clean basename
      */
@@ -94,36 +98,41 @@ class ChatterController extends Controller
         $companyId = creatorId();
         $modelType = $this->cleanModelType($model);
 
-        $chatterMessage = ChatterMessage::create([
-            'created_by' => $companyId,
-            'model_type' => $modelType,
-            'model_id'   => $id,
-            'user_id'    => $user->id,
-            'message'    => $request->message,
-            'type'       => $request->type,
-        ]);
+        $chatterMessage = DB::transaction(function () use ($request, $user, $companyId, $modelType, $id) {
+            $chatterMessage = ChatterMessage::create([
+                'created_by' => $companyId,
+                'model_type' => $modelType,
+                'model_id'   => $id,
+                'user_id'    => $user->id,
+                'message'    => $request->message,
+                'type'       => $request->type,
+            ]);
 
-        // Secure file upload handler
-        if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
-                $path = $file->store('chatter_uploads/' . $companyId, 'public');
-                ChatterAttachment::create([
-                    'chatter_message_id' => $chatterMessage->id,
-                    'file_name'          => $file->getClientOriginalName(),
-                    'file_path'          => Storage::url($path),
-                    'file_type'          => $file->getClientMimeType(),
-                    'file_size'          => $file->getSize(),
-                ]);
+            // Secure file upload handler
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $file) {
+                    $path = $file->store('chatter_uploads/' . $companyId, 'public');
+                    ChatterAttachment::create([
+                        'created_by'         => $companyId,
+                        'chatter_message_id' => $chatterMessage->id,
+                        'file_name'          => $file->getClientOriginalName(),
+                        'file_path'          => Storage::url($path),
+                        'file_type'          => $file->getClientMimeType(),
+                        'file_size'          => $file->getSize(),
+                    ]);
+                }
             }
-        }
 
-        // Auto-add message author as follower
-        ChatterFollower::firstOrCreate([
-            'created_by' => $companyId,
-            'model_type' => $modelType,
-            'model_id'   => $id,
-            'user_id'    => $user->id,
-        ]);
+            // Auto-add message author as follower
+            ChatterFollower::firstOrCreate([
+                'created_by' => $companyId,
+                'model_type' => $modelType,
+                'model_id'   => $id,
+                'user_id'    => $user->id,
+            ]);
+
+            return $chatterMessage;
+        });
 
         $chatterMessage->load(['user:id,name,email,avatar', 'attachments']);
 
