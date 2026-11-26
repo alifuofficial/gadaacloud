@@ -5,13 +5,18 @@ namespace Workdo\Webhook\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Webhook\Models\Webhook;
 use Workdo\Webhook\Models\WebhookModule;
 use Workdo\Webhook\Listeners\WebhookEventListener;
+use Workdo\Webhook\Traits\WebhookControllerHelpers;
+use Workdo\Webhook\Traits\WebhookDateHelpers;
 
 class WebhookController extends Controller
 {
+    use WebhookControllerHelpers, WebhookDateHelpers;
+
     public function index()
     {
         if (!Auth::user()->can('manage-webhooks')) {
@@ -60,13 +65,15 @@ class WebhookController extends Controller
             return back()->with('error', __('The webhook URL is invalid or points to a restricted internal network address.'));
         }
 
-        $webhook = Webhook::create([
-            'method' => $validated['method'],
-            'action' => $validated['action'],
-            'url' => $validated['url'],
-            'creator_id' => Auth::id(),
-            'created_by' => creatorId()
-        ]);
+        $webhook = DB::transaction(function () use ($validated) {
+            return Webhook::create([
+                'method' => $validated['method'],
+                'action' => $validated['action'],
+                'url' => $validated['url'],
+                'creator_id' => Auth::id(),
+                'created_by' => creatorId()
+            ]);
+        });
 
         return back()->with('success', __('Webhook created successfully'));
     }
@@ -78,7 +85,7 @@ class WebhookController extends Controller
         }
 
         // Check ownership
-        if ($webhook->created_by !== creatorId()) {
+        if (!$this->assertBelongsToTenant($webhook)) {
             return back()->with('error', __('Permission denied'));
         }
 
@@ -92,7 +99,9 @@ class WebhookController extends Controller
             return back()->with('error', __('The webhook URL is invalid or points to a restricted internal network address.'));
         }
 
-        $webhook->update($validated);
+        DB::transaction(function () use ($webhook, $validated) {
+            $webhook->update($validated);
+        });
 
         return back()->with('success', __('Webhook updated successfully'));
     }
@@ -104,11 +113,13 @@ class WebhookController extends Controller
         }
 
         // Check ownership
-        if ($webhook->created_by !== creatorId()) {
+        if (!$this->assertBelongsToTenant($webhook)) {
             return back()->with('error', __('Permission denied'));
         }
 
-        $webhook->delete();
+        DB::transaction(function () use ($webhook) {
+            $webhook->delete();
+        });
 
         return back()->with('success', __('Webhook deleted successfully'));
     }
@@ -123,7 +134,7 @@ class WebhookController extends Controller
         }
 
         // Check ownership
-        if ($webhook->created_by !== creatorId()) {
+        if (!$this->assertBelongsToTenant($webhook)) {
             if (request()->expectsJson()) {
                 return response()->json(['error' => 'Permission denied'], 403);
             }

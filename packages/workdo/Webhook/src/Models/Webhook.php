@@ -5,10 +5,11 @@ namespace Workdo\Webhook\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class Webhook extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'method',
