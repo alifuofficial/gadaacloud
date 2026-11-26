@@ -10,9 +10,12 @@ use Workdo\Taskly\Models\Project;
 use Workdo\Taskly\Models\ProjectTask;
 use Workdo\Taskly\Models\ProjectBug;
 use Workdo\Taskly\Models\ProjectMilestone;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class ProjectReportController extends Controller
 {
+    use TasklyControllerHelpers;
+
     public function index(Request $request)
     {
         $projects = Project::query()
@@ -41,8 +44,8 @@ class ProjectReportController extends Controller
             ->when($request->get('name'), fn($q) => $q->where('name', 'like', '%' . $request->get('name') . '%'))
             ->when($request->get('status'), fn($q) => $q->where('status', $request->get('status')))
             ->when($request->get('date'), fn($q) => $q->where('start_date', '<=', $request->get('date'))->where('end_date', '>=', $request->get('date')))
-            ->when($request->get('sort'), fn($q) => $q->orderBy($request->get('sort'), $request->get('direction', 'asc')), fn($q) => $q->latest())
-            ->paginate($request->get('per_page', 10))
+            ->tap(fn($q) => $this->applySafeSort($q, ['name' => 'name', 'start_date' => 'start_date', 'end_date' => 'end_date', 'status' => 'status', 'created_at' => 'created_at']))
+            ->paginate($this->safePerPage(10, 100))
             ->withQueryString();
 
         return Inertia::render('Taskly/Report/Index', [

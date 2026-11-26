@@ -17,10 +17,11 @@ use Workdo\Taskly\Models\ProjectClient;
 use Workdo\Taskly\Models\ProjectFile;
 use Workdo\Taskly\Models\ProjectUser;
 use Workdo\Taskly\Models\TaskStage;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class ProjectApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, TasklyControllerHelpers;
 
     public function index(Request $request)
     {
@@ -50,8 +51,8 @@ class ProjectApiController extends Controller
                         }
                     })
                     ->when($request->status && in_array($request->status, ['Ongoing', 'Onhold', 'Finished']), fn($q) => $q->where('status', $request->status))
-                    ->when($request->sort, fn($q) => $q->orderBy($request->sort, $request->get('direction', 'asc')), fn($q) => $q->latest())
-                    ->paginate($request->get('per_page', 10));
+                    ->tap(fn($q) => $this->applySafeSort($q, ['name' => 'name', 'start_date' => 'start_date', 'end_date' => 'end_date', 'budget' => 'budget', 'status' => 'status', 'created_at' => 'created_at']))
+                    ->paginate($this->safePerPage(10, 100));
 
                 $items->getCollection()->transform(function ($project) {
                     $totalTask     = ProjectTask::where('project_id', $project->id)->count();

@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Support\Facades\Auth;
 use Workdo\Hrm\Models\Holiday;
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 
 class HolidayApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, HrmControllerHelpers;
 
     public function index()
     {
@@ -27,7 +28,7 @@ class HolidayApiController extends Controller
                         }
                     })
                     ->latest()
-                    ->paginate(request('per_page', 10))
+                    ->paginate($this->safePerPage(10, 100))
                     ->withQueryString();
 
                 $holidays->getCollection()->transform(function ($holiday) {

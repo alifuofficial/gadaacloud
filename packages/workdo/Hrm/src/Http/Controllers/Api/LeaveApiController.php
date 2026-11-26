@@ -10,10 +10,11 @@ use Illuminate\Support\Facades\Validator;
 use Workdo\Hrm\Models\Holiday;
 use Workdo\Hrm\Models\LeaveApplication;
 use Workdo\Hrm\Models\LeaveType;
+use Workdo\Hrm\Traits\HrmControllerHelpers;
 
 class LeaveApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, HrmControllerHelpers;
 
     public function index(Request $request)
     {
@@ -42,7 +43,7 @@ class LeaveApiController extends Controller
                         });
                     })
                     ->latest()
-                    ->paginate(request('per_page', 10))
+                    ->paginate($this->safePerPage(10, 100))
                     ->withQueryString();
 
                 $leaveapplications->getCollection()->transform(function ($leave) {
