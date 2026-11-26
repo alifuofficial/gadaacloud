@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreBankTransferPaymentRequest extends FormRequest
 {
@@ -38,7 +39,7 @@ class StoreBankTransferPaymentRequest extends FormRequest
         return [
             'time_period' => 'required|string|in:Month,Year',
             'payment_receipt' => $receipt_rule,
-            'plan_id' => 'required|exists:plans,id',
+            'plan_id' => ['required', Rule::exists('plans', 'id')],
             'coupon_code' => 'nullable|string|max:255',
             'user_module_input' => 'nullable|string',
         ];

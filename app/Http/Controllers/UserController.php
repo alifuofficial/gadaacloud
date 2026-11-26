@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use App\Events\CreateUser;
 use App\Models\EmailTemplate;
 use App\Traits\ControllerHelpers;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Session;
@@ -88,67 +89,75 @@ class UserController extends Controller
             }
             $enableEmailVerification = admin_setting('enableEmailVerification');
 
-            $user = new User();
-            $user->name = $validated['name'];
-            $user->email = $validated['email'];
-            $user->mobile_no = $validated['mobile_no'];
-            $user->password = Hash::make($validated['password']);
-            $user->type = Auth::user()->type == 'superadmin' ? 'company' : ($role->name ?? 'staff');
-            $user->is_enable_login = $validated['is_enable_login'];
-            $user->lang = company_setting('defaultLanguage') ?? 'en';
-            $user->email_verified_at = $enableEmailVerification === 'on' ? null : now();
-            $user->creator_id = Auth::id();
-            $user->created_by = creatorId();
-            $user->save();
+            $user = DB::transaction(function () use ($request, $validated, $role, $enableEmailVerification) {
+                $user = new User();
+                $user->name = $validated['name'];
+                $user->email = $validated['email'];
+                $user->mobile_no = $validated['mobile_no'];
+                $user->password = Hash::make($validated['password']);
+                $user->type = Auth::user()->type == 'superadmin' ? 'company' : ($role->name ?? 'staff');
+                $user->is_enable_login = $validated['is_enable_login'];
+                $user->lang = company_setting('defaultLanguage') ?? 'en';
+                $user->email_verified_at = $enableEmailVerification === 'on' ? null : now();
+                $user->creator_id = Auth::id();
+                $user->created_by = creatorId();
+                $user->save();
 
-            if(Auth::user()->type == 'superadmin')
-            {
-                User::CompanySetting($user->id);
-                User::MakeRole($user->id);
-                $role = Role::findByName('company');
+                if(Auth::user()->type == 'superadmin')
+                {
+                    User::CompanySetting($user->id);
+                    User::MakeRole($user->id);
+                    $role = Role::findByName('company');
 
-                // Assign Subdomain & Custom Domain
-                $subdomain = $request->input('subdomain') ? strtolower(trim($request->input('subdomain'))) : null;
-                $customDomain = $request->input('custom_domain') ? strtolower(trim($request->input('custom_domain'))) : null;
+                    // Assign Subdomain & Custom Domain
+                    $subdomain = $request->input('subdomain') ? strtolower(trim($request->input('subdomain'))) : null;
+                    $customDomain = $request->input('custom_domain') ? strtolower(trim($request->input('custom_domain'))) : null;
 
-                if (empty($subdomain)) {
-                    $subdomain = $user->slug ?? strtolower(preg_replace('/[^A-Za-z0-9]/', '', $user->name));
-                }
+                    if (empty($subdomain)) {
+                        $subdomain = $user->slug ?? strtolower(preg_replace('/[^A-Za-z0-9]/', '', $user->name));
+                    }
 
-                // Force unique subdomain
-                $originalSubdomain = $subdomain;
-                $counter = 1;
-                while (\DB::table('tenant_domains')->where('subdomain', $subdomain)->exists()) {
-                    $subdomain = $originalSubdomain . $counter;
-                    $counter++;
-                }
+                    // Force unique subdomain
+                    $originalSubdomain = $subdomain;
+                    $counter = 1;
+                    while (\DB::table('tenant_domains')->where('subdomain', $subdomain)->exists()) {
+                        $subdomain = $originalSubdomain . $counter;
+                        $counter++;
+                    }
 
-                \DB::table('tenant_domains')->insert([
-                    'user_id' => $user->id,
-                    'subdomain' => $subdomain,
-                    'custom_domain' => $customDomain,
-                    'custom_domain_status' => $customDomain ? 'active' : 'pending_dns',
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
+                    \DB::table('tenant_domains')->insert([
+                        'user_id' => $user->id,
+                        'subdomain' => $subdomain,
+                        'custom_domain' => $customDomain,
+                        'custom_domain_status' => $customDomain ? 'active' : 'pending_dns',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
 
-                // Assign Subscription Plan
-                if ($request->filled('plan_id')) {
-                    $planId = $request->input('plan_id');
-                    $duration = $request->input('plan_duration', 'month');
-                    assignPlan($planId, $duration, null, null, $user->id);
-                } else {
-                    $freePlan = \App\Models\Plan::where('free_plan', 1)->first();
-                    if ($freePlan) {
-                        assignPlan($freePlan->id, 'month', null, null, $user->id);
+                    // Assign Subscription Plan
+                    if ($request->filled('plan_id')) {
+                        $planId = $request->input('plan_id');
+                        $duration = $request->input('plan_duration', 'month');
+                        assignPlan($planId, $duration, null, null, $user->id);
+                    } else {
+                        $freePlan = \App\Models\Plan::where('free_plan', 1)->first();
+                        if ($freePlan) {
+                            assignPlan($freePlan->id, 'month', null, null, $user->id);
+                        }
                     }
                 }
-            }
 
-            $user->assignRole($role);
+                $user->assignRole($role);
+
+                return $user;
+            });
 
             // Dispatch event for packages to handle their fields
-            CreateUser::dispatch($request, $user);
+            try {
+                CreateUser::dispatch($request, $user);
+            } catch (\Throwable $e) {
+                \Log::warning('CreateUser dispatch failed: ' . $e->getMessage());
+            }
 
              // Send welcome email
             if(company_setting('New User') == 'on') {

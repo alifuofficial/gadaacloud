@@ -30,7 +30,7 @@ class StoreUserRequest extends FormRequest
         if (auth()->user()->type === 'superadmin') {
             $rules['subdomain'] = 'nullable|alpha_dash|max:50|unique:tenant_domains,subdomain';
             $rules['custom_domain'] = 'nullable|string|max:100|unique:tenant_domains,custom_domain';
-            $rules['plan_id'] = 'nullable|exists:plans,id';
+            $rules['plan_id'] = ['nullable', Rule::exists('plans', 'id')];
             $rules['plan_duration'] = 'nullable|in:month,year,trial';
         }
 

@@ -25,7 +25,7 @@ class UpdateRoleRequest extends FormRequest
             ],
             'label' => 'required|string|max:255',
             'permissions' => 'array',
-            'permissions.*' => 'string|exists:permissions,name',
+            'permissions.*' => ['string', Rule::exists('permissions', 'name')],
         ];
     }
 }

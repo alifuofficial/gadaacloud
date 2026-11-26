@@ -8,6 +8,7 @@ use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class RoleController extends Controller
@@ -67,22 +68,24 @@ class RoleController extends Controller
     public function store(StoreRoleRequest $request)
     {
         if(Auth::user()->can('create-roles')){
-            $role = new Role();
-            $role->name = $request->name;
-            $role->label = $request->label;
-            $role->created_by = creatorId();
-            $role->save();
+            DB::transaction(function () use ($request) {
+                $role = new Role();
+                $role->name = $request->name;
+                $role->label = $request->label;
+                $role->created_by = creatorId();
+                $role->save();
 
-            $permissionsToSync = $request->permissions ?? [];
-            if (!Auth::user()->hasRole('superadmin')) {
-                $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
-                    ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
-                    ->pluck('name')
-                    ->toArray();
-                $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
-            }
+                $permissionsToSync = $request->permissions ?? [];
+                if (!Auth::user()->hasRole('superadmin')) {
+                    $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
+                        ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
+                        ->pluck('name')
+                        ->toArray();
+                    $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
+                }
 
-            $role->syncPermissions($permissionsToSync);
+                $role->syncPermissions($permissionsToSync);
+            });
             return redirect()->route('roles.index')->with('success', __('The role has been created successfully.'));
         }
         else{
@@ -139,21 +142,23 @@ class RoleController extends Controller
                 return redirect()->route('roles.index')->with('error', __('This system role cannot be edited.'));
             }
 
-            $role->update([
-                'name' => $request->name,
-                'label' => $request->label
-            ]);
+            DB::transaction(function () use ($request, $role) {
+                $role->update([
+                    'name' => $request->name,
+                    'label' => $request->label
+                ]);
 
-            $permissionsToSync = $request->permissions ?? [];
-            if (!Auth::user()->hasRole('superadmin')) {
-                $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
-                    ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
-                    ->pluck('name')
-                    ->toArray();
-                $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
-            }
+                $permissionsToSync = $request->permissions ?? [];
+                if (!Auth::user()->hasRole('superadmin')) {
+                    $allowed = Permission::whereIn('add_on', array_merge(['general', 'GadaaCloudCopilot'], ActivatedModule()))
+                        ->whereNotIn('add_on', \App\Models\User::$company_hidden_modules)
+                        ->pluck('name')
+                        ->toArray();
+                    $permissionsToSync = array_values(array_intersect($permissionsToSync, $allowed));
+                }
 
-            $role->syncPermissions($permissionsToSync);
+                $role->syncPermissions($permissionsToSync);
+            });
             return redirect()->route('roles.index')->with('success', __('The role details are updated successfully.'));
         }
         else{

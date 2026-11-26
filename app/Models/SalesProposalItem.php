@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\TenantScoped;
 
 class SalesProposalItem extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'proposal_id',
         'product_id',
@@ -17,7 +20,8 @@ class SalesProposalItem extends Model
         'discount_amount',
         'tax_percentage',
         'tax_amount',
-        'total_amount'
+        'total_amount',
+        'created_by'
     ];
 
     protected $casts = [

@@ -11,6 +11,7 @@ use App\Events\CreateTransfer;
 use App\Events\DestroyTransfer;
 use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TransferController extends Controller
@@ -75,47 +76,51 @@ class TransferController extends Controller
         if(Auth::user()->can('create-transfers')){
             $validated = $request->validated();
 
-            $transfer = new Transfer();
-            $transfer->waybill_number = Transfer::generateWaybillNumber();
-            $transfer->from_warehouse = $validated['from_warehouse'];
-            $transfer->to_warehouse = $validated['to_warehouse'];
-            $transfer->product_id = $validated['product_id'];
-            $transfer->quantity = $validated['quantity'];
-            $transfer->date = $validated['date'];
-            $transfer->status = 'in_transit'; // Goods are in transit on road
-            $transfer->driver_name = $request->driver_name;
-            $transfer->driver_phone = $request->driver_phone;
-            $transfer->vehicle_plate_number = $request->vehicle_plate_number;
-            $transfer->dispatched_at = now();
-            $transfer->notes = $request->notes;
-            $transfer->creator_id = Auth::id();
-            $transfer->created_by = creatorId();
-            $transfer->save();
+            $transfer = DB::transaction(function () use ($request, $validated) {
+                $transfer = new Transfer();
+                $transfer->waybill_number = Transfer::generateWaybillNumber();
+                $transfer->from_warehouse = $validated['from_warehouse'];
+                $transfer->to_warehouse = $validated['to_warehouse'];
+                $transfer->product_id = $validated['product_id'];
+                $transfer->quantity = $validated['quantity'];
+                $transfer->date = $validated['date'];
+                $transfer->status = 'in_transit'; // Goods are in transit on road
+                $transfer->driver_name = $request->driver_name;
+                $transfer->driver_phone = $request->driver_phone;
+                $transfer->vehicle_plate_number = $request->vehicle_plate_number;
+                $transfer->dispatched_at = now();
+                $transfer->notes = $request->notes;
+                $transfer->creator_id = Auth::id();
+                $transfer->created_by = creatorId();
+                $transfer->save();
 
-            // Update warehouse stocks: decrease from source warehouse only with explicit audit context
-            // Destination warehouse stock is NOT incremented until goods are physically received
-            \App\Services\InventoryAuditContext::run(
-                'transfer_out',
-                'Transfer',
-                (int) $transfer->id,
-                function () use ($validated) {
-                    $fromStock = WarehouseStock::where('product_id', $validated['product_id'])
-                        ->where('warehouse_id', $validated['from_warehouse'])
-                        ->first();
+                // Update warehouse stocks: decrease from source warehouse only with explicit audit context
+                // Destination warehouse stock is NOT incremented until goods are physically received
+                \App\Services\InventoryAuditContext::run(
+                    'transfer_out',
+                    'Transfer',
+                    (int) $transfer->id,
+                    function () use ($validated) {
+                        $fromStock = WarehouseStock::where('product_id', $validated['product_id'])
+                            ->where('warehouse_id', $validated['from_warehouse'])
+                            ->first();
 
-                    if ($fromStock) {
-                        $newQty = max(0, floatval($fromStock->quantity) - floatval($validated['quantity']));
-                        $unitCost = floatval($fromStock->unit_cost ?? 0);
-                        $fromStock->quantity = $newQty;
-                        $fromStock->total_value = round($newQty * $unitCost, 4);
-                        $fromStock->save();
-                    }
-                },
-                "Dispatched Waybill {$transfer->waybill_number}"
-            );
+                        if ($fromStock) {
+                            $newQty = max(0, floatval($fromStock->quantity) - floatval($validated['quantity']));
+                            $unitCost = floatval($fromStock->unit_cost ?? 0);
+                            $fromStock->quantity = $newQty;
+                            $fromStock->total_value = round($newQty * $unitCost, 4);
+                            $fromStock->save();
+                        }
+                    },
+                    "Dispatched Waybill {$transfer->waybill_number}"
+                );
 
-            // Dispatch event for packages to handle their fields
-            CreateTransfer::dispatch($request, $transfer);
+                // Dispatch event for packages to handle their fields
+                CreateTransfer::dispatch($request, $transfer);
+
+                return $transfer;
+            });
 
             return back()->with('success', __('Shipment dispatched with Waybill :wb.', ['wb' => $transfer->waybill_number]));
         }
@@ -145,60 +150,62 @@ class TransferController extends Controller
         $damagedQty = (float) $request->input('damaged_quantity', 0);
         $reason = $request->input('discrepancy_reason');
 
-        // Increase in destination warehouse for actually received undamaged goods using source unit cost
-        $sourceCost = floatval(
-            WarehouseStock::where('product_id', $transfer->product_id)
-                ->where('warehouse_id', $transfer->from_warehouse)
-                ->value('unit_cost') ?? 0
-        );
+        DB::transaction(function () use ($transfer, $receivedQty, $damagedQty, $reason) {
+            // Increase in destination warehouse for actually received undamaged goods using source unit cost
+            $sourceCost = floatval(
+                WarehouseStock::where('product_id', $transfer->product_id)
+                    ->where('warehouse_id', $transfer->from_warehouse)
+                    ->value('unit_cost') ?? 0
+            );
 
-        \App\Services\InventoryAuditContext::run(
-            'transfer_in',
-            'Transfer',
-            (int) $transfer->id,
-            function () use ($transfer, $receivedQty, $sourceCost) {
-                $toStock = WarehouseStock::firstOrCreate(
-                    [
-                        'product_id'   => $transfer->product_id,
-                        'warehouse_id' => $transfer->to_warehouse,
-                    ],
-                    ['quantity' => 0, 'unit_cost' => $sourceCost, 'total_value' => 0]
-                );
+            \App\Services\InventoryAuditContext::run(
+                'transfer_in',
+                'Transfer',
+                (int) $transfer->id,
+                function () use ($transfer, $receivedQty, $sourceCost) {
+                    $toStock = WarehouseStock::firstOrCreate(
+                        [
+                            'product_id'   => $transfer->product_id,
+                            'warehouse_id' => $transfer->to_warehouse,
+                        ],
+                        ['quantity' => 0, 'unit_cost' => $sourceCost, 'total_value' => 0]
+                    );
 
-                $oldQty = floatval($toStock->quantity ?? 0);
-                $oldCost = floatval($toStock->unit_cost ?? 0);
-                $inCost = $sourceCost > 0 ? $sourceCost : $oldCost;
-                $newQty = $oldQty + $receivedQty;
+                    $oldQty = floatval($toStock->quantity ?? 0);
+                    $oldCost = floatval($toStock->unit_cost ?? 0);
+                    $inCost = $sourceCost > 0 ? $sourceCost : $oldCost;
+                    $newQty = $oldQty + $receivedQty;
 
-                if ($newQty > 0 && $oldQty >= 0 && $inCost > 0) {
-                    $toStock->unit_cost = round((($oldQty * $oldCost) + ($receivedQty * $inCost)) / $newQty, 4);
-                }
-                $toStock->quantity = $newQty;
-                $toStock->total_value = round($newQty * floatval($toStock->unit_cost ?? 0), 4);
-                $toStock->save();
-            },
-            "Received Waybill {$transfer->waybill_number}"
-        );
+                    if ($newQty > 0 && $oldQty >= 0 && $inCost > 0) {
+                        $toStock->unit_cost = round((($oldQty * $oldCost) + ($receivedQty * $inCost)) / $newQty, 4);
+                    }
+                    $toStock->quantity = $newQty;
+                    $toStock->total_value = round($newQty * floatval($toStock->unit_cost ?? 0), 4);
+                    $toStock->save();
+                },
+                "Received Waybill {$transfer->waybill_number}"
+            );
 
-        $transfer->received_quantity = $receivedQty;
-        $transfer->damaged_quantity = $damagedQty;
-        $transfer->discrepancy_reason = $reason;
-        $transfer->status = $damagedQty > 0 ? 'discrepancy' : 'received';
-        $transfer->received_at = now();
-        $transfer->save();
+            $transfer->received_quantity = $receivedQty;
+            $transfer->damaged_quantity = $damagedQty;
+            $transfer->discrepancy_reason = $reason;
+            $transfer->status = $damagedQty > 0 ? 'discrepancy' : 'received';
+            $transfer->received_at = now();
+            $transfer->save();
 
-        // Sync serialized units, FEFO batches, and post accounting shrinkage entry if damagedQty > 0
-        \App\Services\InventoryService::syncTransferReceipt(
-            companyId: (int) $transfer->created_by,
-            productId: (int) $transfer->product_id,
-            fromWarehouseId: (int) $transfer->from_warehouse,
-            toWarehouseId: (int) $transfer->to_warehouse,
-            receivedQty: $receivedQty,
-            damagedQty: $damagedQty,
-            transferId: (int) $transfer->id,
-            waybillNumber: $transfer->waybill_number,
-            discrepancyReason: $reason
-        );
+            // Sync serialized units, FEFO batches, and post accounting shrinkage entry if damagedQty > 0
+            \App\Services\InventoryService::syncTransferReceipt(
+                companyId: (int) $transfer->created_by,
+                productId: (int) $transfer->product_id,
+                fromWarehouseId: (int) $transfer->from_warehouse,
+                toWarehouseId: (int) $transfer->to_warehouse,
+                receivedQty: $receivedQty,
+                damagedQty: $damagedQty,
+                transferId: (int) $transfer->id,
+                waybillNumber: $transfer->waybill_number,
+                discrepancyReason: $reason
+            );
+        });
 
         $msg = __('Shipment received successfully.');
         if ($damagedQty > 0) {
@@ -236,7 +243,7 @@ class TransferController extends Controller
 
     public function show(Transfer $transfer)
     {
-        if(Auth::user()->can('view-transfers')){
+        if(Auth::user()->can('view-transfers') && (Auth::user()->hasRole('superadmin') || $this->assertBelongsToTenant($transfer))){
             $transfer->load(['fromWarehouse', 'toWarehouse', 'product']);
 
             return Inertia::render('Transfers/Show', [
@@ -249,47 +256,49 @@ class TransferController extends Controller
     public function destroy(Transfer $transfer)
     {
         if(Auth::user()->can('delete-transfers')){
-            if (!Auth::user()->hasRole('superadmin') && $transfer->created_by !== creatorId()) {
+            if (!Auth::user()->hasRole('superadmin') && !$this->assertBelongsToTenant($transfer)) {
                 return back()->with('error', __('Permission denied'));
             }
 
-            \App\Services\InventoryAuditContext::run(
-                'transfer_reversal',
-                'Transfer',
-                (int) $transfer->id,
-                function () use ($transfer) {
-                    // Restore stock to source warehouse
-                    $fromStock = WarehouseStock::firstOrCreate(
-                        [
-                            'product_id'   => $transfer->product_id,
-                            'warehouse_id' => $transfer->from_warehouse,
-                        ],
-                        ['quantity' => 0]
-                    );
-                    $fromStock->quantity += $transfer->quantity;
-                    $fromStock->total_value = round(floatval($fromStock->quantity) * floatval($fromStock->unit_cost ?? 0), 4);
-                    $fromStock->save();
+            DB::transaction(function () use ($transfer) {
+                \App\Services\InventoryAuditContext::run(
+                    'transfer_reversal',
+                    'Transfer',
+                    (int) $transfer->id,
+                    function () use ($transfer) {
+                        // Restore stock to source warehouse
+                        $fromStock = WarehouseStock::firstOrCreate(
+                            [
+                                'product_id'   => $transfer->product_id,
+                                'warehouse_id' => $transfer->from_warehouse,
+                            ],
+                            ['quantity' => 0]
+                        );
+                        $fromStock->quantity += $transfer->quantity;
+                        $fromStock->total_value = round(floatval($fromStock->quantity) * floatval($fromStock->unit_cost ?? 0), 4);
+                        $fromStock->save();
 
-                    // If the transfer was already received at destination, deduct from destination
-                    if ($transfer->status === 'received' || $transfer->status === 'discrepancy') {
-                        $toStock = WarehouseStock::where('product_id', $transfer->product_id)
-                            ->where('warehouse_id', $transfer->to_warehouse)
-                            ->first();
+                        // If the transfer was already received at destination, deduct from destination
+                        if ($transfer->status === 'received' || $transfer->status === 'discrepancy') {
+                            $toStock = WarehouseStock::where('product_id', $transfer->product_id)
+                                ->where('warehouse_id', $transfer->to_warehouse)
+                                ->first();
 
-                        $receivedQty = $transfer->received_quantity ?: $transfer->quantity;
-                        if ($toStock) {
-                            $toStock->quantity = max(0, $toStock->quantity - $receivedQty);
-                            $toStock->total_value = round(floatval($toStock->quantity) * floatval($toStock->unit_cost ?? 0), 4);
-                            $toStock->save();
+                            $receivedQty = $transfer->received_quantity ?: $transfer->quantity;
+                            if ($toStock) {
+                                $toStock->quantity = max(0, $toStock->quantity - $receivedQty);
+                                $toStock->total_value = round(floatval($toStock->quantity) * floatval($toStock->unit_cost ?? 0), 4);
+                                $toStock->save();
+                            }
                         }
-                    }
-                },
-                "Deleted Waybill {$transfer->waybill_number}"
-            );
+                    },
+                    "Deleted Waybill {$transfer->waybill_number}"
+                );
 
-            DestroyTransfer::dispatch($transfer);
+                DestroyTransfer::dispatch($transfer);
 
-            $transfer->delete();
+                $transfer->delete();
+            });
 
             return back()->with('success', __('The transfer has been deleted.'));
         }

@@ -136,32 +136,33 @@ class PurchaseReturnController extends Controller
     public function store(StorePurchaseReturnRequest $request)
     {
         if(Auth::user()->can('create-purchase-return-invoices')){
+            try {
+                DB::transaction(function () use ($request) {
+                    $totals = $this->calculateReturnTotals($request->items, $request->original_invoice_id);
+                    $return = new PurchaseReturn();
+                    $return->return_date = $request->return_date;
+                    $return->vendor_id = $request->vendor_id;
+                    $return->warehouse_id = $request->warehouse_id ?? null;
+                    $return->original_invoice_id = $request->original_invoice_id;
+                    $return->reason = $request->reason;
+                    $return->notes = $request->notes;
+                    $return->subtotal = $totals['subtotal'];
+                    $return->tax_amount = $totals['tax_amount'];
+                    $return->discount_amount = $totals['discount_amount'];
+                    $return->total_amount = $totals['total_amount'];
+                    $return->status = 'draft';
+                    $return->creator_id = Auth::id();
+                    $return->created_by = creatorId();
+                    $return->save();
 
-        $totals = $this->calculateReturnTotals($request->items, $request->original_invoice_id);
-        $return = new PurchaseReturn();
-        $return->return_date = $request->return_date;
-        $return->vendor_id = $request->vendor_id;
-        $return->warehouse_id = $request->warehouse_id ?? null;
-        $return->original_invoice_id = $request->original_invoice_id;
-        $return->reason = $request->reason;
-        $return->notes = $request->notes;
-        $return->subtotal = $totals['subtotal'];
-        $return->tax_amount = $totals['tax_amount'];
-        $return->discount_amount = $totals['discount_amount'];
-        $return->total_amount = $totals['total_amount'];
-        $return->status = 'draft';
-        $return->creator_id = Auth::id();
-        $return->created_by = creatorId();
-        $return->save();
+                    // Create return items
+                    $this->createReturnItems($return->id, $request->items, $request->original_invoice_id);
 
-        // Create return items
-        $this->createReturnItems($return->id, $request->items, $request->original_invoice_id);
-
-        try {
-            CreatePurchaseReturn::dispatch($request, $return);
-        } catch (\Throwable $th) {
-            return back()->with('error', $th->getMessage());
-        }
+                    CreatePurchaseReturn::dispatch($request, $return);
+                });
+            } catch (\Throwable $th) {
+                return back()->with('error', $th->getMessage());
+            }
             return redirect()->route('purchase-returns.index')->with('success', __('The purchase return has been created successfully.'));
         }
         else{
@@ -189,18 +190,19 @@ class PurchaseReturnController extends Controller
 
     public function approve(PurchaseReturn $return)
     {
-        if(Auth::user()->can('approve-purchase-returns-invoices')){
+        if(Auth::user()->can('approve-purchase-returns-invoices') && (Auth::user()->hasRole('superadmin') || $this->assertBelongsToTenant($return))){
             if ($return->status !== 'draft') {
                 return redirect()->back()->with('error', __('Only draft returns can be approved.'));
             }
 
             try {
-                ApprovePurchaseReturn::dispatch($return);
+                DB::transaction(function () use ($return) {
+                    ApprovePurchaseReturn::dispatch($return);
+                    $return->update(['status' => 'approved']);
+                });
             } catch (\Throwable $th) {
                 return back()->with('error', $th->getMessage());
             }
-
-            $return->update(['status' => 'approved']);
 
             return redirect()->route('purchase-returns.index')->with('success', __('The purchase return has been approved successfully. Debit note has been created automatically.'));
         }
@@ -211,14 +213,15 @@ class PurchaseReturnController extends Controller
 
     public function complete(PurchaseReturn $return)
     {
-        if(Auth::user()->can('complete-purchase-returns-invoices')){
+        if(Auth::user()->can('complete-purchase-returns-invoices') && (Auth::user()->hasRole('superadmin') || $this->assertBelongsToTenant($return))){
             if ($return->status !== 'approved') {
-            return redirect()->back()->with('error', __('Only approved returns can be completed.'));
-        }
+                return redirect()->back()->with('error', __('Only approved returns can be completed.'));
+            }
 
-        CompletePurchaseReturn::dispatch($return);
-
-        $return->update(['status' => 'completed']);
+            DB::transaction(function () use ($return) {
+                CompletePurchaseReturn::dispatch($return);
+                $return->update(['status' => 'completed']);
+            });
 
             return redirect()->route('purchase-returns.index')->with('success', __('The purchase return has been completed successfully.'));
         }
@@ -229,13 +232,14 @@ class PurchaseReturnController extends Controller
 
     public function destroy(PurchaseReturn $return)
     {
-        if(Auth::user()->can('delete-purchase-return-invoices')){
+        if(Auth::user()->can('delete-purchase-return-invoices') && (Auth::user()->hasRole('superadmin') || $this->assertBelongsToTenant($return))){
             if ($return->status !== 'draft') {
-            return redirect()->back()->with('error', __('Only draft returns can be deleted.'));
-        }
-            DestroyPurchaseReturn::dispatch($return);
-
-            $return->delete();
+                return redirect()->back()->with('error', __('Only draft returns can be deleted.'));
+            }
+            DB::transaction(function () use ($return) {
+                DestroyPurchaseReturn::dispatch($return);
+                $return->delete();
+            });
 
             return redirect()->route('purchase-returns.index')->with('success', __('The purchase return has been deleted.'));
         }

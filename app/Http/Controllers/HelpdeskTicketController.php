@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class HelpdeskTicketController extends Controller
@@ -70,21 +71,28 @@ class HelpdeskTicketController extends Controller
         if(Auth::user()->can('create-helpdesk-tickets')){
             $validated = $request->validated();
 
-            $ticket = new HelpdeskTicket();
-            $ticket->title = $validated['title'];
-            $ticket->description = $validated['description'];
-            $ticket->priority = $validated['priority'];
-            $ticket->category_id = $validated['category_id'];
+            $ticket = DB::transaction(function () use ($validated) {
+                $ticket = new HelpdeskTicket();
+                $ticket->title = $validated['title'];
+                $ticket->description = $validated['description'];
+                $ticket->priority = $validated['priority'];
+                $ticket->category_id = $validated['category_id'];
 
-            if(Auth::user()->type === 'superadmin' && isset($validated['company_id'])) {
-                $ticket->created_by = $validated['company_id'];
-            } else {
-                $ticket->created_by = creatorId();
+                if(Auth::user()->type === 'superadmin' && isset($validated['company_id'])) {
+                    $ticket->created_by = $validated['company_id'];
+                } else {
+                    $ticket->created_by = creatorId();
+                }
+
+                $ticket->save();
+                return $ticket;
+            });
+
+            try {
+                CreateHelpdeskTicket::dispatch($request, $ticket);
+            } catch (\Throwable $e) {
+                \Log::warning('CreateHelpdeskTicket dispatch failed: ' . $e->getMessage());
             }
-
-            $ticket->save();
-
-            CreateHelpdeskTicket::dispatch($request, $ticket);
 
             return back()->with('success', __('The ticket has been created successfully.'));
         }
@@ -95,7 +103,7 @@ class HelpdeskTicketController extends Controller
 
     public function show(HelpdeskTicket $helpdeskTicket)
     {
-        if(Auth::user()->can('view-helpdesk-tickets')){
+        if(Auth::user()->can('view-helpdesk-tickets') && (Auth::user()->can('manage-any-helpdesk-tickets') || Auth::user()->type === 'superadmin' || $this->assertBelongsToTenant($helpdeskTicket))){
             $helpdeskTicket->load(['category', 'creator', 'replies.creator']);
 
             return Inertia::render('helpdesk/tickets/show', [
@@ -109,23 +117,28 @@ class HelpdeskTicketController extends Controller
 
     public function update(UpdateHelpdeskTicketRequest $request, HelpdeskTicket $helpdeskTicket)
     {
-        if(Auth::user()->can('edit-helpdesk-tickets')){
+        if(Auth::user()->can('edit-helpdesk-tickets') && (Auth::user()->can('manage-any-helpdesk-tickets') || Auth::user()->type === 'superadmin' || $this->assertBelongsToTenant($helpdeskTicket))){
             $validated = $request->validated();
 
-            $helpdeskTicket->title = $validated['title'];
-            $helpdeskTicket->description = $validated['description'];
-            $helpdeskTicket->status = $validated['status'];
-            $helpdeskTicket->priority = $validated['priority'];
-            $helpdeskTicket->category_id = $validated['category_id'];
+            DB::transaction(function () use ($helpdeskTicket, $validated) {
+                $helpdeskTicket->title = $validated['title'];
+                $helpdeskTicket->description = $validated['description'];
+                $helpdeskTicket->status = $validated['status'];
+                $helpdeskTicket->priority = $validated['priority'];
+                $helpdeskTicket->category_id = $validated['category_id'];
 
+                if($validated['status'] === 'resolved' && !$helpdeskTicket->resolved_at) {
+                    $helpdeskTicket->resolved_at = now();
+                }
 
-            if($validated['status'] === 'resolved' && !$helpdeskTicket->resolved_at) {
-                $helpdeskTicket->resolved_at = now();
+                $helpdeskTicket->save();
+            });
+
+            try {
+                UpdateHelpdeskTicket::dispatch($request, $helpdeskTicket);
+            } catch (\Throwable $e) {
+                \Log::warning('UpdateHelpdeskTicket dispatch failed: ' . $e->getMessage());
             }
-
-            $helpdeskTicket->save();
-
-            UpdateHelpdeskTicket::dispatch($request, $helpdeskTicket);
 
             return back()->with('success', __('The ticket has been updated successfully'));
         }
@@ -136,10 +149,16 @@ class HelpdeskTicketController extends Controller
 
     public function destroy(HelpdeskTicket $helpdeskTicket)
     {
-        if(Auth::user()->can('delete-helpdesk-tickets')){
-            DestroyHelpdeskTicket::dispatch($helpdeskTicket);
+        if(Auth::user()->can('delete-helpdesk-tickets') && (Auth::user()->can('manage-any-helpdesk-tickets') || Auth::user()->type === 'superadmin' || $this->assertBelongsToTenant($helpdeskTicket))){
+            try {
+                DestroyHelpdeskTicket::dispatch($helpdeskTicket);
+            } catch (\Throwable $e) {
+                \Log::warning('DestroyHelpdeskTicket dispatch failed: ' . $e->getMessage());
+            }
 
-            $helpdeskTicket->delete();
+            DB::transaction(function () use ($helpdeskTicket) {
+                $helpdeskTicket->delete();
+            });
 
            return back()->with('success', __('The ticket has been deleted.'));
         }

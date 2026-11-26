@@ -3,9 +3,20 @@
 namespace Tests\Unit;
 
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceItem;
+use App\Models\PurchaseInvoiceItemTax;
 use App\Models\PurchaseReturn;
+use App\Models\PurchaseReturnItem;
+use App\Models\PurchaseReturnItemTax;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceItem;
+use App\Models\SalesInvoiceItemTax;
+use App\Models\SalesInvoiceReturn;
+use App\Models\SalesInvoiceReturnItem;
+use App\Models\SalesInvoiceReturnItemTax;
 use App\Models\SalesProposal;
+use App\Models\SalesProposalItem;
+use App\Models\SalesProposalItemTax;
 use App\Models\Transfer;
 use App\Models\Warehouse;
 use App\Traits\ControllerHelpers;
@@ -17,9 +28,20 @@ class CoreErpEnterpriseUpgradeTest extends TestCase
     {
         $models = [
             SalesInvoice::class,
+            SalesInvoiceItem::class,
+            SalesInvoiceItemTax::class,
             PurchaseInvoice::class,
+            PurchaseInvoiceItem::class,
+            PurchaseInvoiceItemTax::class,
             SalesProposal::class,
+            SalesProposalItem::class,
+            SalesProposalItemTax::class,
+            SalesInvoiceReturn::class,
+            SalesInvoiceReturnItem::class,
+            SalesInvoiceReturnItemTax::class,
             PurchaseReturn::class,
+            PurchaseReturnItem::class,
+            PurchaseReturnItemTax::class,
             Transfer::class,
             Warehouse::class,
         ];
@@ -36,17 +58,8 @@ class CoreErpEnterpriseUpgradeTest extends TestCase
 
     public function test_core_erp_tenant_form_requests_have_zero_unscoped_exists_rules(): void
     {
-        $files = [
-            app_path('Http/Requests/StoreSalesInvoiceRequest.php'),
-            app_path('Http/Requests/UpdateSalesInvoiceRequest.php'),
-            app_path('Http/Requests/StorePurchaseInvoiceRequest.php'),
-            app_path('Http/Requests/UpdatePurchaseInvoiceRequest.php'),
-            app_path('Http/Requests/StoreSalesProposalRequest.php'),
-            app_path('Http/Requests/UpdateSalesProposalRequest.php'),
-            app_path('Http/Requests/StoreSalesReturnRequest.php'),
-            app_path('Http/Requests/StorePurchaseReturnRequest.php'),
-            app_path('Http/Requests/StoreTransferRequest.php'),
-        ];
+        $files = glob(app_path('Http/Requests/*.php'));
+        $this->assertNotEmpty($files);
 
         foreach ($files as $file) {
             $content = file_get_contents($file);

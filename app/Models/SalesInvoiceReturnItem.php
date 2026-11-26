@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Workdo\ProductService\Models\ProductServiceItem;
+use App\Traits\TenantScoped;
 
 class SalesInvoiceReturnItem extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'return_id',
         'product_id',
@@ -21,7 +24,8 @@ class SalesInvoiceReturnItem extends Model
         'tax_percentage',
         'tax_amount',
         'total_amount',
-        'reason'
+        'reason',
+        'created_by'
     ];
 
     protected $casts = [

@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Workdo\ProductService\Models\ProductServiceItem;
+use App\Traits\TenantScoped;
 
 class PurchaseInvoiceItem extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'invoice_id',
         'product_id',
@@ -18,7 +21,8 @@ class PurchaseInvoiceItem extends Model
         'discount_amount',
         'tax_percentage',
         'tax_amount',
-        'total_amount'
+        'total_amount',
+        'created_by'
     ];
 
     protected $casts = [

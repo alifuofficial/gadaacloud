@@ -4,13 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\TenantScoped;
 
 class SalesInvoiceItemTax extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'item_id',
         'tax_name',
-        'tax_rate'
+        'tax_rate',
+        'created_by'
     ];
 
     protected $casts = [

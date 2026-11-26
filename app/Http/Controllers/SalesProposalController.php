@@ -119,28 +119,29 @@ class SalesProposalController extends Controller
     public function store(StoreSalesProposalRequest $request)
     {
         if(Auth::user()->can('create-sales-proposals')){
-
-            $totals = $this->calculateTotals($request->items);
-
-            $proposal = new SalesProposal();
-            $proposal->proposal_date = $request->invoice_date;
-            $proposal->due_date = $request->due_date;
-            $proposal->customer_id = $request->customer_id;
-            $proposal->warehouse_id = $request->warehouse_id;
-            $proposal->payment_terms = $request->payment_terms;
-            $proposal->notes = $request->notes;
-            $proposal->subtotal = $totals['subtotal'];
-            $proposal->tax_amount = $totals['tax_amount'];
-            $proposal->discount_amount = $totals['discount_amount'];
-            $proposal->total_amount = $totals['total_amount'];
-            $proposal->creator_id = Auth::id();
-            $proposal->created_by = creatorId();
-            $proposal->save();
-
-            $this->createProposalItems($proposal->id, $request->items);
-
             try {
-                CreateSalesProposal::dispatch($request, $proposal);
+                DB::transaction(function () use ($request) {
+                    $totals = $this->calculateTotals($request->items);
+
+                    $proposal = new SalesProposal();
+                    $proposal->proposal_date = $request->invoice_date;
+                    $proposal->due_date = $request->due_date;
+                    $proposal->customer_id = $request->customer_id;
+                    $proposal->warehouse_id = $request->warehouse_id;
+                    $proposal->payment_terms = $request->payment_terms;
+                    $proposal->notes = $request->notes;
+                    $proposal->subtotal = $totals['subtotal'];
+                    $proposal->tax_amount = $totals['tax_amount'];
+                    $proposal->discount_amount = $totals['discount_amount'];
+                    $proposal->total_amount = $totals['total_amount'];
+                    $proposal->creator_id = Auth::id();
+                    $proposal->created_by = creatorId();
+                    $proposal->save();
+
+                    $this->createProposalItems($proposal->id, $request->items);
+
+                    CreateSalesProposal::dispatch($request, $proposal);
+                });
             } catch (\Throwable $th) {
                 return back()->with('error', $th->getMessage());
             }
@@ -198,30 +199,32 @@ class SalesProposalController extends Controller
 
     public function update(UpdateSalesProposalRequest $request, SalesProposal $salesProposal)
     {
-        if(Auth::user()->can('edit-sales-proposals') && $salesProposal->created_by == creatorId()){
+        if(Auth::user()->can('edit-sales-proposals') && $this->assertBelongsToTenant($salesProposal)){
             if ($salesProposal->converted_to_invoice) {
                 return redirect()->route('sales-proposals.index')->with('error', __('Cannot update converted proposal.'));
             }
 
-            $totals = $this->calculateTotals($request->items);
+            DB::transaction(function () use ($request, $salesProposal) {
+                $totals = $this->calculateTotals($request->items);
 
-            $salesProposal->proposal_date = $request->invoice_date;
-            $salesProposal->due_date = $request->due_date;
-            $salesProposal->customer_id = $request->customer_id;
-            $salesProposal->warehouse_id = $request->warehouse_id;
-            $salesProposal->payment_terms = $request->payment_terms;
-            $salesProposal->notes = $request->notes;
-            $salesProposal->subtotal = $totals['subtotal'];
-            $salesProposal->tax_amount = $totals['tax_amount'];
-            $salesProposal->discount_amount = $totals['discount_amount'];
-            $salesProposal->total_amount = $totals['total_amount'];
-            $salesProposal->save();
+                $salesProposal->proposal_date = $request->invoice_date;
+                $salesProposal->due_date = $request->due_date;
+                $salesProposal->customer_id = $request->customer_id;
+                $salesProposal->warehouse_id = $request->warehouse_id;
+                $salesProposal->payment_terms = $request->payment_terms;
+                $salesProposal->notes = $request->notes;
+                $salesProposal->subtotal = $totals['subtotal'];
+                $salesProposal->tax_amount = $totals['tax_amount'];
+                $salesProposal->discount_amount = $totals['discount_amount'];
+                $salesProposal->total_amount = $totals['total_amount'];
+                $salesProposal->save();
 
-            $salesProposal->items()->delete();
-            $this->createProposalItems($salesProposal->id, $request->items);
+                $salesProposal->items()->delete();
+                $this->createProposalItems($salesProposal->id, $request->items);
 
-            // Dispatch event for packages to handle their fields
-            UpdateSalesProposal::dispatch($request, $salesProposal);
+                // Dispatch event for packages to handle their fields
+                UpdateSalesProposal::dispatch($request, $salesProposal);
+            });
 
             return redirect()->route('sales-proposals.index')->with('success', __('The sales proposal details are updated successfully.'));
         }
@@ -232,15 +235,15 @@ class SalesProposalController extends Controller
 
     public function destroy(SalesProposal $salesProposal)
     {
-        if(Auth::user()->can('delete-sales-proposals')){
+        if(Auth::user()->can('delete-sales-proposals') && (Auth::user()->hasRole('superadmin') || $this->assertBelongsToTenant($salesProposal))){
             if ($salesProposal->converted_to_invoice) {
                 return back()->withErrors(['error' => __('Cannot delete converted proposal.')]);
             }
 
-            // Dispatch event before deletion
-            DestroySalesProposal::dispatch($salesProposal);
-
-            $salesProposal->delete();
+            DB::transaction(function () use ($salesProposal) {
+                DestroySalesProposal::dispatch($salesProposal);
+                $salesProposal->delete();
+            });
 
             return redirect()->route('sales-proposals.index')->with('success', __('The sales proposal has been deleted.'));
         }
