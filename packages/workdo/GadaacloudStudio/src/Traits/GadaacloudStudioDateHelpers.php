@@ -15,7 +15,7 @@ trait GadaacloudStudioDateHelpers
     {
         if (class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)) {
             $service = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
-            $year = $ethFiscalYear ?? $service->getCurrentEthiopianYear();
+            $year = $ethFiscalYear ?? $service->getCurrentFiscalYear();
             return $service->getFiscalYearRange((int) $year);
         }
 
@@ -36,8 +36,10 @@ trait GadaacloudStudioDateHelpers
 
         if (class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)) {
             $service = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class);
-            $eth = $service->toEthiopian($carbon->year, $carbon->month, $carbon->day);
-            return $carbon->format('Y-m-d') . ' / ' . implode('-', $eth);
+            $eth = $service->toEthiopian($carbon);
+            if ($eth) {
+                return sprintf('%s / %04d-%02d-%02d', $carbon->format('Y-m-d'), $eth['year'], $eth['month'], $eth['day']);
+            }
         }
 
         return $carbon->format('Y-m-d');

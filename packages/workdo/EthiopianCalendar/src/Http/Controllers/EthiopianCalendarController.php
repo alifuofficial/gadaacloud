@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\EthiopianCalendar\Services\EthiopianDateService;
 
@@ -87,9 +88,11 @@ class EthiopianCalendarController extends Controller
             'useEthiopianTime' => 'required|string|in:on,off',
         ]);
 
-        foreach ($validated as $key => $value) {
-            setSetting($key, $value);
-        }
+        DB::transaction(function () use ($validated) {
+            foreach ($validated as $key => $value) {
+                setSetting($key, $value);
+            }
+        });
 
         return redirect()->back()->with('success', __('Ethiopian Calendar preferences updated successfully.'));
     }
@@ -120,40 +123,44 @@ class EthiopianCalendarController extends Controller
         $tenantId = creatorId();
         $userId = Auth::id();
 
-        $holidayType = \Workdo\Hrm\Models\HolidayType::firstOrCreate(
-            [
-                'created_by' => $tenantId,
-                'holiday_type' => 'Ethiopian Public Holiday',
-            ],
-            [
-                'creator_id' => $userId,
-            ]
-        );
-
-        $createdCount = 0;
-        foreach ($holidaysToSync as $item) {
-            $startDate = Carbon::parse($item['start_date'])->format('Y-m-d');
-            $existing = \Workdo\Hrm\Models\Holiday::where('created_by', $tenantId)
-                ->whereDate('start_date', $startDate)
-                ->where('name', $item['name'])
-                ->first();
-
-            if (!$existing) {
-                \Workdo\Hrm\Models\Holiday::create([
-                    'name' => $item['name'],
-                    'start_date' => $startDate,
-                    'end_date' => $startDate,
-                    'holiday_type_id' => $holidayType->id,
-                    'description' => $item['description'] ?? "Ethiopian Public Holiday ({$ethYear} E.C.)",
-                    'is_paid' => true,
-                    'is_sync_google_calendar' => false,
-                    'is_sync_outlook_calendar' => false,
-                    'creator_id' => $userId,
+        $createdCount = DB::transaction(function () use ($tenantId, $userId, $holidaysToSync, $ethYear) {
+            $holidayType = \Workdo\Hrm\Models\HolidayType::firstOrCreate(
+                [
                     'created_by' => $tenantId,
-                ]);
-                $createdCount++;
+                    'holiday_type' => 'Ethiopian Public Holiday',
+                ],
+                [
+                    'creator_id' => $userId,
+                ]
+            );
+
+            $createdCount = 0;
+            foreach ($holidaysToSync as $item) {
+                $startDate = Carbon::parse($item['start_date'])->format('Y-m-d');
+                $existing = \Workdo\Hrm\Models\Holiday::where('created_by', $tenantId)
+                    ->whereDate('start_date', $startDate)
+                    ->where('name', $item['name'])
+                    ->first();
+
+                if (!$existing) {
+                    \Workdo\Hrm\Models\Holiday::create([
+                        'name' => $item['name'],
+                        'start_date' => $startDate,
+                        'end_date' => $startDate,
+                        'holiday_type_id' => $holidayType->id,
+                        'description' => $item['description'] ?? "Ethiopian Public Holiday ({$ethYear} E.C.)",
+                        'is_paid' => true,
+                        'is_sync_google_calendar' => false,
+                        'is_sync_outlook_calendar' => false,
+                        'creator_id' => $userId,
+                        'created_by' => $tenantId,
+                    ]);
+                    $createdCount++;
+                }
             }
-        }
+
+            return $createdCount;
+        });
 
         $msg = $createdCount > 0
             ? __(':count Ethiopian public holidays synced to HRM.', ['count' => $createdCount])

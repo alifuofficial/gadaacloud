@@ -57,4 +57,60 @@ class EthiopianCalendarEnterpriseUpgradeTest extends TestCase
         $this->assertContains('Finding of the True Cross (Meskel)', $holidayNames);
         $this->assertContains('Ethiopian Easter (Fasika)', $holidayNames);
     }
+
+    public function test_all_module_date_helpers_resolve_null_fiscal_year_and_dual_dates(): void
+    {
+        $traitsAndMethods = [
+            [\Workdo\Account\Traits\AccountDateHelpers::class, 'resolveAccountDateRange', 'formatDualAccountDate'],
+            [\Workdo\AIAssistant\Traits\AIAssistantDateHelpers::class, 'resolveAIAssistantDateRange', 'formatDualAIAssistantDate'],
+            [\Workdo\Calendar\Traits\CalendarDateHelpers::class, 'resolveCalendarDateRange', 'formatDualCalendarDate'],
+            [\Workdo\Chatter\Traits\ChatterDateHelpers::class, 'resolveChatterDateRange', 'formatDualChatterDate'],
+            [\Workdo\EIMS\Traits\EimsDateHelpers::class, 'resolveEimsDateRange', 'formatDualEimsDate'],
+            [\Workdo\ERPMigrate\Traits\ERPMigrateDateHelpers::class, 'resolveERPMigrateDateRange', 'formatDualERPMigrateDate'],
+            [\Workdo\FormBuilder\Traits\FormBuilderDateHelpers::class, 'resolveFormBuilderDateRange', 'formatDualFormBuilderDate'],
+            [\Workdo\GadaaCloudCopilot\Traits\GadaaCloudCopilotDateHelpers::class, 'resolveCopilotDateRange', 'formatDualCopilotDate'],
+            [\Workdo\GadaacloudStudio\Traits\GadaacloudStudioDateHelpers::class, 'resolveStudioDateRange', 'formatDualStudioDate'],
+            [\Workdo\Goal\Traits\GoalDateHelpers::class, 'resolveGoalDateRange', 'formatDualGoalDate'],
+            [\Workdo\LandingPage\Traits\LandingPageDateHelpers::class, 'resolveLandingPageDateRange', 'formatDualLandingPageDate'],
+            [\Workdo\ProductService\Traits\ProductServiceDateHelpers::class, 'resolveProductServiceDateRange', 'formatDualProductServiceDate'],
+            [\Workdo\SupportTicket\Traits\SupportTicketDateHelpers::class, 'resolveSupportTicketDateRange', 'formatDualSupportTicketDate'],
+            [\Workdo\Timesheet\Traits\TimesheetDateHelpers::class, 'resolveTimesheetDateRange', 'formatDualTimesheetDate'],
+            [\Workdo\Training\Traits\TrainingDateHelpers::class, 'resolveTrainingDateRange', 'formatDualTrainingDate'],
+            [\Workdo\Webhook\Traits\WebhookDateHelpers::class, 'resolveWebhookDateRange', 'formatDualWebhookDate'],
+            [\Workdo\ZoomMeeting\Traits\ZoomMeetingDateHelpers::class, 'resolveZoomMeetingDateRange', 'formatDualZoomMeetingDate'],
+        ];
+
+        $map = [
+            0 => new class { use \Workdo\Account\Traits\AccountDateHelpers; },
+            1 => new class { use \Workdo\AIAssistant\Traits\AIAssistantDateHelpers; },
+            2 => new class { use \Workdo\Calendar\Traits\CalendarDateHelpers; },
+            3 => new class { use \Workdo\Chatter\Traits\ChatterDateHelpers; },
+            4 => new class { use \Workdo\EIMS\Traits\EimsDateHelpers; },
+            5 => new class { use \Workdo\ERPMigrate\Traits\ERPMigrateDateHelpers; },
+            6 => new class { use \Workdo\FormBuilder\Traits\FormBuilderDateHelpers; },
+            7 => new class { use \Workdo\GadaaCloudCopilot\Traits\GadaaCloudCopilotDateHelpers; },
+            8 => new class { use \Workdo\GadaacloudStudio\Traits\GadaacloudStudioDateHelpers; },
+            9 => new class { use \Workdo\Goal\Traits\GoalDateHelpers; },
+            10 => new class { use \Workdo\LandingPage\Traits\LandingPageDateHelpers; },
+            11 => new class { use \Workdo\ProductService\Traits\ProductServiceDateHelpers; },
+            12 => new class { use \Workdo\SupportTicket\Traits\SupportTicketDateHelpers; },
+            13 => new class { use \Workdo\Timesheet\Traits\TimesheetDateHelpers; },
+            14 => new class { use \Workdo\Training\Traits\TrainingDateHelpers; },
+            15 => new class { use \Workdo\Webhook\Traits\WebhookDateHelpers; },
+            16 => new class { use \Workdo\ZoomMeeting\Traits\ZoomMeetingDateHelpers; },
+        ];
+
+        foreach ($traitsAndMethods as $idx => [$traitClass, $resolveMethod, $dualMethod]) {
+            $helper = $map[$idx];
+            $rangeNull = $helper->{$resolveMethod}(null);
+            $this->assertArrayHasKey('start_date', $rangeNull, $traitClass);
+            $this->assertArrayHasKey('end_date', $rangeNull, $traitClass);
+
+            $dual = $helper->{$dualMethod}('2025-01-07');
+            $this->assertStringStartsWith('2025-01-07 / ', $dual, $traitClass);
+        }
+
+        $ethController = file_get_contents(base_path('packages/workdo/EthiopianCalendar/src/Http/Controllers/EthiopianCalendarController.php'));
+        $this->assertStringContainsString('DB::transaction', $ethController);
+    }
 }
