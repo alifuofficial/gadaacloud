@@ -4,6 +4,7 @@ namespace Workdo\Timesheet\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Workdo\Timesheet\Traits\TimesheetControllerHelpers;
 
 class UpdateTimesheetRequest extends FormRequest
 {
@@ -24,12 +25,14 @@ class UpdateTimesheetRequest extends FormRequest
 
         // User field only for managers
         if(Auth::user()->can('manage-any-timesheet')) {
-            $rules['user_id'] = 'required|exists:users,id';
+            $rules['user_id'] = ['required', TimesheetControllerHelpers::tenantExists('users', 'id')];
         }
 
         // Project and task fields for project type
         if($this->type === 'project') {
-            $rules['project_id'] = 'required|integer';
+            $rules['project_id'] = module_is_active('Taskly')
+                ? ['required', 'integer', TimesheetControllerHelpers::tenantExists('projects', 'id')]
+                : 'required|integer';
             $rules['task_id'] = 'nullable|integer';
         }
 

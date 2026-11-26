@@ -5,6 +5,7 @@ namespace Workdo\Timesheet\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Timesheet\Models\Timesheet;
 use Workdo\Timesheet\Http\Requests\StoreTimesheetRequest;
@@ -12,10 +13,14 @@ use Workdo\Timesheet\Http\Requests\UpdateTimesheetRequest;
 use Workdo\Timesheet\Events\CreateTimesheet;
 use Workdo\Timesheet\Events\UpdateTimesheet;
 use Workdo\Timesheet\Events\DestroyTimesheet;
+use Workdo\Timesheet\Traits\TimesheetControllerHelpers;
+use Workdo\Timesheet\Traits\TimesheetDateHelpers;
 use App\Models\User;
 
 class TimesheetController extends Controller
 {
+    use TimesheetControllerHelpers, TimesheetDateHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-timesheet')) {
@@ -52,7 +57,7 @@ class TimesheetController extends Controller
 
                     return $q->orderBy('timesheets.' . $sort, $direction);
                 }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Add project and task names if modules are active
@@ -136,13 +141,20 @@ class TimesheetController extends Controller
                     $validated['user_id'] = Auth::id();
                 }
 
-                $timesheet = new Timesheet();
-                $timesheet->fill($validated);
-                $timesheet->creator_id = Auth::id();
-                $timesheet->created_by = creatorId();
-                $timesheet->save();
+                $timesheet = DB::transaction(function () use ($validated) {
+                    $timesheet = new Timesheet();
+                    $timesheet->fill($validated);
+                    $timesheet->creator_id = Auth::id();
+                    $timesheet->created_by = creatorId();
+                    $timesheet->save();
+                    return $timesheet;
+                });
 
-                CreateTimesheet::dispatch($request, $timesheet);
+                try {
+                    CreateTimesheet::dispatch($request, $timesheet);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
 
                 return back()->with('success', __('The timesheet has been created successfully.'));
             } catch (\Exception $e) {
@@ -173,9 +185,15 @@ class TimesheetController extends Controller
                     }
                 }
                 
-                $timesheet->update($validated);
+                DB::transaction(function () use ($timesheet, $validated) {
+                    $timesheet->update($validated);
+                });
 
-                UpdateTimesheet::dispatch($request, $timesheet);
+                try {
+                    UpdateTimesheet::dispatch($request, $timesheet);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
 
                 return back()->with('success', __('The timesheet details are updated successfully.'));
             } catch (\Exception $e) {
@@ -190,9 +208,15 @@ class TimesheetController extends Controller
     {
         if (Auth::user()->can('delete-timesheet') && $this->canAccessTimesheet($timesheet)) {
             try {
-                DestroyTimesheet::dispatch($timesheet);
-                
-                $timesheet->delete();
+                DB::transaction(function () use ($timesheet) {
+                    try {
+                        DestroyTimesheet::dispatch($timesheet);
+                    } catch (\Throwable $e) {
+                        // Non-blocking
+                    }
+
+                    $timesheet->delete();
+                });
                 return back()->with('success', __('The timesheet has been deleted.'));
             } catch (\Exception $e) {
                 \Log::error('Error deleting timesheet: ' . $e->getMessage());
@@ -205,9 +229,9 @@ class TimesheetController extends Controller
     private function canAccessTimesheet(Timesheet $timesheet)
     {
         if (Auth::user()->can('manage-any-timesheet')) {
-            return $timesheet->created_by === creatorId();
+            return $this->assertBelongsToTenant($timesheet);
         }
-        return $timesheet->user_id === Auth::id();
+        return $this->assertBelongsToTenant($timesheet) && (int) $timesheet->user_id === (int) Auth::id();
     }
 
     public function getAttendanceHours($userId, $date)
