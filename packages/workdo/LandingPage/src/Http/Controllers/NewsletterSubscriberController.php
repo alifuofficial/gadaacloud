@@ -10,17 +10,29 @@ use Workdo\LandingPage\Http\Requests\StoreNewsletterSubscriberRequest;
 use Workdo\LandingPage\Events\CreateNewsletterSubscriber;
 use Workdo\LandingPage\Events\DestroyNewsletterSubscriber;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Workdo\LandingPage\Traits\LandingPageControllerHelpers;
+use Workdo\LandingPage\Traits\LandingPageDateHelpers;
 
 class NewsletterSubscriberController extends Controller
 {
+    use LandingPageControllerHelpers, LandingPageDateHelpers;
+
     public function index(Request $request)
     {
         if(Auth::user()->can('manage-newsletter-subscribers')){
             $subscribers = NewsletterSubscriber::query()
                 ->when($request->filled('email'), fn($q) => $q->where('email', 'like', '%' . $request->email . '%'))
-                ->when($request->filled('sort'), fn($q) => $q->orderBy($request->sort, $request->get('direction', 'asc')), fn($q) => $q->latest('subscribed_at'))
-                ->paginate($request->get('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort(
+                    $q,
+                    ['id', 'email', 'subscribed_at', 'country', 'city', 'created_at'],
+                    $request->sort,
+                    $request->direction,
+                    'subscribed_at',
+                    'desc'
+                ))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('LandingPage/NewsletterSubscribers/Index', [
@@ -64,10 +76,16 @@ class NewsletterSubscriberController extends Controller
         $subscriber->browser = $deviceInfo['browser_name'] ?? null;
         $subscriber->os = $deviceInfo['os_name'] ?? null;
         $subscriber->device = $deviceInfo['device_type'] ?? null;
-        $subscriber->save();
+        DB::transaction(function () use ($subscriber) {
+            $subscriber->save();
+        });
 
         // Dispatch event for packages to handle their fields
-        CreateNewsletterSubscriber::dispatch($request, $subscriber);
+        try {
+            CreateNewsletterSubscriber::dispatch($request, $subscriber);
+        } catch (\Throwable $e) {
+            \Log::warning('CreateNewsletterSubscriber dispatch failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -129,9 +147,15 @@ class NewsletterSubscriberController extends Controller
     public function destroy(NewsletterSubscriber $subscriber)
     {
         if(Auth::user()->can('delete-newsletter-subscribers')){
-            DestroyNewsletterSubscriber::dispatch($subscriber);
+            try {
+                DestroyNewsletterSubscriber::dispatch($subscriber);
+            } catch (\Throwable $e) {
+                \Log::warning('DestroyNewsletterSubscriber dispatch failed: ' . $e->getMessage());
+            }
             
-            $subscriber->delete();
+            DB::transaction(function () use ($subscriber) {
+                $subscriber->delete();
+            });
 
             return back()->with('success', __('The Newsletter subscriber has been deleted.'));
         }

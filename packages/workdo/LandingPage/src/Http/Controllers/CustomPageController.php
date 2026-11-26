@@ -9,9 +9,14 @@ use Workdo\LandingPage\Models\CustomPage;
 use Workdo\LandingPage\Models\LandingPageSetting;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Workdo\LandingPage\Traits\LandingPageControllerHelpers;
+use Workdo\LandingPage\Traits\LandingPageDateHelpers;
 
 class CustomPageController extends Controller
 {
+    use LandingPageControllerHelpers, LandingPageDateHelpers;
+
     public function index(Request $request)
     {
         if(Auth::user()->can('manage-custom-pages')){
@@ -21,14 +26,16 @@ class CustomPageController extends Controller
                 $query->where('title', 'like', '%' . $request->title . '%');
             }
             
-            if ($request->filled('sort')) {
-                $direction = $request->get('direction', 'asc');
-                $query->orderBy($request->sort, $direction);
-            } else {
-                $query->orderBy('created_at', 'desc');
-            }
+            $this->applySafeSort(
+                $query,
+                ['id', 'title', 'slug', 'is_active', 'created_at', 'updated_at'],
+                $request->sort,
+                $request->direction,
+                'created_at',
+                'desc'
+            );
             
-            $pages = $query->paginate($request->get('per_page', 10));
+            $pages = $query->paginate($this->safePerPage(10, 100));
             
                 return Inertia::render('LandingPage/CustomPages/Index', [
                     'pages' => $pages
@@ -61,11 +68,13 @@ class CustomPageController extends Controller
                 'is_active' => 'boolean'
             ]);
 
-            if (!$validated['slug']) {
+            if (empty($validated['slug'])) {
                 $validated['slug'] = Str::slug($validated['title']);
             }
 
-                CustomPage::create($validated);
+                DB::transaction(function () use ($validated) {
+                    CustomPage::create($validated);
+                });
 
                 return redirect()->route('custom-pages.index')->with('success', __('The custom page has been created successfully.'));
             }
@@ -100,7 +109,9 @@ class CustomPageController extends Controller
                 'is_active' => 'boolean'
             ]);
 
-            $customPage->update($validated);
+            DB::transaction(function () use ($customPage, $validated) {
+                $customPage->update($validated);
+            });
 
             return redirect()->route('custom-pages.index')->with('success', __('The custom page details are updated successfully.'));
         }
@@ -116,7 +127,9 @@ class CustomPageController extends Controller
                 return back()->with('error', __('This page cannot be deleted.'));
             }
             
-            $customPage->delete();
+            DB::transaction(function () use ($customPage) {
+                $customPage->delete();
+            });
 
             return back()->with('success', __('The custom page has been deleted.'));
         }

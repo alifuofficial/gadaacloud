@@ -5,10 +5,14 @@ namespace Workdo\AIAssistant\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Workdo\AIAssistant\Traits\AIAssistantControllerHelpers;
+use Workdo\AIAssistant\Traits\AIAssistantDateHelpers;
 
 class AIAssistantSettingsController extends Controller
 {
+    use AIAssistantControllerHelpers, AIAssistantDateHelpers;
     public function index()
     {
         $providers = [
@@ -48,9 +52,11 @@ class AIAssistantSettingsController extends Controller
 
             $settings = $request->input('settings', []);
             try {
-                foreach ($settings as $key => $value) {
-                    setSetting($key, $value);
-                }
+                DB::transaction(function () use ($settings) {
+                    foreach ($settings as $key => $value) {
+                        setSetting($key, $value);
+                    }
+                });
 
                 return redirect()->back()->with('success', __('AI Assistant settings saved successfully.'));
             } catch (\Exception $e) {

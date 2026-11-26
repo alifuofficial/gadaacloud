@@ -5,9 +5,12 @@ namespace Workdo\AIAssistant\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Workdo\AIAssistant\Services\AIService;
+use Workdo\AIAssistant\Traits\AIAssistantControllerHelpers;
+use Workdo\AIAssistant\Traits\AIAssistantDateHelpers;
 
 class AIGeneratorController extends Controller
 {
+    use AIAssistantControllerHelpers, AIAssistantDateHelpers;
     protected $aiService;
 
     public function __construct(AIService $aiService)
