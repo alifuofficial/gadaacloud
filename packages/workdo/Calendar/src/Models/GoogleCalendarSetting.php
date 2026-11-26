@@ -3,9 +3,12 @@
 namespace Workdo\Calendar\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TenantScoped;
 
 class GoogleCalendarSetting extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'service_account_json',
         'calendar_id',

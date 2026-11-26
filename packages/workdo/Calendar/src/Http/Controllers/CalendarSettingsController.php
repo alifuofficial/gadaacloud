@@ -4,10 +4,15 @@ namespace Workdo\Calendar\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Workdo\Calendar\Http\Requests\StoreGoogleCalendarSettingsRequest;
+use Workdo\Calendar\Traits\CalendarControllerHelpers;
+use Workdo\Calendar\Traits\CalendarDateHelpers;
 
 class CalendarSettingsController extends Controller
 {
+    use CalendarControllerHelpers, CalendarDateHelpers;
+
     public function index()
     {
         $tokenExists = company_setting('google_calendar_token', creatorId());
@@ -32,9 +37,11 @@ class CalendarSettingsController extends Controller
             }
 
             try {
-                foreach ($settings as $key => $value) {
-                    setSetting($key, $value, creatorId(), false);
-                }
+                DB::transaction(function () use ($settings) {
+                    foreach ($settings as $key => $value) {
+                        setSetting($key, $value, creatorId(), false);
+                    }
+                });
 
                 return back()->with('success', __('Google Calendar settings saved successfully.'));
             } catch (\Exception $e) {

@@ -27,9 +27,12 @@ use Workdo\Taskly\Models\ProjectTask;
 use Workdo\TeamWorkload\Models\Holiday as TeamWorkloadHoliday;
 use Workdo\ToDo\Models\ToDo;
 use Workdo\ZoomMeeting\Models\ZoomMeeting;
+use Workdo\Calendar\Traits\CalendarControllerHelpers;
+use Workdo\Calendar\Traits\CalendarDateHelpers;
 
 class CalendarController extends Controller
 {
+    use CalendarControllerHelpers, CalendarDateHelpers;
     public function index(Request $request)
     {
         if (Auth::user()->can('manage-calendar')) {
