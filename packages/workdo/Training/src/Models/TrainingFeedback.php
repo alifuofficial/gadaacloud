@@ -5,10 +5,11 @@ namespace Workdo\Training\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class TrainingFeedback extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'training_task_id',

@@ -10,12 +10,17 @@ use Workdo\Training\Events\CreateTrainingType;
 use Workdo\Training\Events\UpdateTrainingType;
 use Workdo\Training\Events\DestroyTrainingType;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Hrm\Models\Branch;
 use Workdo\Hrm\Models\Department;
+use Workdo\Training\Traits\TrainingControllerHelpers;
+use Workdo\Training\Traits\TrainingDateHelpers;
 
 class TrainingTypeController extends Controller
 {
+    use TrainingControllerHelpers, TrainingDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-training-types')){
@@ -33,8 +38,8 @@ class TrainingTypeController extends Controller
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('branch_id'), fn($q) => $q->where('branch_id', request('branch_id')))
                 ->when(request('department_id'), fn($q) => $q->where('department_id', request('department_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $branches = Branch::where('created_by', creatorId())->get();
@@ -56,16 +61,23 @@ class TrainingTypeController extends Controller
         if(Auth::user()->can('create-training-types')){
             $validated = $request->validated();
 
-            $trainingType                = new TrainingType();
-            $trainingType->name          = $validated['name'];
-            $trainingType->description   = $validated['description'];
-            $trainingType->branch_id     = $validated['branch_id'];
-            $trainingType->department_id = $validated['department_id'] ?? [];
-            $trainingType->creator_id    = Auth::id();
-            $trainingType->created_by    = creatorId();
-            $trainingType->save();
+            $trainingType = DB::transaction(function () use ($validated) {
+                $trainingType                = new TrainingType();
+                $trainingType->name          = $validated['name'];
+                $trainingType->description   = $validated['description'] ?? null;
+                $trainingType->branch_id     = $validated['branch_id'];
+                $trainingType->department_id = $validated['department_id'] ?? [];
+                $trainingType->creator_id    = Auth::id();
+                $trainingType->created_by    = creatorId();
+                $trainingType->save();
+                return $trainingType;
+            });
 
-            CreateTrainingType::dispatch($request, $trainingType);
+            try {
+                CreateTrainingType::dispatch($request, $trainingType);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return redirect()->route('training.training-types.index')->with('success', __('The training type has been created successfully.'));
         }
@@ -76,16 +88,22 @@ class TrainingTypeController extends Controller
 
     public function update(UpdateTrainingTypeRequest $request, TrainingType $trainingType)
     {
-        if(Auth::user()->can('edit-training-types')){
+        if(Auth::user()->can('edit-training-types') && $this->assertBelongsToTenant($trainingType)){
             $validated = $request->validated();
 
-            $trainingType->name          = $validated['name'];
-            $trainingType->description   = $validated['description'];
-            $trainingType->branch_id     = $validated['branch_id'];
-            $trainingType->department_id = $validated['department_id'] ?? [];
-            $trainingType->save();
+            DB::transaction(function () use ($trainingType, $validated) {
+                $trainingType->name          = $validated['name'];
+                $trainingType->description   = $validated['description'] ?? null;
+                $trainingType->branch_id     = $validated['branch_id'];
+                $trainingType->department_id = $validated['department_id'] ?? [];
+                $trainingType->save();
+            });
 
-            UpdateTrainingType::dispatch($request, $trainingType);
+            try {
+                UpdateTrainingType::dispatch($request, $trainingType);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return back()->with('success', __('The training type details are updated successfully.'));
         }
@@ -96,10 +114,16 @@ class TrainingTypeController extends Controller
 
     public function destroy(TrainingType $trainingType)
     {
-        if(Auth::user()->can('delete-training-types')){
-            DestroyTrainingType::dispatch($trainingType);
+        if(Auth::user()->can('delete-training-types') && $this->assertBelongsToTenant($trainingType)){
+            DB::transaction(function () use ($trainingType) {
+                try {
+                    DestroyTrainingType::dispatch($trainingType);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
 
-            $trainingType->delete();
+                $trainingType->delete();
+            });
 
             return back()->with('success', __('The training type has been deleted.'));
         }

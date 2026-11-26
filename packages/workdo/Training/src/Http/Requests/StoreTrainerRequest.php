@@ -3,6 +3,8 @@
 namespace Workdo\Training\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Workdo\Training\Traits\TrainingControllerHelpers;
 
 class StoreTrainerRequest extends FormRequest
 {
@@ -16,10 +18,10 @@ class StoreTrainerRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'contact' => 'required|string|max:20',
-            'email' => 'required|email|unique:trainers,email',
+            'email' => ['required', 'email', Rule::unique('trainers', 'email')->where('created_by', creatorId())],
             'experience' => 'required|string|max:255',
-            'branch_id' => 'required|exists:branches,id',
-            'department_id' => 'required|exists:departments,id',
+            'branch_id' => ['required', TrainingControllerHelpers::tenantExists('branches', 'id')],
+            'department_id' => ['required', TrainingControllerHelpers::tenantExists('departments', 'id')],
             'expertise' => 'nullable|string',
             'qualification' => 'nullable|string',
         ];

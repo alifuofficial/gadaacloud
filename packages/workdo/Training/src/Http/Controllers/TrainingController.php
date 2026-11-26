@@ -12,13 +12,18 @@ use Workdo\Training\Events\CreateTraining;
 use Workdo\Training\Events\UpdateTraining;
 use Workdo\Training\Events\DestroyTraining;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Hrm\Models\Branch;
 use Workdo\Hrm\Models\Department;
 use App\Models\User;
+use Workdo\Training\Traits\TrainingControllerHelpers;
+use Workdo\Training\Traits\TrainingDateHelpers;
 
 class TrainingController extends Controller
 {
+    use TrainingControllerHelpers, TrainingDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-trainings')){
@@ -42,8 +47,8 @@ class TrainingController extends Controller
                 ->when(request('status'), fn($q) => $q->where('status', request('status')))
                 ->when(request('branch_id'), fn($q) => $q->where('branch_id', request('branch_id')))
                 ->when(request('department_id'), fn($q) => $q->where('department_id', request('department_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['title', 'start_date', 'end_date', 'status', 'cost', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $trainingTypes = TrainingType::where('created_by', creatorId())->get();
@@ -71,26 +76,33 @@ class TrainingController extends Controller
         if(Auth::user()->can('create-trainings')){
             $validated = $request->validated();
             
-            $training                   = new Training();
-            $training->title            = $validated['title'];
-            $training->description      = $validated['description'];
-            $training->training_type_id = $validated['training_type_id'];
-            $training->trainer_id       = $validated['trainer_id'];
-            $training->branch_id        = $validated['branch_id'];
-            $training->department_id    = $validated['department_id'];
-            $training->start_date       = $validated['start_date'];
-            $training->end_date         = $validated['end_date'];
-            $training->start_time       = $validated['start_time'];
-            $training->end_time         = $validated['end_time'];
-            $training->location         = $validated['location'];
-            $training->max_participants = $validated['max_participants'];
-            $training->cost             = $validated['cost'];
-            $training->status           = $validated['status'];
-            $training->creator_id       = Auth::id();
-            $training->created_by       = creatorId();
-            $training->save();
+            $training = DB::transaction(function () use ($validated) {
+                $training                   = new Training();
+                $training->title            = $validated['title'];
+                $training->description      = $validated['description'] ?? null;
+                $training->training_type_id = $validated['training_type_id'];
+                $training->trainer_id       = $validated['trainer_id'];
+                $training->branch_id        = $validated['branch_id'];
+                $training->department_id    = $validated['department_id'];
+                $training->start_date       = $validated['start_date'];
+                $training->end_date         = $validated['end_date'];
+                $training->start_time       = $validated['start_time'];
+                $training->end_time         = $validated['end_time'];
+                $training->location         = $validated['location'] ?? null;
+                $training->max_participants = $validated['max_participants'] ?? null;
+                $training->cost             = $validated['cost'] ?? 0;
+                $training->status           = $validated['status'];
+                $training->creator_id       = Auth::id();
+                $training->created_by       = creatorId();
+                $training->save();
+                return $training;
+            });
 
-            CreateTraining::dispatch($request, $training);
+            try {
+                CreateTraining::dispatch($request, $training);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return redirect()->route('training.trainings.index')->with('success', __('The training list has been created successfully.'));
         }
@@ -101,26 +113,32 @@ class TrainingController extends Controller
 
     public function update(UpdateTrainingRequest $request, Training $training)
     {
-        if(Auth::user()->can('edit-trainings')){
+        if(Auth::user()->can('edit-trainings') && $this->assertBelongsToTenant($training)){
             $validated = $request->validated();
 
-            $training->title            = $validated['title'];
-            $training->description      = $validated['description'];
-            $training->training_type_id = $validated['training_type_id'];
-            $training->trainer_id       = $validated['trainer_id'];
-            $training->branch_id        = $validated['branch_id'];
-            $training->department_id    = $validated['department_id'];
-            $training->start_date       = $validated['start_date'];
-            $training->end_date         = $validated['end_date'];
-            $training->start_time       = $validated['start_time'];
-            $training->end_time         = $validated['end_time'];
-            $training->location         = $validated['location'];
-            $training->max_participants = $validated['max_participants'];
-            $training->cost             = $validated['cost'];
-            $training->status           = $validated['status'];
-            $training->save();
+            DB::transaction(function () use ($training, $validated) {
+                $training->title            = $validated['title'];
+                $training->description      = $validated['description'] ?? null;
+                $training->training_type_id = $validated['training_type_id'];
+                $training->trainer_id       = $validated['trainer_id'];
+                $training->branch_id        = $validated['branch_id'];
+                $training->department_id    = $validated['department_id'];
+                $training->start_date       = $validated['start_date'];
+                $training->end_date         = $validated['end_date'];
+                $training->start_time       = $validated['start_time'];
+                $training->end_time         = $validated['end_time'];
+                $training->location         = $validated['location'] ?? null;
+                $training->max_participants = $validated['max_participants'] ?? null;
+                $training->cost             = $validated['cost'] ?? 0;
+                $training->status           = $validated['status'];
+                $training->save();
+            });
 
-            UpdateTraining::dispatch($request, $training);
+            try {
+                UpdateTraining::dispatch($request, $training);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return back()->with('success', __('The training list details are updated successfully.'));
         }
@@ -131,10 +149,16 @@ class TrainingController extends Controller
 
     public function destroy(Training $training)
     {
-        if(Auth::user()->can('delete-trainings')){
-            DestroyTraining::dispatch($training);
+        if(Auth::user()->can('delete-trainings') && $this->assertBelongsToTenant($training)){
+            DB::transaction(function () use ($training) {
+                try {
+                    DestroyTraining::dispatch($training);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
 
-            $training->delete();
+                $training->delete();
+            });
 
             return back()->with('success', __('The training list has been deleted.'));
         }

@@ -6,15 +6,20 @@ use App\Http\Controllers\Controller;
 use Workdo\Training\Models\TrainingFeedback;
 use Workdo\Training\Models\TrainingTask;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Training\Events\CreateTrainingFeedback;
 use Workdo\Training\Http\Requests\StoreTrainingFeedbackRequest;
+use Workdo\Training\Traits\TrainingControllerHelpers;
+use Workdo\Training\Traits\TrainingDateHelpers;
 
 class TrainingFeedbackController extends Controller
 {
+    use TrainingControllerHelpers, TrainingDateHelpers;
+
     public function index(TrainingTask $task)
     {
-        if (Auth::user()->can('manage-training-feedbacks')) {
+        if (Auth::user()->can('manage-training-feedbacks') && $this->assertBelongsToTenant($task)) {
             $feedbacks = TrainingFeedback::where('training_task_id', $task->id)
                 ->where(function($q) {
                     if(Auth::user()->can('manage-any-training-feedbacks')) {
@@ -43,7 +48,7 @@ class TrainingFeedbackController extends Controller
 
     public function store(StoreTrainingFeedbackRequest $request, TrainingTask $task)
     {
-        if(Auth::user()->can('create-training-feedbacks')){
+        if(Auth::user()->can('create-training-feedbacks') && $this->assertBelongsToTenant($task)){
             $validated = $request->validated();
 
             $user = $task->assigned_to;
@@ -51,16 +56,23 @@ class TrainingFeedbackController extends Controller
                 return back()->with('error', __('User is not assigned.'));
             }
 
-            $feedback                   = new TrainingFeedback();
-            $feedback->training_task_id = $task->id;
-            $feedback->user_id          = $user;
-            $feedback->rating           = $validated['rating'];
-            $feedback->comments         = $validated['comments'];
-            $feedback->creator_id       = Auth::id();
-            $feedback->created_by       = creatorId();
-            $feedback->save();
+            $feedback = DB::transaction(function () use ($task, $user, $validated) {
+                $feedback                   = new TrainingFeedback();
+                $feedback->training_task_id = $task->id;
+                $feedback->user_id          = $user;
+                $feedback->rating           = $validated['rating'];
+                $feedback->comments         = $validated['comments'] ?? null;
+                $feedback->creator_id       = Auth::id();
+                $feedback->created_by       = creatorId();
+                $feedback->save();
+                return $feedback;
+            });
 
-            CreateTrainingFeedback::dispatch($request, $feedback);
+            try {
+                CreateTrainingFeedback::dispatch($request, $feedback);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return back()->with('success', __('The feedback has been submitted successfully.'));
         }

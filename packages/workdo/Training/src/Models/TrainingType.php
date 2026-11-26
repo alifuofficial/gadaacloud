@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Workdo\Hrm\Models\Branch;
 use Workdo\Hrm\Models\Department;
+use App\Traits\TenantScoped;
 
 class TrainingType extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'name',

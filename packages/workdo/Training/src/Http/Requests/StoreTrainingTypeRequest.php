@@ -3,6 +3,7 @@
 namespace Workdo\Training\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Training\Traits\TrainingControllerHelpers;
 
 class StoreTrainingTypeRequest extends FormRequest
 {
@@ -16,8 +17,8 @@ class StoreTrainingTypeRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'branch_id' => 'required|exists:branches,id',
-            'department_id' => 'required|exists:departments,id',            
+            'branch_id' => ['required', TrainingControllerHelpers::tenantExists('branches', 'id')],
+            'department_id' => ['required', TrainingControllerHelpers::tenantExists('departments', 'id')],            
         ];
     }
 }
