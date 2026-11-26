@@ -270,8 +270,8 @@ class LeadIntegrationTest extends TestCase
             $table->timestamps();
         });
 
-        $this->company1 = User::create([
-            'id' => 1,
+        $this->company1 = User::forceCreate([
+            'id' => 2101,
             'name' => 'Company One',
             'email' => 'comp1@gadaacloud.com',
             'password' => bcrypt('password'),
@@ -279,19 +279,17 @@ class LeadIntegrationTest extends TestCase
             'active_module' => 'Lead,Account,Quotation,Contract,Taskly',
             'active_plan' => 1,
             'plan_expire_date' => now()->addYear()->toDateString(),
+            'created_by' => 2101,
         ]);
-        $this->company1->created_by = 1;
-        $this->company1->save();
 
-        $this->company2 = User::create([
-            'id' => 2,
+        $this->company2 = User::forceCreate([
+            'id' => 2102,
             'name' => 'Company Two',
             'email' => 'comp2@gadaacloud.com',
             'password' => bcrypt('password'),
             'type' => 'company',
+            'created_by' => 2102,
         ]);
-        $this->company2->created_by = 2;
-        $this->company2->save();
     }
 
     public function test_multi_tenant_isolation_on_leads_and_deals(): void
@@ -299,22 +297,22 @@ class LeadIntegrationTest extends TestCase
         Auth::login($this->company1);
         Once::flush();
 
-        $pipeline = Pipeline::create(['name' => 'Sales', 'creator_id' => 1, 'created_by' => 1]);
-        $lStage = LeadStage::create(['name' => 'New', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 1, 'created_by' => 1]);
-        $dStage = DealStage::create(['name' => 'Proposal', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 1, 'created_by' => 1]);
+        $pipeline = Pipeline::create(['name' => 'Sales', 'creator_id' => 2101, 'created_by' => 2101]);
+        $lStage = LeadStage::create(['name' => 'New', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 2101, 'created_by' => 2101]);
+        $dStage = DealStage::create(['name' => 'Proposal', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 2101, 'created_by' => 2101]);
 
         $lead = Lead::create([
             'name' => 'Abebe Kebede',
             'company_name' => 'Abyssinia Tech',
             'email' => 'abebe@abyssinia.et',
             'subject' => 'ERP Implementation',
-            'user_id' => 1,
+            'user_id' => 2101,
             'pipeline_id' => $pipeline->id,
             'stage_id' => $lStage->id,
             'phone' => '0911234567',
             'tin_number' => '0012345678',
-            'creator_id' => 1,
-            'created_by' => 1,
+            'creator_id' => 2101,
+            'created_by' => 2101,
         ]);
 
         $deal = Deal::create([
@@ -323,8 +321,8 @@ class LeadIntegrationTest extends TestCase
             'pipeline_id' => $pipeline->id,
             'stage_id' => $dStage->id,
             'tin_number' => '0012345678',
-            'creator_id' => 1,
-            'created_by' => 1,
+            'creator_id' => 2101,
+            'created_by' => 2101,
         ]);
 
         $this->assertCount(1, Lead::all());
@@ -345,13 +343,13 @@ class LeadIntegrationTest extends TestCase
         Auth::login($this->company1);
         Once::flush();
 
-        $client = User::create([
-            'id' => 10,
+        $client = User::forceCreate([
+            'id' => 2110,
             'name' => 'Ethio Client',
             'email' => 'client@ethio.et',
             'password' => bcrypt('password'),
             'type' => 'client',
-            'created_by' => 1,
+            'created_by' => 2101,
         ]);
 
         $service = new LeadErpIntegrationService();
@@ -372,17 +370,17 @@ class LeadIntegrationTest extends TestCase
         Auth::login($this->company1);
         Once::flush();
 
-        $client = User::create([
-            'id' => 11,
+        $client = User::forceCreate([
+            'id' => 2111,
             'name' => 'Addis Corp',
             'email' => 'info@addiscorp.et',
             'password' => bcrypt('password'),
             'type' => 'client',
-            'created_by' => 1,
+            'created_by' => 2101,
         ]);
 
-        $pipeline = Pipeline::create(['name' => 'Enterprise', 'creator_id' => 1, 'created_by' => 1]);
-        $dStage = DealStage::create(['name' => 'Won', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 1, 'created_by' => 1]);
+        $pipeline = Pipeline::create(['name' => 'Enterprise', 'creator_id' => 2101, 'created_by' => 2101]);
+        $dStage = DealStage::create(['name' => 'Won', 'pipeline_id' => $pipeline->id, 'order' => 1, 'creator_id' => 2101, 'created_by' => 2101]);
 
         $deal = Deal::create([
             'name' => 'Addis Corp Cloud Rollout',
@@ -390,8 +388,8 @@ class LeadIntegrationTest extends TestCase
             'pipeline_id' => $pipeline->id,
             'stage_id' => $dStage->id,
             'tin_number' => '0044556677',
-            'creator_id' => 1,
-            'created_by' => 1,
+            'creator_id' => 2101,
+            'created_by' => 2101,
         ]);
 
         ClientDeal::create(['client_id' => $client->id, 'deal_id' => $deal->id]);
