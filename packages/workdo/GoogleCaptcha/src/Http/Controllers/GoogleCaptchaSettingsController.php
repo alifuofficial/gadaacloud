@@ -4,12 +4,18 @@ namespace Workdo\GoogleCaptcha\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\Setting;
 
 class GoogleCaptchaSettingsController extends Controller
 {
     public function update(Request $request)
     {
+        if (Auth::check() && !Auth::user()->can('edit-google-captcha-settings') && !Auth::user()->hasRole('superadmin')) {
+            return redirect()->back()->with('error', __('Permission denied'));
+        }
+
         $request->validate([
             'settings.recaptcha_version' => 'required|in:v2,v3',
             'settings.recaptcha_site_key' => 'required_if:settings.recaptcha_enabled,on|string|max:255',
@@ -31,9 +37,11 @@ class GoogleCaptchaSettingsController extends Controller
         try {
             $settings = $request->input('settings', []);
 
-            foreach ($settings as $key => $value) {
-                setSetting($key, $value);
-            }
+            DB::transaction(function () use ($settings) {
+                foreach ($settings as $key => $value) {
+                    setSetting($key, $value);
+                }
+            });
 
             return redirect()->back()->with('success', __('Google reCAPTCHA settings updated successfully.'));
         } catch (\Exception $e) {

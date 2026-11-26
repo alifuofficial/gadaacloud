@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class TelegramSettingsController extends Controller
@@ -37,9 +38,11 @@ class TelegramSettingsController extends Controller
 
             $settings = $request->input('settings', []);
             try {
-                foreach ($settings as $key => $value) {
-                    setSetting($key, $value, creatorId());
-                }
+                DB::transaction(function () use ($settings) {
+                    foreach ($settings as $key => $value) {
+                        setSetting($key, $value, creatorId());
+                    }
+                });
 
                 return redirect()->back()->with('success', __('Telegram settings save successfully.'));
             } catch (\Exception $e) {

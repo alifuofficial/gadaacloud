@@ -14,12 +14,17 @@ use Workdo\ERPMigrate\Services\DataTransformationService;
 use Workdo\ERPMigrate\Services\MigrationRollbackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Workdo\ERPMigrate\Traits\ERPMigrateControllerHelpers;
+use Workdo\ERPMigrate\Traits\ERPMigrateDateHelpers;
 
 class MigrationController extends Controller
 {
+    use ERPMigrateControllerHelpers, ERPMigrateDateHelpers;
+
     /**
      * Dashboard view of all ERP migration runs, connections, and system health
      */
@@ -105,6 +110,13 @@ class MigrationController extends Controller
             'host' => 'required|string|url',
         ]);
 
+        if (!self::isValidConnectorHost($request->host)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('The target ERP host URL is invalid or points to a restricted internal network address.'),
+            ], 422);
+        }
+
         if ($request->source_type === 'odoo') {
             $request->validate([
                 'database_name' => 'required|string',
@@ -145,6 +157,10 @@ class MigrationController extends Controller
             'host' => 'required|string|url',
         ]);
 
+        if (!self::isValidConnectorHost($request->host)) {
+            return redirect()->back()->with('error', __('The target ERP host URL is invalid or points to a restricted internal network address.'));
+        }
+
         // Run automated verification
         $status = 'untested';
         $lastTestedAt = now();
@@ -160,23 +176,25 @@ class MigrationController extends Controller
             if (!$test['success']) $lastError = $test['message'] ?? 'Connection failed';
         }
 
-        $connection = MigrationConnection::updateOrCreate(
-            ['id' => $request->id, 'created_by' => $companyId],
-            [
-                'name' => $request->name,
-                'source_type' => $request->source_type,
-                'host' => $request->host,
-                'database_name' => $request->database_name,
-                'username' => $request->username,
-                'api_key' => $request->api_key,
-                'api_secret' => $request->api_secret,
-                'connection_status' => $status,
-                'last_tested_at' => $lastTestedAt,
-                'last_error' => $lastError,
-                'created_by' => $companyId,
-                'creator_id' => Auth::id(),
-            ]
-        );
+        $connection = DB::transaction(function () use ($request, $companyId, $status, $lastTestedAt, $lastError) {
+            return MigrationConnection::updateOrCreate(
+                ['id' => $request->id, 'created_by' => $companyId],
+                [
+                    'name' => $request->name,
+                    'source_type' => $request->source_type,
+                    'host' => $request->host,
+                    'database_name' => $request->database_name,
+                    'username' => $request->username,
+                    'api_key' => $request->api_key,
+                    'api_secret' => $request->api_secret,
+                    'connection_status' => $status,
+                    'last_tested_at' => $lastTestedAt,
+                    'last_error' => $lastError,
+                    'created_by' => $companyId,
+                    'creator_id' => Auth::id(),
+                ]
+            );
+        });
 
         return redirect()->back()->with('success', __('ERP connection saved and tested successfully.'));
     }
@@ -188,7 +206,9 @@ class MigrationController extends Controller
     {
         $companyId = creatorId();
         $connection = MigrationConnection::where('created_by', $companyId)->findOrFail($id);
-        $connection->delete();
+        DB::transaction(function () use ($connection) {
+            $connection->delete();
+        });
 
         return redirect()->back()->with('success', __('ERP connection deleted successfully.'));
     }
@@ -201,7 +221,7 @@ class MigrationController extends Controller
         $companyId = creatorId();
 
         $request->validate([
-            'file' => 'required|file|max:20480', // Max 20MB
+            'file' => 'required|file|mimes:csv,txt,tsv,xlsx,xls|max:20480', // Max 20MB
             'entity_type' => 'required|string|in:customers,vendors,products,chart_of_accounts,employees',
         ]);
 
@@ -215,17 +235,20 @@ class MigrationController extends Controller
         $inspect = $parser->inspectFile($fullPath);
         $suggestedMappings = $parser->suggestFieldMappings($inspect['headers'], $request->entity_type);
 
-        $batch = new MigrationBatch();
-        $batch->batch_code = 'MIG-' . date('Ymd') . '-' . strtoupper(Str::random(4));
-        $batch->source_type = ($ext === 'csv' || $ext === 'tsv') ? 'universal_csv' : 'universal_excel';
-        $batch->entity_type = $request->entity_type;
-        $batch->original_filename = $origName;
-        $batch->total_records = $inspect['total_rows'];
-        $batch->status = 'draft';
-        $batch->field_mappings = $suggestedMappings;
-        $batch->created_by = $companyId;
-        $batch->creator_id = Auth::id();
-        $batch->save();
+        $batch = DB::transaction(function () use ($request, $companyId, $ext, $origName, $inspect, $suggestedMappings) {
+            $batch = new MigrationBatch();
+            $batch->batch_code = 'MIG-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+            $batch->source_type = ($ext === 'csv' || $ext === 'tsv') ? 'universal_csv' : 'universal_excel';
+            $batch->entity_type = $request->entity_type;
+            $batch->original_filename = $origName;
+            $batch->total_records = $inspect['total_rows'];
+            $batch->status = 'draft';
+            $batch->field_mappings = $suggestedMappings;
+            $batch->created_by = $companyId;
+            $batch->creator_id = Auth::id();
+            $batch->save();
+            return $batch;
+        });
 
         // Store relative path in session for subsequent wizard steps
         session(["migration_file_{$batch->id}" => $tempPath]);
@@ -376,7 +399,7 @@ class MigrationController extends Controller
         $logs = MigrationLog::where('batch_id', $batch->id)
             ->where('created_by', $companyId)
             ->orderBy('id', 'asc')
-            ->paginate(50);
+            ->paginate($this->safePerPage(50, 100));
 
         return Inertia::render('erp-migrate/BatchDetails', [
             'batch' => $batch,
@@ -393,7 +416,7 @@ class MigrationController extends Controller
         $batches = MigrationBatch::where('created_by', $companyId)
             ->with('connection')
             ->orderBy('id', 'desc')
-            ->paginate(20);
+            ->paginate($this->safePerPage(20, 100));
 
         return Inertia::render('erp-migrate/History', [
             'batches' => $batches,

@@ -19,14 +19,24 @@ class SendMsg
                 $usr = Auth::user();
             }
 
+            if (!$usr) {
+                return false;
+            }
+
             $company_settings = getCompanyAllSetting($id);
 
             $telegram_notification_is = isset($company_settings['telegram_notification_is']) ? $company_settings['telegram_notification_is'] : 'off';
 
             $template = Notification::where('action', $action)->where('type', 'Telegram')->first();
+            if (!$template) {
+                return false;
+            }
             $content = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', $usr->lang)->first();
             if ($content == null) {
                 $content = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', 'en')->first();
+            }
+            if (!$content) {
+                return false;
             }
 
             $msg = self::replaceVariable($content->content, $uArr, $id);
@@ -49,6 +59,8 @@ class SendMsg
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
 
                     $headers = array();
                     $headers[] = 'Content-Type: application/json';

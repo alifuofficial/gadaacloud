@@ -29,9 +29,15 @@ class SendMsg
             $twilio_notification_is = isset($company_settings['twilio_notification_is']) ? $company_settings['twilio_notification_is'] : 'off';
 
             $template = Notification::where('action', $action)->where('type', 'Twilio')->first();
+            if (!$template) {
+                return false;
+            }
             $content  = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', $usr->lang)->first();
             if ($content == null) {
                 $content = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', 'en')->first();
+            }
+            if (!$content) {
+                return false;
             }
 
             $msg = self::replaceVariable($content->content, $uArr, $usr->id);
@@ -62,6 +68,8 @@ class SendMsg
                         curl_setopt($ch, CURLOPT_POST, 1);
                         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
                         curl_setopt($ch, CURLOPT_USERPWD, $twilio_sid . ':' . $twilio_token);
+                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
 
                         $headers   = array();
                         $headers[] = 'Content-Type: application/x-www-form-urlencoded';

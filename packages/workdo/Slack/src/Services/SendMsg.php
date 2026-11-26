@@ -9,6 +9,25 @@ use Illuminate\Support\Facades\Auth;
 
 class SendMsg
 {
+    public static function isValidWebhookUrl(string $url): bool
+    {
+        $parsed = parse_url($url);
+        if (!$parsed || empty($parsed['scheme']) || empty($parsed['host'])) {
+            return false;
+        }
+        if (!in_array(strtolower($parsed['scheme']), ['https', 'http'], true)) {
+            return false;
+        }
+        $host = strtolower(trim($parsed['host'], '[]'));
+        if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0', '169.254.169.254', 'metadata.google.internal'], true)) {
+            return false;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+        }
+        return true;
+    }
+
     public static function SendMsgs(array $uArr, string $action,$id = null)
     {
         // Check if Slack module is active
@@ -20,22 +39,32 @@ class SendMsg
                 $usr = Auth::user();
             }
 
+            if (!$usr) {
+                return false;
+            }
+
             $company_settings = getCompanyAllSetting($id);
 
             $slack_notification_is = isset($company_settings['slack_notification_is']) ? $company_settings['slack_notification_is'] : 'off';
 
             $template = Notification::where('action', $action)->where('type','Slack')->first();
+            if (!$template) {
+                return false;
+            }
             $content = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', $usr->lang)->first();
             if($content == null)
             {
                 $content = NotificationTemplateLang::where('parent_id', '=', $template->id)->where('lang', 'LIKE', 'en')->first();
+            }
+            if (!$content) {
+                return false;
             }
 
             $msg = self::replaceVariable($content->content, $uArr, $id);
 
             $slack_webhook = isset($company_settings['slack_webhook_url']) ? $company_settings['slack_webhook_url'] : null;
 
-            if (($slack_notification_is =='on') && (!empty($slack_webhook)))
+            if (($slack_notification_is =='on') && (!empty($slack_webhook)) && self::isValidWebhookUrl($slack_webhook))
             {
                 try
                 {
