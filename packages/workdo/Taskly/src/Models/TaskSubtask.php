@@ -5,15 +5,19 @@ namespace Workdo\Taskly\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class TaskSubtask extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'task_id',
         'name',
         'due_date',
         'is_completed',
         'user_id',
+        'created_by',
     ];
 
     protected function casts(): array

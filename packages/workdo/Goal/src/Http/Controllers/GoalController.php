@@ -17,10 +17,11 @@ use Workdo\Goal\Models\Goal;
 use Workdo\Goal\Models\GoalCategory;
 use Workdo\Goal\Services\GoalService;
 use Workdo\Goal\Traits\GoalControllerHelpers;
+use Workdo\Goal\Traits\GoalDateHelpers;
 
 class GoalController extends Controller
 {
-    use GoalControllerHelpers;
+    use GoalControllerHelpers, GoalDateHelpers;
 
     public function index()
     {
@@ -91,30 +92,32 @@ class GoalController extends Controller
 
         $validated = $request->validated();
 
-        $goal = new Goal();
-        $goal->goal_name = $validated['goal_name'];
-        $goal->goal_description = $validated['goal_description'] ?? null;
-        $goal->category_id = $validated['category_id'];
-        $goal->goal_type = $validated['goal_type'];
-        $goal->target_amount = $validated['target_amount'];
-        $goal->current_amount = 0.0;
-        $goal->start_date = $validated['start_date'];
-        $goal->target_date = $validated['target_date'];
-        $goal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? null;
-        $goal->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
-        $goal->priority = $validated['priority'];
-        $goal->status = $validated['status'] ?? 'draft';
-        $goal->account_id = $validated['account_id'] ?? null;
-        $goal->bank_account_id = $validated['bank_account_id'] ?? null;
-        $goal->creator_id = Auth::id();
-        $goal->created_by = creatorId();
-        $goal->save();
+        DB::transaction(function () use ($request, $validated) {
+            $goal = new Goal();
+            $goal->goal_name = $validated['goal_name'];
+            $goal->goal_description = $validated['goal_description'] ?? null;
+            $goal->category_id = $validated['category_id'];
+            $goal->goal_type = $validated['goal_type'];
+            $goal->target_amount = $validated['target_amount'];
+            $goal->current_amount = 0.0;
+            $goal->start_date = $validated['start_date'];
+            $goal->target_date = $validated['target_date'];
+            $goal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? null;
+            $goal->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
+            $goal->priority = $validated['priority'];
+            $goal->status = $validated['status'] ?? 'draft';
+            $goal->account_id = $validated['account_id'] ?? null;
+            $goal->bank_account_id = $validated['bank_account_id'] ?? null;
+            $goal->creator_id = Auth::id();
+            $goal->created_by = creatorId();
+            $goal->save();
 
-        // Create initial tracking record
-        $goalService = new GoalService();
-        $goalService->updateGoalTracking($goal->id);
+            // Create initial tracking record
+            $goalService = new GoalService();
+            $goalService->updateGoalTracking($goal->id);
 
-        CreateGoal::dispatch($request, $goal);
+            CreateGoal::dispatch($request, $goal);
+        });
 
         return redirect()->route('goal.goals.index')->with('success', __('The goal has been created successfully.'));
     }
@@ -127,32 +130,34 @@ class GoalController extends Controller
 
         $validated = $request->validated();
 
-        $goal->goal_name = $validated['goal_name'];
-        $goal->goal_description = $validated['goal_description'] ?? null;
-        $goal->category_id = $validated['category_id'];
-        $goal->goal_type = $validated['goal_type'];
-        $goal->target_amount = $validated['target_amount'];
+        DB::transaction(function () use ($request, $goal, $validated) {
+            $goal->goal_name = $validated['goal_name'];
+            $goal->goal_description = $validated['goal_description'] ?? null;
+            $goal->category_id = $validated['category_id'];
+            $goal->goal_type = $validated['goal_type'];
+            $goal->target_amount = $validated['target_amount'];
 
-        // Preserve current_amount unless explicit positive value supplied
-        if (isset($validated['current_amount']) && $validated['current_amount'] !== null) {
-            $goal->current_amount = $validated['current_amount'];
-        }
+            // Preserve current_amount unless explicit positive value supplied
+            if (isset($validated['current_amount']) && $validated['current_amount'] !== null) {
+                $goal->current_amount = $validated['current_amount'];
+            }
 
-        $goal->start_date = $validated['start_date'];
-        $goal->target_date = $validated['target_date'];
-        $goal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? null;
-        $goal->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
-        $goal->priority = $validated['priority'];
-        $goal->status = $validated['status'];
-        $goal->account_id = $validated['account_id'] ?? null;
-        $goal->bank_account_id = $validated['bank_account_id'] ?? null;
-        $goal->save();
+            $goal->start_date = $validated['start_date'];
+            $goal->target_date = $validated['target_date'];
+            $goal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? null;
+            $goal->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
+            $goal->priority = $validated['priority'];
+            $goal->status = $validated['status'];
+            $goal->account_id = $validated['account_id'] ?? null;
+            $goal->bank_account_id = $validated['bank_account_id'] ?? null;
+            $goal->save();
 
-        // Recalculate tracking in case target amount or target date changed
-        $goalService = new GoalService();
-        $goalService->updateGoalTracking($goal->id);
+            // Recalculate tracking in case target amount or target date changed
+            $goalService = new GoalService();
+            $goalService->updateGoalTracking($goal->id);
 
-        UpdateGoal::dispatch($request, $goal);
+            UpdateGoal::dispatch($request, $goal);
+        });
 
         return back()->with('success', __('The goal details are updated successfully.'));
     }

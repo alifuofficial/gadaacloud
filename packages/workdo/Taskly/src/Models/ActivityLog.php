@@ -3,16 +3,17 @@
 namespace Workdo\Taskly\Models;
 
 use App\Models\User;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ActivityLog extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $table = 'project_activity_logs';
     protected $fillable = [
-        'user_id','user_type', 'project_id','log_type','remark'
+        'user_id','user_type', 'project_id','log_type','remark','created_by'
     ];
 
     public static $user_name;

@@ -8,6 +8,7 @@ use Workdo\Lead\Http\Requests\StoreDealRequest;
 use Workdo\Lead\Http\Requests\UpdateDealRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Lead\Models\Pipeline;
 use App\Models\User;
@@ -156,50 +157,57 @@ class DealController extends Controller
             if (empty($stage)) {
                 return redirect()->route('lead.deals.index')->with('error', __('Please create stage for this pipeline.'));
             } else {
+                ['deal' => $deal, 'clients' => $clients, 'usrDeals' => $usrDeals] = DB::transaction(function () use ($request, $validated, $pipeline, $stage) {
+                    $deal              = new Deal();
+                    $deal->name        = $validated['name'];
+                    $deal->price       = $validated['price'] ?? 0;
+                    $deal->pipeline_id = $pipeline->id;
+                    $deal->stage_id    = $stage->id;
+                    $deal->phone       = $validated['phone'];
+                    $deal->status      = 'Active';
+                    $deal->creator_id  = Auth::id();
+                    $deal->created_by  = creatorId();
+                    $deal->save();
 
-                $deal              = new Deal();
-                $deal->name        = $validated['name'];
-                $deal->price       = $validated['price'] ?? 0;
-                $deal->pipeline_id = $pipeline->id;
-                $deal->stage_id    = $stage->id;
-                $deal->phone       = $validated['phone'];
-                $deal->status      = 'Active';
-                $deal->creator_id  = Auth::id();
-                $deal->created_by  = creatorId();
-                $deal->save();
+                    $clients = User::where('created_by', creatorId())
+                        ->whereIn('id', array_filter($validated['clients']))
+                        ->get()
+                        ->pluck('email', 'id')
+                        ->toArray();
+                    foreach (array_keys($clients) as $client) {
+                        ClientDeal::create(
+                            [
+                                'deal_id' => $deal->id,
+                                'client_id' => $client,
+                            ]
+                        );
+                    }
 
-                $clients = User::whereIN('id', array_filter($validated['clients']))->get()->pluck('email', 'id')->toArray();
-                foreach (array_keys($clients) as $client) {
-                    ClientDeal::create(
-                        [
-                            'deal_id' => $deal->id,
-                            'client_id' => $client,
-                        ]
-                    );
-                }
+                    // Create user deals
+                    if (Auth::user()->type == 'company') {
+                        $usrDeals = [
+                            creatorId()
+                        ];
+                    } else {
+                        $usrDeals = [
+                            creatorId(),
+                            Auth::user()->id,
+                        ];
+                    }
 
-                // Create user deals
-                if (Auth::user()->type == 'company') {
-                    $usrDeals = [
-                        creatorId()
-                    ];
-                } else {
-                    $usrDeals = [
-                        creatorId(),
-                        Auth::user()->id,
-                    ];
-                }
+                    foreach ($usrDeals as $usrDeal) {
+                        UserDeal::create(
+                            [
+                                'user_id' => $usrDeal,
+                                'deal_id' => $deal->id,
+                            ]
+                        );
+                    }
+                    // Dispatch event for packages to handle their fields
+                    CreateDeal::dispatch($request, $deal);
 
-                foreach ($usrDeals as $usrDeal) {
-                    UserDeal::create(
-                        [
-                            'user_id' => $usrDeal,
-                            'deal_id' => $deal->id,
-                        ]
-                    );
-                }
-                // Dispatch event for packages to handle their fields
-                CreateDeal::dispatch($request, $deal);
+                    return ['deal' => $deal, 'clients' => $clients, 'usrDeals' => $usrDeals];
+                });
 
                 if (company_setting('Deal Assign') == 'on') {
                     $emailData = [
@@ -274,32 +282,35 @@ class DealController extends Controller
     {
         if (Auth::user()->can('edit-deals') && $this->assertBelongsToTenant($deal)) {
             $validated = $request->validated();
-            $deal->name        = $validated['name'];
-            $deal->price       = $validated['price'];
-            $deal->pipeline_id = $validated['pipeline_id'];
-            $deal->stage_id    = $validated['stage_id'];
-            $deal->phone       = $validated['phone'];
-            $deal->tin_number  = $validated['tin_number'] ?? $deal->tin_number;
-            $deal->vat_number  = $validated['vat_number'] ?? $deal->vat_number;
-            $deal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $deal->ethiopian_fiscal_year;
-            $deal->sources     = isset($validated['sources']) && !empty($validated['sources']) ? array_filter($validated['sources']) : null;
-            $deal->products    = isset($validated['products']) && !empty($validated['products']) ? array_filter($validated['products']) : null;
-            $deal->notes       = $validated['notes'] ?? '';
-            $deal->save();
 
-            // Sync clients
-            if (isset($validated['clients'])) {
-                ClientDeal::where('deal_id', $deal->id)->delete();
-                foreach (array_filter($validated['clients']) as $clientId) {
-                    ClientDeal::firstOrCreate([
-                        'deal_id'   => $deal->id,
-                        'client_id' => $clientId,
-                    ]);
+            DB::transaction(function () use ($request, $deal, $validated) {
+                $deal->name        = $validated['name'];
+                $deal->price       = $validated['price'];
+                $deal->pipeline_id = $validated['pipeline_id'];
+                $deal->stage_id    = $validated['stage_id'];
+                $deal->phone       = $validated['phone'];
+                $deal->tin_number  = $validated['tin_number'] ?? $deal->tin_number;
+                $deal->vat_number  = $validated['vat_number'] ?? $deal->vat_number;
+                $deal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $deal->ethiopian_fiscal_year;
+                $deal->sources     = isset($validated['sources']) && !empty($validated['sources']) ? array_filter($validated['sources']) : null;
+                $deal->products    = isset($validated['products']) && !empty($validated['products']) ? array_filter($validated['products']) : null;
+                $deal->notes       = $validated['notes'] ?? '';
+                $deal->save();
+
+                // Sync clients
+                if (isset($validated['clients'])) {
+                    ClientDeal::where('deal_id', $deal->id)->delete();
+                    foreach (array_filter($validated['clients']) as $clientId) {
+                        ClientDeal::firstOrCreate([
+                            'deal_id'   => $deal->id,
+                            'client_id' => $clientId,
+                        ]);
+                    }
                 }
-            }
 
-            // Dispatch event for packages to handle their fields
-            UpdateDeal::dispatch($request, $deal);
+                // Dispatch event for packages to handle their fields
+                UpdateDeal::dispatch($request, $deal);
+            });
 
             return back()->with('success', __('The deal details are updated successfully.'));
         } else {
@@ -310,7 +321,8 @@ class DealController extends Controller
     public function destroy(Deal $deal)
     {
         try {
-            if (Auth::user()->can('delete-deals') && $deal->created_by == creatorId()) {
+            if (Auth::user()->can('delete-deals') && $this->assertBelongsToTenant($deal)) {
+                DB::transaction(function () use ($deal) {
                     DestroyDeal::dispatch($deal);
 
                     DealDiscussion::where('deal_id', '=', $deal->id)->delete();
@@ -324,10 +336,11 @@ class DealController extends Controller
                     UserDeal::where('deal_id', '=', $deal->id)->delete();
                     DealTask::where('deal_id', '=', $deal->id)->delete();
                     DealActivityLog::where('deal_id', '=', $deal->id)->delete();
-                    $lead = Lead::where(['is_converted' => $deal->id])->update(['is_converted' => 0]);
+                    Lead::where(['is_converted' => $deal->id])->update(['is_converted' => 0]);
 
                     $deal->delete();
-                    return back()->with('success', __('The deal has been deleted.'));
+                });
+                return back()->with('success', __('The deal has been deleted.'));
             } else {
                 return back()->with('error', __('Permission denied'));
             }

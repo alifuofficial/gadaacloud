@@ -5,6 +5,8 @@ namespace Workdo\Taskly\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use App\Models\User;
 use Workdo\Taskly\Events\CreateBugComment;
@@ -157,27 +159,29 @@ class ProjectBugController extends Controller
         if (Auth::user()->can('create-project-bug')) {
             $validated = $request->validated();
 
-            $bug = new ProjectBug();
-            $bug->project_id = $validated['project_id'];
-            $bug->title = $validated['title'];
-            $bug->priority = $validated['priority'];
-            $bug->assigned_to =  is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to'];
-            $bug->stage_id = $validated['stage_id'];
-            $bug->description = $validated['description'];
-            $bug->creator_id = Auth::id();
-            $bug->created_by = creatorId();
-            $bug->save();
+            DB::transaction(function () use ($request, $validated) {
+                $bug = new ProjectBug();
+                $bug->project_id = $validated['project_id'];
+                $bug->title = $validated['title'];
+                $bug->priority = $validated['priority'];
+                $bug->assigned_to =  is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to'];
+                $bug->stage_id = $validated['stage_id'];
+                $bug->description = $validated['description'];
+                $bug->creator_id = Auth::id();
+                $bug->created_by = creatorId();
+                $bug->save();
 
-            ActivityLog::create(
-            [
-                'user_id' => Auth::user()->id,
-                'user_type' => get_class(Auth::user()),
-                'project_id' => $bug->project_id,
-                'log_type' => 'Create Bug',
-                'remark' => json_encode(['title' => $bug->title]),
-            ]);
+                ActivityLog::create(
+                [
+                    'user_id' => Auth::user()->id,
+                    'user_type' => get_class(Auth::user()),
+                    'project_id' => $bug->project_id,
+                    'log_type' => 'Create Bug',
+                    'remark' => json_encode(['title' => $bug->title]),
+                ]);
 
-            CreateProjectBug::dispatch($request, $bug);
+                CreateProjectBug::dispatch($request, $bug);
+            });
             return response()->json(['success' => true, 'message' => __('The bug has been created successfully.')]);
         }
         return response()->json(['error' => __('Permission denied')], 403);
@@ -227,18 +231,20 @@ class ProjectBugController extends Controller
                    ($bug->creator_id == Auth::id()) ||
                    in_array((string)Auth::id(), $assignedUserIds);
 
-        if (Auth::user()->can('edit-project-bug') && $canEdit) {
+        if (Auth::user()->can('edit-project-bug') && $canEdit && $bug->created_by == creatorId()) {
             $validated = $request->validated();
 
-            $bug->update([
-                'title' => $validated['title'],
-                'priority' => $validated['priority'],
-                'assigned_to' => isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null,
-                'stage_id' => $validated['stage_id'],
-                'description' => $validated['description'],
-            ]);
+            DB::transaction(function () use ($request, $bug, $validated) {
+                $bug->update([
+                    'title' => $validated['title'],
+                    'priority' => $validated['priority'],
+                    'assigned_to' => isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null,
+                    'stage_id' => $validated['stage_id'],
+                    'description' => $validated['description'],
+                ]);
 
-            UpdateProjectBug::dispatch($request, $bug);
+                UpdateProjectBug::dispatch($request, $bug);
+            });
 
             return response()->json(['success' => true, 'message' => __('The bug has been updated successfully.')]);
         } else{
@@ -252,11 +258,11 @@ class ProjectBugController extends Controller
         $canDelete = Auth::user()->can('delete-project-bug') ||
                      ($bug->creator_id == Auth::id());
 
-        if (Auth::user()->can('delete-project-bug') && $canDelete) {
-
-            DestroyProjectBug::dispatch($bug);
-
-            $bug->delete();
+        if (Auth::user()->can('delete-project-bug') && $canDelete && $bug->created_by == creatorId()) {
+            DB::transaction(function () use ($bug) {
+                DestroyProjectBug::dispatch($bug);
+                $bug->delete();
+            });
             return response()->json(['success' => true, 'message' => __('The bug has been deleted.')]);
         }
         else{
@@ -272,9 +278,9 @@ class ProjectBugController extends Controller
                    in_array((string)Auth::id(), $assignedUserIds) ||
                    $bug->creator_id == Auth::id();
 
-        if ($canMove) {
+        if ($canMove && $bug->created_by == creatorId()) {
             $request->validate([
-                'stage_id' => 'required|exists:bug_stages,id'
+                'stage_id' => ['required', Rule::exists('bug_stages', 'id')->where('created_by', creatorId())]
             ]);
 
             $oldStage = BugStage::find($bug->stage_id);

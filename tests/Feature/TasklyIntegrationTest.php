@@ -10,10 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Once;
 use Tests\TestCase;
+use Workdo\Taskly\Models\ActivityLog;
 use Workdo\Taskly\Models\BugStage;
 use Workdo\Taskly\Models\Project;
 use Workdo\Taskly\Models\ProjectBug;
+use Workdo\Taskly\Models\ProjectMilestone;
 use Workdo\Taskly\Models\ProjectTask;
+use Workdo\Taskly\Models\ProjectUser;
+use Workdo\Taskly\Models\TaskComment;
 use Workdo\Taskly\Models\TaskStage;
 
 class TasklyIntegrationTest extends TestCase
@@ -109,6 +113,43 @@ class TasklyIntegrationTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('project_users', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('project_milestones', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('title');
+            $table->decimal('cost', 15, 2)->default(0);
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('task_comments', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('task_id');
+            $table->text('comment');
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('project_activity_logs', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('user_type')->nullable();
+            $table->unsignedBigInteger('project_id');
+            $table->string('log_type');
+            $table->text('remark')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->timestamps();
+        });
+
         $this->company1 = User::forceCreate([
             'id' => 301,
             'name' => 'Taskly Company 1',
@@ -161,11 +202,20 @@ class TasklyIntegrationTest extends TestCase
             'created_by' => 301,
         ]);
 
+        ProjectUser::create(['project_id' => $project->id, 'user_id' => 301]);
+        ProjectMilestone::create(['project_id' => $project->id, 'title' => 'Phase 1 Kickoff', 'cost' => 50000]);
+        TaskComment::create(['task_id' => $task->id, 'user_id' => 301, 'comment' => 'Confidential note']);
+        ActivityLog::create(['user_id' => 301, 'project_id' => $project->id, 'log_type' => 'Create Task', 'remark' => '{}']);
+
         $this->assertCount(1, Project::all());
         $this->assertCount(1, TaskStage::all());
         $this->assertCount(1, ProjectTask::all());
         $this->assertCount(1, BugStage::all());
         $this->assertCount(1, ProjectBug::all());
+        $this->assertCount(1, ProjectUser::all());
+        $this->assertCount(1, ProjectMilestone::all());
+        $this->assertCount(1, TaskComment::all());
+        $this->assertCount(1, ActivityLog::all());
 
         // Switch to company 302
         Auth::login($this->company2);
@@ -176,6 +226,10 @@ class TasklyIntegrationTest extends TestCase
         $this->assertCount(0, ProjectTask::all());
         $this->assertCount(0, BugStage::all());
         $this->assertCount(0, ProjectBug::all());
+        $this->assertCount(0, ProjectUser::all());
+        $this->assertCount(0, ProjectMilestone::all());
+        $this->assertCount(0, TaskComment::all());
+        $this->assertCount(0, ActivityLog::all());
         $this->assertNull(Project::find($project->id));
         $this->assertNull(ProjectTask::find($task->id));
         $this->assertNull(ProjectBug::find($bug->id));

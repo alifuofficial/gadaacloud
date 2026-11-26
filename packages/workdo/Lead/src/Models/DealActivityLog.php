@@ -4,13 +4,14 @@ namespace Workdo\Lead\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 
 class DealActivityLog extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
-        'user_id','deal_id','log_type','remark'
+        'user_id','deal_id','log_type','remark','created_by'
     ];
 
     public function user()

@@ -3,14 +3,22 @@
 namespace Tests\Unit;
 
 use Tests\TestCase;
+use Workdo\Taskly\Models\ActivityLog;
+use Workdo\Taskly\Models\BugComment;
 use Workdo\Taskly\Models\BugStage;
 use Workdo\Taskly\Models\Project;
 use Workdo\Taskly\Models\ProjectBoq;
 use Workdo\Taskly\Models\ProjectBug;
+use Workdo\Taskly\Models\ProjectClient;
+use Workdo\Taskly\Models\ProjectFile;
 use Workdo\Taskly\Models\ProjectLogistics;
+use Workdo\Taskly\Models\ProjectMilestone;
 use Workdo\Taskly\Models\ProjectSiteDiary;
 use Workdo\Taskly\Models\ProjectTask;
+use Workdo\Taskly\Models\ProjectUser;
+use Workdo\Taskly\Models\TaskComment;
 use Workdo\Taskly\Models\TaskStage;
+use Workdo\Taskly\Models\TaskSubtask;
 use Workdo\Taskly\Models\TaskTimesheet;
 use Workdo\Taskly\Traits\TasklyDateHelpers;
 
@@ -28,6 +36,14 @@ class TasklyEnterpriseUpgradeTest extends TestCase
             ProjectLogistics::class,
             ProjectSiteDiary::class,
             TaskTimesheet::class,
+            ActivityLog::class,
+            BugComment::class,
+            ProjectClient::class,
+            ProjectFile::class,
+            ProjectMilestone::class,
+            ProjectUser::class,
+            TaskComment::class,
+            TaskSubtask::class,
         ];
 
         foreach ($models as $modelClass) {

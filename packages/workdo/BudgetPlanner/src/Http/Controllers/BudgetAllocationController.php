@@ -10,6 +10,7 @@ use Workdo\BudgetPlanner\Http\Requests\StoreBudgetAllocationRequest;
 use Workdo\BudgetPlanner\Http\Requests\UpdateBudgetAllocationRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Account\Models\ChartOfAccount;
 use Workdo\BudgetPlanner\Events\CreateBudgetAllocation;
@@ -70,28 +71,32 @@ class BudgetAllocationController extends Controller
         if(Auth::user()->can('create-budget-allocations')){
             $validated = $request->validated();
 
-            $budgetAllocation = new BudgetAllocation();
-            $budgetAllocation->budget_id = $validated['budget_id'];
-            $budgetAllocation->account_id = $validated['account_id'];
-            $budgetAllocation->allocated_amount = $validated['allocated_amount'];
-            $budgetAllocation->spent_amount = 0;
-            $budgetAllocation->remaining_amount = $validated['allocated_amount'];
-            $budgetAllocation->creator_id = Auth::id();
-            $budgetAllocation->created_by = creatorId();
-            $budgetAllocation->save();
+            DB::transaction(function () use ($request, $validated) {
+                $budgetAllocation = new BudgetAllocation();
+                $budgetAllocation->budget_id = $validated['budget_id'];
+                $budgetAllocation->account_id = $validated['account_id'];
+                $budgetAllocation->allocated_amount = $validated['allocated_amount'];
+                $budgetAllocation->spent_amount = 0;
+                $budgetAllocation->remaining_amount = $validated['allocated_amount'];
+                $budgetAllocation->creator_id = Auth::id();
+                $budgetAllocation->created_by = creatorId();
+                $budgetAllocation->save();
 
-            // Update budget total amount and status
-            $budget = Budget::find($validated['budget_id']);
-            $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
+                // Update budget total amount and status
+                $budget = Budget::find($validated['budget_id']);
+                if ($budget) {
+                    $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
 
-            // Auto-approve budget if it has allocations and is still draft
-            if ($budget->allocations()->count() > 0 && $budget->status === 'draft') {
-                $budget->status = 'approved';
-            }
+                    // Auto-approve budget if it has allocations and is still draft
+                    if ($budget->allocations()->count() > 0 && $budget->status === 'draft') {
+                        $budget->status = 'approved';
+                    }
 
-            $budget->save();
+                    $budget->save();
+                }
 
-            CreateBudgetAllocation::dispatch($request, $budgetAllocation);
+                CreateBudgetAllocation::dispatch($request, $budgetAllocation);
+            });
 
             return redirect()->route('budget-planner.budget-allocations.index')->with('success', __('The budget allocation has been created successfully.'));
         }
@@ -102,21 +107,25 @@ class BudgetAllocationController extends Controller
 
     public function update(UpdateBudgetAllocationRequest $request, BudgetAllocation $budget_allocation)
     {
-        if(Auth::user()->can('edit-budget-allocations')){
+        if(Auth::user()->can('edit-budget-allocations') && $budget_allocation->created_by == creatorId()){
             $validated = $request->validated();
 
-            $budget_allocation->budget_id = $validated['budget_id'];
-            $budget_allocation->account_id = $validated['account_id'];
-            $budget_allocation->allocated_amount = $validated['allocated_amount'];
-            $budget_allocation->remaining_amount = $validated['allocated_amount'] - $budget_allocation->spent_amount;
-            $budget_allocation->save();
+            DB::transaction(function () use ($request, $budget_allocation, $validated) {
+                $budget_allocation->budget_id = $validated['budget_id'];
+                $budget_allocation->account_id = $validated['account_id'];
+                $budget_allocation->allocated_amount = $validated['allocated_amount'];
+                $budget_allocation->remaining_amount = $validated['allocated_amount'] - $budget_allocation->spent_amount;
+                $budget_allocation->save();
 
-            // Update budget total amount
-            $budget = Budget::find($budget_allocation->budget_id);
-            $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
-            $budget->save();
+                // Update budget total amount
+                $budget = Budget::find($budget_allocation->budget_id);
+                if ($budget) {
+                    $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
+                    $budget->save();
+                }
 
-            UpdateBudgetAllocation::dispatch($request, $budget_allocation);
+                UpdateBudgetAllocation::dispatch($request, $budget_allocation);
+            });
 
             return back()->with('success', __('The budget allocation details are updated successfully.'));
         }
@@ -127,17 +136,21 @@ class BudgetAllocationController extends Controller
 
     public function destroy(BudgetAllocation $budget_allocation)
     {
-        if(Auth::user()->can('delete-budget-allocations')){
-            $budgetId = $budget_allocation->budget_id;
+        if(Auth::user()->can('delete-budget-allocations') && $budget_allocation->created_by == creatorId()){
+            DB::transaction(function () use ($budget_allocation) {
+                $budgetId = $budget_allocation->budget_id;
 
-            DestroyBudgetAllocation::dispatch($budget_allocation);
+                DestroyBudgetAllocation::dispatch($budget_allocation);
 
-            $budget_allocation->delete();
+                $budget_allocation->delete();
 
-            // Update budget total amount
-            $budget = Budget::find($budgetId);
-            $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
-            $budget->save();
+                // Update budget total amount
+                $budget = Budget::find($budgetId);
+                if ($budget) {
+                    $budget->total_budget_amount = $budget->allocations()->sum('allocated_amount');
+                    $budget->save();
+                }
+            });
 
             return back()->with('success', __('The budget allocation has been deleted.'));
         }

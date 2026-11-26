@@ -5,10 +5,11 @@ namespace Workdo\Taskly\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class ProjectMilestone extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'project_id',
@@ -23,6 +24,7 @@ class ProjectMilestone extends Model
         'approved_at',
         'approval_status',
         'rejection_reason',
+        'created_by',
     ];
 
     protected function casts(): array

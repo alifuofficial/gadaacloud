@@ -5,6 +5,7 @@ namespace Workdo\Taskly\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -127,33 +128,35 @@ class ProjectController extends Controller
         if (Auth::user()->can('create-project')) {
             $validated = $request->validated();
 
-            $project                = new Project();
-            $project->name          = $validated['name'];
-            $project->project_type  = $validated['project_type'] ?? 'general';
-            $project->project_scope = $validated['project_scope'] ?? (company_setting('taskly_default_project_scope') ?: 'client');
-            $project->internal_category = $validated['internal_category'] ?? ($project->project_scope === 'internal' ? (company_setting('taskly_default_internal_category') ?: 'opex') : null);
-            $project->project_sponsor_id = $validated['project_sponsor_id'] ?? null;
-            $project->business_case = $validated['business_case'] ?? null;
-            $project->target_roi_savings = $validated['target_roi_savings'] ?? null;
-            $project->currency_code = $validated['currency_code'] ?? (company_setting('taskly_default_currency') ?: 'ETB');
-            $project->description   = $validated['description'] ?? null;
-            $project->budget        = $validated['budget'] ?? 0;
-            $project->estimated_hrs = $validated['estimated_hrs'] ?? 0;
-            $project->start_date    = $validated['start_date'];
-            $project->end_date      = $validated['end_date'];
-            $project->branch_id     = $validated['branch_id'] ?? null;
-            $project->department_id = $validated['department_id'] ?? null;
-            $project->cost_center_id= $validated['cost_center_id'] ?? null;
-            $project->status        = 'Ongoing';
-            $project->creator_id    = Auth::id();
-            $project->created_by    = creatorId();
-            $project->save();
+            DB::transaction(function () use ($request, $validated) {
+                $project                = new Project();
+                $project->name          = $validated['name'];
+                $project->project_type  = $validated['project_type'] ?? 'general';
+                $project->project_scope = $validated['project_scope'] ?? (company_setting('taskly_default_project_scope') ?: 'client');
+                $project->internal_category = $validated['internal_category'] ?? ($project->project_scope === 'internal' ? (company_setting('taskly_default_internal_category') ?: 'opex') : null);
+                $project->project_sponsor_id = $validated['project_sponsor_id'] ?? null;
+                $project->business_case = $validated['business_case'] ?? null;
+                $project->target_roi_savings = $validated['target_roi_savings'] ?? null;
+                $project->currency_code = $validated['currency_code'] ?? (company_setting('taskly_default_currency') ?: 'ETB');
+                $project->description   = $validated['description'] ?? null;
+                $project->budget        = $validated['budget'] ?? 0;
+                $project->estimated_hrs = $validated['estimated_hrs'] ?? 0;
+                $project->start_date    = $validated['start_date'];
+                $project->end_date      = $validated['end_date'];
+                $project->branch_id     = $validated['branch_id'] ?? null;
+                $project->department_id = $validated['department_id'] ?? null;
+                $project->cost_center_id= $validated['cost_center_id'] ?? null;
+                $project->status        = 'Ongoing';
+                $project->creator_id    = Auth::id();
+                $project->created_by    = creatorId();
+                $project->save();
 
-            $project->ensureShareToken();
+                $project->ensureShareToken();
 
-            $project->teamMembers()->sync($validated['user_ids']);
+                $project->teamMembers()->sync($validated['user_ids']);
 
-            CreateProject::dispatch($request, $project);
+                CreateProject::dispatch($request, $project);
+            });
 
             return redirect()->route('project.index')->with('success', __('The project has been created successfully.'));
         } else {
@@ -322,30 +325,32 @@ class ProjectController extends Controller
 
     public function update(UpdateProjectRequest $request, Project $project)
     {
-        if (Auth::user()->can('edit-project')) {
+        if (Auth::user()->can('edit-project') && $this->assertBelongsToTenant($project)) {
             $validated = $request->validated();
 
-            $project->name          = $validated['name'];
-            if (isset($validated['project_type'])) $project->project_type = $validated['project_type'];
-            if (isset($validated['project_scope'])) $project->project_scope = $validated['project_scope'];
-            if (isset($validated['internal_category'])) $project->internal_category = $validated['internal_category'];
-            if (array_key_exists('project_sponsor_id', $validated)) $project->project_sponsor_id = $validated['project_sponsor_id'];
-            if (array_key_exists('business_case', $validated)) $project->business_case = $validated['business_case'];
-            if (array_key_exists('target_roi_savings', $validated)) $project->target_roi_savings = $validated['target_roi_savings'];
-            if (isset($validated['currency_code'])) $project->currency_code = $validated['currency_code'];
-            $project->description   = $validated['description'] ?? null;
-            $project->budget        = $validated['budget'] ?? 0;
-            if (isset($validated['estimated_hrs'])) $project->estimated_hrs = $validated['estimated_hrs'];
-            $project->start_date    = $validated['start_date'];
-            $project->end_date      = $validated['end_date'];
-            if (isset($validated['branch_id'])) $project->branch_id = $validated['branch_id'];
-            if (isset($validated['department_id'])) $project->department_id = $validated['department_id'];
-            if (isset($validated['cost_center_id'])) $project->cost_center_id = $validated['cost_center_id'];
-            if (isset($validated['status'])) $project->status = $validated['status'];
-            if (isset($validated['is_client_visible'])) $project->is_client_visible = (bool) $validated['is_client_visible'];
-            $project->save();
+            DB::transaction(function () use ($request, $project, $validated) {
+                $project->name          = $validated['name'];
+                if (isset($validated['project_type'])) $project->project_type = $validated['project_type'];
+                if (isset($validated['project_scope'])) $project->project_scope = $validated['project_scope'];
+                if (isset($validated['internal_category'])) $project->internal_category = $validated['internal_category'];
+                if (array_key_exists('project_sponsor_id', $validated)) $project->project_sponsor_id = $validated['project_sponsor_id'];
+                if (array_key_exists('business_case', $validated)) $project->business_case = $validated['business_case'];
+                if (array_key_exists('target_roi_savings', $validated)) $project->target_roi_savings = $validated['target_roi_savings'];
+                if (isset($validated['currency_code'])) $project->currency_code = $validated['currency_code'];
+                $project->description   = $validated['description'] ?? null;
+                $project->budget        = $validated['budget'] ?? 0;
+                if (isset($validated['estimated_hrs'])) $project->estimated_hrs = $validated['estimated_hrs'];
+                $project->start_date    = $validated['start_date'];
+                $project->end_date      = $validated['end_date'];
+                if (isset($validated['branch_id'])) $project->branch_id = $validated['branch_id'];
+                if (isset($validated['department_id'])) $project->department_id = $validated['department_id'];
+                if (isset($validated['cost_center_id'])) $project->cost_center_id = $validated['cost_center_id'];
+                if (isset($validated['status'])) $project->status = $validated['status'];
+                if (isset($validated['is_client_visible'])) $project->is_client_visible = (bool) $validated['is_client_visible'];
+                $project->save();
 
-            UpdateProject::dispatch($request, $project);
+                UpdateProject::dispatch($request, $project);
+            });
 
             return back()->with('success', __('The project details are updated successfully.'));
         } else {
@@ -355,17 +360,18 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
-        if (Auth::user()->can('delete-project')) {
+        if (Auth::user()->can('delete-project') && $this->assertBelongsToTenant($project)) {
+            DB::transaction(function () use ($project) {
+                ProjectTask::where('project_id', '=', $project->id)->delete();
+                ProjectBug::where('project_id', '=', $project->id)->delete();
+                ProjectMilestone::where('project_id', '=', $project->id)->delete();
+                ActivityLog::where('project_id', '=', $project->id)->delete();
+                ProjectClient::where('project_id', '=', $project->id)->delete();
+                ProjectUser::where('project_id', '=', $project->id)->delete();
 
-            ProjectTask::where('project_id', '=', $project->id)->delete();
-            ProjectBug::where('project_id', '=', $project->id)->delete();
-            ProjectMilestone::where('project_id', '=', $project->id)->delete();
-            ActivityLog::where('project_id', '=', $project->id)->delete();
-            ProjectClient::where('project_id', '=', $project->id)->delete();
-            ProjectUser::where('project_id', '=', $project->id)->delete();
-
-            DestroyProject::dispatch($project);
-            $project->delete();
+                DestroyProject::dispatch($project);
+                $project->delete();
+            });
            return back()->with('success', __('The project has been deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied'));

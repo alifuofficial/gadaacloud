@@ -9,6 +9,7 @@ use Workdo\Lead\Http\Requests\StoreLeadRequest;
 use Workdo\Lead\Http\Requests\UpdateLeadRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Lead\Models\LeadStage;
 use Workdo\Lead\Models\Pipeline;
@@ -186,43 +187,48 @@ class LeadController extends Controller
             if (empty($stage)) {
                 return redirect()->route('lead.leads.index')->with('error', __('Please create stage for this pipeline.'));
             } else {
-                $lead                 = new Lead();
-                $lead->name           = $request->name;
-                $lead->email          = $request->email;
-                $lead->subject        = $request->subject;
-                $lead->user_id        = $request->user_id;
-                $lead->pipeline_id    = $pipeline->id;
-                $lead->stage_id       = $stage->id;
-                $lead->phone          = $request->phone;
-                $lead->date           = $request->date;
-                $lead->creator_id     = Auth::id();
-                $lead->created_by     = creatorId();
-                $lead->save();
+                ['lead' => $lead, 'usrLeads' => $usrLeads] = DB::transaction(function () use ($request, $usr, $pipeline, $stage) {
+                    $lead                 = new Lead();
+                    $lead->name           = $request->name;
+                    $lead->email          = $request->email;
+                    $lead->subject        = $request->subject;
+                    $lead->user_id        = $request->user_id;
+                    $lead->pipeline_id    = $pipeline->id;
+                    $lead->stage_id       = $stage->id;
+                    $lead->phone          = $request->phone;
+                    $lead->date           = $request->date;
+                    $lead->creator_id     = Auth::id();
+                    $lead->created_by     = creatorId();
+                    $lead->save();
 
-                if (Auth::user()->type == 'company') {
-                    $usrLeads = [
-                        $usr->id,
-                        $request->user_id,
-                    ];
-                } else {
-                    $usrLeads = [
-                        creatorId(),
-                        $request->user_id,
-                    ];
-                }
+                    if (Auth::user()->type == 'company') {
+                        $usrLeads = [
+                            $usr->id,
+                            $request->user_id,
+                        ];
+                    } else {
+                        $usrLeads = [
+                            creatorId(),
+                            $request->user_id,
+                        ];
+                    }
 
-                $usrLeads = array_unique(array_filter($usrLeads));
+                    $usrLeads = array_unique(array_filter($usrLeads));
 
-                foreach ($usrLeads as $usrLead) {
-                    UserLead::firstOrCreate(
-                        [
-                            'user_id' => $usrLead,
-                            'lead_id' => $lead->id,
-                        ]
-                    );
-                }
+                    foreach ($usrLeads as $usrLead) {
+                        UserLead::firstOrCreate(
+                            [
+                                'user_id' => $usrLead,
+                                'lead_id' => $lead->id,
+                            ]
+                        );
+                    }
+
+                    CreateLead::dispatch($request, $lead);
+
+                    return ['lead' => $lead, 'usrLeads' => $usrLeads];
+                });
             }
-            CreateLead::dispatch($request, $lead);
 
             if (company_setting('Lead Assign') == 'on') {
                 $emailData = [
@@ -361,25 +367,27 @@ class LeadController extends Controller
             $validated['is_active'] = $request->boolean('is_active', true);
 
 
-            $lead->name        = $validated['name'];
-            $lead->company_name = $validated['company_name'] ?? $lead->company_name;
-            $lead->email       = $validated['email'];
-            $lead->subject     = $validated['subject'];
-            $lead->user_id     = $validated['user_id'];
-            $lead->phone       = $validated['phone'];
-            $lead->tin_number  = $validated['tin_number'] ?? $lead->tin_number;
-            $lead->vat_number  = $validated['vat_number'] ?? $lead->vat_number;
-            $lead->date        = $validated['date'];
-            $lead->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $lead->ethiopian_fiscal_year;
-            $lead->pipeline_id = $validated['pipeline_id'] ?? $lead->pipeline_id;
-            $lead->stage_id    = $validated['stage_id'] ?? $lead->stage_id;
-            $lead->sources     = array_key_exists('sources', $validated) ? (is_array($validated['sources']) ? (empty($validated['sources']) ? null : implode(',', array_filter($validated['sources']))) : ($validated['sources'] ?? $lead->sources)) : $lead->sources;
-            $lead->products    = array_key_exists('products', $validated) ? (is_array($validated['products']) ? (empty($validated['products']) ? null : implode(',', array_filter($validated['products']))) : ($validated['products'] ?? $lead->products)) : $lead->products;
-            $lead->notes       = $validated['notes'] ?? $lead->notes;
-            $lead->labels      = $request->input('labels', $lead->labels);
-            $lead->save();
+            DB::transaction(function () use ($request, $lead, $validated) {
+                $lead->name        = $validated['name'];
+                $lead->company_name = $validated['company_name'] ?? $lead->company_name;
+                $lead->email       = $validated['email'];
+                $lead->subject     = $validated['subject'];
+                $lead->user_id     = $validated['user_id'];
+                $lead->phone       = $validated['phone'];
+                $lead->tin_number  = $validated['tin_number'] ?? $lead->tin_number;
+                $lead->vat_number  = $validated['vat_number'] ?? $lead->vat_number;
+                $lead->date        = $validated['date'];
+                $lead->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $lead->ethiopian_fiscal_year;
+                $lead->pipeline_id = $validated['pipeline_id'] ?? $lead->pipeline_id;
+                $lead->stage_id    = $validated['stage_id'] ?? $lead->stage_id;
+                $lead->sources     = array_key_exists('sources', $validated) ? (is_array($validated['sources']) ? (empty($validated['sources']) ? null : implode(',', array_filter($validated['sources']))) : ($validated['sources'] ?? $lead->sources)) : $lead->sources;
+                $lead->products    = array_key_exists('products', $validated) ? (is_array($validated['products']) ? (empty($validated['products']) ? null : implode(',', array_filter($validated['products']))) : ($validated['products'] ?? $lead->products)) : $lead->products;
+                $lead->notes       = $validated['notes'] ?? $lead->notes;
+                $lead->labels      = $request->input('labels', $lead->labels);
+                $lead->save();
 
-            UpdateLead::dispatch($request, $lead);
+                UpdateLead::dispatch($request, $lead);
+            });
 
             return back()->with('success', __('The lead details are updated successfully.'));
         } else {
@@ -390,11 +398,13 @@ class LeadController extends Controller
     public function destroy(Lead $lead)
     {
         if (Auth::user()->can('delete-leads') && $this->assertBelongsToTenant($lead)) {
-            DestroyLead::dispatch($lead);
+            DB::transaction(function () use ($lead) {
+                DestroyLead::dispatch($lead);
 
-            LeadActivityLog::where('lead_id', '=', $lead->id)->delete();
+                LeadActivityLog::where('lead_id', '=', $lead->id)->delete();
 
-            $lead->delete();
+                $lead->delete();
+            });
 
             return back()->with('success', __('The lead has been deleted.'));
         } else {

@@ -4,9 +4,12 @@ namespace Workdo\Lead\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class LeadCall extends Model
 {
+    use TenantScoped;
+
     protected $fillable = [
         'lead_id',
         'subject',
@@ -15,6 +18,7 @@ class LeadCall extends Model
         'user_id',
         'description',
         'call_result',
+        'created_by',
     ];
 
     protected $casts = [

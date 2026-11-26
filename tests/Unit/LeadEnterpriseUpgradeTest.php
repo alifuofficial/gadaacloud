@@ -4,17 +4,28 @@ namespace Tests\Unit;
 
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
+use Workdo\Lead\Models\ClientDeal;
 use Workdo\Lead\Models\Deal;
+use Workdo\Lead\Models\DealActivityLog;
+use Workdo\Lead\Models\DealCall;
 use Workdo\Lead\Models\DealDiscussion;
+use Workdo\Lead\Models\DealEmail;
+use Workdo\Lead\Models\DealFile;
 use Workdo\Lead\Models\DealStage;
 use Workdo\Lead\Models\DealTask;
 use Workdo\Lead\Models\Label;
 use Workdo\Lead\Models\Lead;
+use Workdo\Lead\Models\LeadActivityLog;
+use Workdo\Lead\Models\LeadCall;
 use Workdo\Lead\Models\LeadDiscussion;
+use Workdo\Lead\Models\LeadEmail;
+use Workdo\Lead\Models\LeadFile;
 use Workdo\Lead\Models\LeadStage;
 use Workdo\Lead\Models\LeadTask;
 use Workdo\Lead\Models\Pipeline;
 use Workdo\Lead\Models\Source;
+use Workdo\Lead\Models\UserDeal;
+use Workdo\Lead\Models\UserLead;
 use Workdo\Lead\Traits\LeadControllerHelpers;
 use Workdo\Lead\Traits\LeadDateHelpers;
 
@@ -34,6 +45,17 @@ class LeadEnterpriseUpgradeTest extends TestCase
             DealTask::class,
             LeadDiscussion::class,
             DealDiscussion::class,
+            ClientDeal::class,
+            DealActivityLog::class,
+            DealCall::class,
+            DealEmail::class,
+            DealFile::class,
+            LeadActivityLog::class,
+            LeadCall::class,
+            LeadEmail::class,
+            LeadFile::class,
+            UserDeal::class,
+            UserLead::class,
         ];
 
         foreach ($models as $modelClass) {

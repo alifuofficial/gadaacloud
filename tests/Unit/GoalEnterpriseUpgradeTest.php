@@ -12,6 +12,7 @@ use Workdo\Goal\Models\GoalMilestone;
 use Workdo\Goal\Models\GoalTracking;
 use Workdo\Goal\Services\GoalService;
 use Workdo\Goal\Traits\GoalControllerHelpers;
+use Workdo\Goal\Traits\GoalDateHelpers;
 
 class GoalEnterpriseUpgradeTest extends TestCase
 {
@@ -144,5 +145,20 @@ class GoalEnterpriseUpgradeTest extends TestCase
         };
 
         $this->assertSame(10, $helper->safePerPage(10, 100));
+    }
+
+    public function test_goal_date_helpers_resolves_ethiopian_fiscal_year(): void
+    {
+        $helper = new class {
+            use GoalDateHelpers;
+        };
+
+        $resolved = $helper->resolveGoalDateRange('2017');
+
+        $this->assertArrayHasKey('start_date', $resolved);
+        $this->assertArrayHasKey('end_date', $resolved);
+        $this->assertStringStartsWith('2024-', $resolved['start_date']);
+        $this->assertStringStartsWith('2025-', $resolved['end_date']);
+        $this->assertStringContainsString('/', $helper->formatDualGoalDate('2025-01-15'));
     }
 }

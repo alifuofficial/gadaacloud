@@ -10,6 +10,7 @@ use Workdo\BudgetPlanner\Http\Requests\StoreBudgetRequest;
 use Workdo\BudgetPlanner\Http\Requests\UpdateBudgetRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\BudgetPlanner\Events\ActiveBudget;
 use Workdo\BudgetPlanner\Events\ApproveBudget;
@@ -64,17 +65,19 @@ class BudgetController extends Controller
         if(Auth::user()->can('create-budgets')){
             $validated = $request->validated();
 
-            $budget = new Budget();
-            $budget->budget_name = $validated['budget_name'];
-            $budget->period_id = $validated['period_id'];
-            $budget->budget_type = $validated['budget_type'];
-            $budget->total_budget_amount = 0;
-            $budget->status = 'draft';
-            $budget->creator_id = Auth::id();
-            $budget->created_by = creatorId();
-            $budget->save();
+            DB::transaction(function () use ($request, $validated) {
+                $budget = new Budget();
+                $budget->budget_name = $validated['budget_name'];
+                $budget->period_id = $validated['period_id'];
+                $budget->budget_type = $validated['budget_type'];
+                $budget->total_budget_amount = 0;
+                $budget->status = 'draft';
+                $budget->creator_id = Auth::id();
+                $budget->created_by = creatorId();
+                $budget->save();
 
-            CreateBudget::dispatch($request, $budget);
+                CreateBudget::dispatch($request, $budget);
+            });
 
             return redirect()->route('budget-planner.budgets.index')->with('success', __('The budget has been created successfully.'));
         }
@@ -85,19 +88,21 @@ class BudgetController extends Controller
 
     public function update(UpdateBudgetRequest $request, Budget $budget)
     {
-        if(Auth::user()->can('edit-budgets')){
+        if(Auth::user()->can('edit-budgets') && $budget->created_by == creatorId()){
             if ($budget->status !== 'draft') {
                 return back()->with('error', __('Only draft budgets can be edited.'));
             }
 
             $validated = $request->validated();
 
-            $budget->budget_name = $validated['budget_name'];
-            $budget->period_id = $validated['period_id'];
-            $budget->budget_type = $validated['budget_type'];
-            $budget->save();
+            DB::transaction(function () use ($request, $budget, $validated) {
+                $budget->budget_name = $validated['budget_name'];
+                $budget->period_id = $validated['period_id'];
+                $budget->budget_type = $validated['budget_type'];
+                $budget->save();
 
-            UpdateBudget::dispatch($request, $budget);
+                UpdateBudget::dispatch($request, $budget);
+            });
 
             return back()->with('success', __('The budget details are updated successfully.'));
         }
@@ -108,17 +113,19 @@ class BudgetController extends Controller
 
     public function approve(Budget $budget)
     {
-        if(Auth::user()->can('approve-budgets')){
+        if(Auth::user()->can('approve-budgets') && $budget->created_by == creatorId()){
             if ($budget->status !== 'draft') {
                 return back()->with('error', __('Only draft budgets can be approved.'));
             }
 
-            $budget->update([
-                'status' => 'approved',
-                'approved_by' => Auth::id()
-            ]);
+            DB::transaction(function () use ($budget) {
+                $budget->update([
+                    'status' => 'approved',
+                    'approved_by' => Auth::id()
+                ]);
 
-            ApproveBudget::dispatch($budget);
+                ApproveBudget::dispatch($budget);
+            });
 
             return back()->with('success', __('Budget approved successfully.'));
         }
@@ -129,14 +136,16 @@ class BudgetController extends Controller
 
     public function active(Budget $budget)
     {
-        if(Auth::user()->can('active-budgets')){
+        if(Auth::user()->can('active-budgets') && $budget->created_by == creatorId()){
             if ($budget->status !== 'approved') {
                 return back()->with('error', __('Only approved budgets can be active.'));
             }
 
-            $budget->update(['status' => 'active']);
+            DB::transaction(function () use ($budget) {
+                $budget->update(['status' => 'active']);
 
-            ActiveBudget::dispatch($budget);
+                ActiveBudget::dispatch($budget);
+            });
 
             return back()->with('success', __('Budget active successfully.'));
         }
@@ -147,14 +156,16 @@ class BudgetController extends Controller
 
     public function close(Budget $budget)
     {
-        if(Auth::user()->can('close-budgets')){
+        if(Auth::user()->can('close-budgets') && $budget->created_by == creatorId()){
             if ($budget->status !== 'active') {
                 return back()->with('error', __('Only active budgets can be closed.'));
             }
 
-            $budget->update(['status' => 'closed']);
+            DB::transaction(function () use ($budget) {
+                $budget->update(['status' => 'closed']);
 
-            CloseBudget::dispatch($budget);
+                CloseBudget::dispatch($budget);
+            });
 
             return back()->with('success', __('Budget closed successfully.'));
         }
@@ -165,14 +176,16 @@ class BudgetController extends Controller
 
     public function destroy(Budget $budget)
     {
-        if(Auth::user()->can('delete-budgets')){
+        if(Auth::user()->can('delete-budgets') && $budget->created_by == creatorId()){
             if ($budget->status !== 'draft') {
                 return back()->with('error', __('Only draft budgets can be deleted.'));
             }
 
-            DestroyBudget::dispatch($budget);
+            DB::transaction(function () use ($budget) {
+                DestroyBudget::dispatch($budget);
 
-            $budget->delete();
+                $budget->delete();
+            });
 
             return redirect()->back()->with('success', __('The budget has been deleted.'));
         }

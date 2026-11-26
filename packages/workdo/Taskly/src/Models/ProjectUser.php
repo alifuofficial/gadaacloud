@@ -4,14 +4,16 @@ namespace Workdo\Taskly\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 
 class ProjectUser extends Model
 {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
         'project_id',
         'user_id',
+        'created_by',
     ];
 
     protected $casts = [

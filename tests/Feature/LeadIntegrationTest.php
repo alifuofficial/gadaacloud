@@ -204,6 +204,7 @@ class LeadIntegrationTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('client_id');
             $table->unsignedBigInteger('deal_id');
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
         });
 
