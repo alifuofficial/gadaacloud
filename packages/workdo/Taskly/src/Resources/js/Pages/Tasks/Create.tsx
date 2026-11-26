@@ -19,6 +19,8 @@ interface CreateProps {
     teamMembers: Array<{
         id: number;
         name: string;
+        is_deactivated?: boolean;
+        account_status_label?: string;
     }>;
     taskStages?: TaskStage[];
     preSelectedStageId?: number;
@@ -141,10 +143,12 @@ export default function Create({ onSuccess, project, milestones, teamMembers, ta
                 <div>
                     <Label required>{t('Assign To')}</Label>
                     <MultiSelectEnhanced
-                        options={teamMembers.map(member => ({
-                            value: member.id.toString(),
-                            label: member.name
-                        }))}
+                        options={(teamMembers || [])
+                            .filter(member => !member.is_deactivated)
+                            .map(member => ({
+                                value: member.id.toString(),
+                                label: member.name
+                            }))}
                         value={data.assigned_to?.map(id => id.toString()) || []}
                         onValueChange={(values) => setData('assigned_to', values.map(v => parseInt(v)))}
                         placeholder={t('Select team members')}

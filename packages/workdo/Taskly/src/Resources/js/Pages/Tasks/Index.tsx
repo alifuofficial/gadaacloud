@@ -90,12 +90,28 @@ export default function Index() {
             return (
                 <div className="flex items-center gap-1">
                     <div className="flex -space-x-1">
-                        {assignedUsers.slice(0, maxVisible).map((user) => (
-                            <Avatar key={user.id} className="h-6 w-6 border-2 border-white">
-                                <AvatarFallback className="text-xs bg-gray-100">
-                                    {user.name?.split(' ').map(n => n[0]).join('') || 'U'}
-                                </AvatarFallback>
-                            </Avatar>
+                        {assignedUsers.slice(0, maxVisible).map((user: any) => (
+                            <TooltipProvider key={user.id}>
+                                <Tooltip delayDuration={0}>
+                                    <TooltipTrigger>
+                                        <Avatar
+                                            className={`h-6 w-6 border-2 ${
+                                                user.is_deactivated ? 'border-red-400 opacity-65' : 'border-white'
+                                            }`}
+                                        >
+                                            <AvatarFallback className="text-xs bg-gray-100">
+                                                {user.name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>
+                                            {user.name}
+                                            {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         ))}
                         {assignedUsers.length > maxVisible && (
                             <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center">
@@ -107,14 +123,22 @@ export default function Index() {
             );
         }
         if (task.assignedUser) {
+            const singleUser: any = task.assignedUser;
             return (
                 <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className={`h-8 w-8 ${singleUser.is_deactivated ? 'border-2 border-red-400 opacity-65' : ''}`}>
                         <AvatarFallback className="text-xs bg-gray-100">
-                            {task.assignedUser.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                            {singleUser.name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
                         </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{task.assignedUser.name}</span>
+                    <span className={`text-sm ${singleUser.is_deactivated ? 'line-through text-muted-foreground' : ''}`}>
+                        {singleUser.name}
+                    </span>
+                    {singleUser.is_deactivated && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-100 text-red-700">
+                            {t(singleUser.account_status_label || 'Deactivated')}
+                        </span>
+                    )}
                 </div>
             );
         }
@@ -530,18 +554,36 @@ export default function Index() {
                                                         <div className="text-xs text-gray-900">
                                                             {task.assignedUsers && task.assignedUsers.length > 0 ? (
                                                                 <div className="flex -space-x-1">
-                                                                    {task.assignedUsers.slice(0, 2).map((user) => (
-                                                                        <div key={user.id} className="h-8 w-8 rounded-full border border-background overflow-hidden bg-gray-100 flex items-center justify-center">
-                                                                            {user.avatar ? (
-                                                                                <img
-                                                                                    src={getImagePath(user.avatar)}
-                                                                                    alt={user.name}
-                                                                                    className="h-full w-full object-cover"
-                                                                                />
-                                                                            ) : (
-                                                                                <User className="h-2 w-2 text-gray-400" />
-                                                                            )}
-                                                                        </div>
+                                                                    {task.assignedUsers.slice(0, 2).map((user: any) => (
+                                                                        <TooltipProvider key={user.id}>
+                                                                            <Tooltip delayDuration={0}>
+                                                                                <TooltipTrigger>
+                                                                                    <div
+                                                                                        className={`h-8 w-8 rounded-full border overflow-hidden bg-gray-100 flex items-center justify-center ${
+                                                                                            user.is_deactivated
+                                                                                                ? 'border-red-400 opacity-65 grayscale'
+                                                                                                : 'border-background'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {user.avatar ? (
+                                                                                            <img
+                                                                                                src={getImagePath(user.avatar)}
+                                                                                                alt={user.name}
+                                                                                                className="h-full w-full object-cover"
+                                                                                            />
+                                                                                        ) : (
+                                                                                            <User className="h-2 w-2 text-gray-400" />
+                                                                                        )}
+                                                                                    </div>
+                                                                                </TooltipTrigger>
+                                                                                <TooltipContent>
+                                                                                    <p>
+                                                                                        {user.name}
+                                                                                        {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                                                                    </p>
+                                                                                </TooltipContent>
+                                                                            </Tooltip>
+                                                                        </TooltipProvider>
                                                                     ))}
                                                                     {task.assignedUsers.length > 2 && (
                                                                         <div className="h-5 w-5 rounded-full bg-gray-200 border border-background flex items-center justify-center">

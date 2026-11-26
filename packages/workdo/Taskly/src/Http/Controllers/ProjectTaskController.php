@@ -77,28 +77,14 @@ class ProjectTaskController extends Controller
                     $task->end_date = null;
                 }
 
-                // Add assignedUsers array with proper avatar
-                $assignedUsers = [];
-                if ($task->assigned_to) {
-                    $userIds = is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true);
-                    $assignedUsers = \App\Models\User::whereIn('id', $userIds)
-                        ->select('id', 'name', 'avatar')
-                        ->get()
-                        ->map(function ($user) {
-                            return [
-                                'id' => $user->id,
-                                'name' => $user->name,
-                                'avatar' => $user->avatar
-                            ];
-                        });
-                }
-                $task->assignedUsers = $assignedUsers;
+                // Add assignedUsers array with proper avatar & deactivation status
+                $task->assignedUsers = $this->loadAssignedUsersSummary($task->assigned_to);
 
                 return $task;
             });
 
             $milestones = $project ? $project->milestones()->select('id', 'title')->get() : [];
-            $teamMembers = $project ? $project->teamMembers()->select('users.id', 'users.name', 'users.avatar')->get() : [];
+            $teamMembers = $this->loadProjectTeamMembersSummary($project);
             $taskStages = TaskStage::where('created_by', creatorId())->orderBy('order')->get();
 
             return Inertia::render('Taskly/Tasks/Index', [
@@ -167,10 +153,10 @@ class ProjectTaskController extends Controller
     public function kanban($projectId)
     {
         if (Auth::user()->can('manage-project-task')) {
-            $project = Project::with(['teamMembers:id,name,avatar'])->findOrFail($projectId);
+            $project = Project::with(['teamMembers:' . implode(',', $this->userSelectColumns())])->findOrFail($projectId);
             $stages = TaskStage::where('created_by', creatorId())->orderBy('order')->get();
             $milestones = $project->milestones()->select('id', 'title')->get();
-            $teamMembers = $project->teamMembers()->select('users.id', 'users.name', 'users.avatar')->get();
+            $teamMembers = $this->loadProjectTeamMembersSummary($project);
 
             // Get tasks organized by stages
             $query = ProjectTask::where('project_id', $projectId)
@@ -193,11 +179,7 @@ class ProjectTaskController extends Controller
             foreach ($stages as $stage) {
                 $stageKey = strtolower(str_replace(' ', '-', $stage->name));
                 $stageTasks = $allTasks->where('stage_id', $stage->id)->map(function ($task) {
-                    $assignedUsers = [];
-                    if ($task->assigned_to) {
-                        $userIds = is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true);
-                        $assignedUsers = \App\Models\User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-                    }
+                    $assignedUsers = $this->loadAssignedUsersSummary($task->assigned_to);
                     return [
                         'id' => $task->id,
                         'title' => $task->title,
@@ -396,11 +378,7 @@ class ProjectTaskController extends Controller
             foreach ($stages as $stage) {
                 $stageKey = strtolower(str_replace(' ', '-', $stage->name));
                 $stageTasks = $allTasks->where('stage_id', $stage->id)->map(function ($task) {
-                    $assignedUsers = [];
-                    if ($task->assigned_to) {
-                        $userIds = is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true);
-                        $assignedUsers = \App\Models\User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-                    }
+                    $assignedUsers = $this->loadAssignedUsersSummary($task->assigned_to);
                     return [
                         'id' => $task->id,
                         'title' => $task->title,
@@ -431,12 +409,8 @@ class ProjectTaskController extends Controller
 
             $stage = TaskStage::select('id', 'name', 'color')->find($task->stage_id);
 
-            // Get assigned users from comma-separated string
-            $assignedUsers = [];
-            if ($task->assigned_to) {
-                $userIds = is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true);
-                $assignedUsers = User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-            }
+            // Get assigned users with lifecycle metadata
+            $assignedUsers = $this->loadAssignedUsersSummary($task->assigned_to);
 
             // Parse duration into start_date and end_date
             $startDate = null;

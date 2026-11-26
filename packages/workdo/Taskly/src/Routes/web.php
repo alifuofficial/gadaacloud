@@ -94,6 +94,7 @@ Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:Taskly'])->group(
     Route::get('/project/{project}', [ProjectController::class, 'show'])->name('project.show');
     Route::get('/project/{project}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::post('/project/{project}/invite', [ProjectController::class, 'invite'])->name('project.invite');
+    Route::post('/project/{project}/reassign-member', [ProjectController::class, 'reassignMemberWork'])->name('project.reassign-member');
     Route::delete('/project/{project}/delete-member', [ProjectController::class, 'deleteMember'])->name('project.delete-member');
     Route::post('/project/{project}/invite-client', [ProjectController::class, 'inviteClient'])->name('project.invite-client');
     Route::delete('/project/{project}/delete-client', [ProjectController::class, 'deleteClient'])->name('project.delete-client');

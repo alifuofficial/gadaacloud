@@ -68,11 +68,7 @@ class ProjectBugController extends Controller
             $bugs = $query->paginate($perPage);
 
             $bugs->getCollection()->transform(function ($bug) {
-                $assignedUsers = [];
-                if ($bug->assigned_to) {
-                    $userIds = is_array($bug->assigned_to) ? $bug->assigned_to : json_decode($bug->assigned_to, true);
-                    $assignedUsers = User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-                }
+                $assignedUsers = $this->loadAssignedUsersSummary($bug->assigned_to);
                 $bug->assignedUsers = $assignedUsers;
                 $bug->assignedUser = $assignedUsers->first();
                 return $bug;
@@ -82,7 +78,7 @@ class ProjectBugController extends Controller
             $bugStages = BugStage::where('created_by', creatorId())->orderBy('order')->get();
 
             if ($project) {
-                $teamMembers = $project->teamMembers()->select('users.id', 'users.name', 'users.avatar')->get();
+                $teamMembers = $this->loadProjectTeamMembersSummary($project);
             }
 
             return Inertia::render('Taskly/Bugs/Index', [
@@ -99,9 +95,9 @@ class ProjectBugController extends Controller
     public function kanban($projectId)
     {
         if (Auth::user()->can('manage-project-bug')) {
-            $project = Project::with(['teamMembers:id,name,avatar'])->findOrFail($projectId);
+            $project = Project::with(['teamMembers:' . implode(',', $this->userSelectColumns())])->findOrFail($projectId);
             $stages = BugStage::where('created_by', creatorId())->orderBy('order')->get();
-            $teamMembers = $project->teamMembers()->select('users.id', 'users.name', 'users.avatar')->get();
+            $teamMembers = $this->loadProjectTeamMembersSummary($project);
 
             // Get bugs organized by stages
             $query = ProjectBug::where('project_id', $projectId)
@@ -124,11 +120,7 @@ class ProjectBugController extends Controller
             foreach ($stages as $stage) {
                 $stageKey = strtolower(str_replace(' ', '-', $stage->name));
                 $stageBugs = $allBugs->where('stage_id', $stage->id)->map(function($bug) {
-                    $assignedUsers = [];
-                    if ($bug->assigned_to) {
-                        $userIds = is_array($bug->assigned_to) ? $bug->assigned_to : json_decode($bug->assigned_to, true);
-                        $assignedUsers = \App\Models\User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-                    }
+                    $assignedUsers = $this->loadAssignedUsersSummary($bug->assigned_to);
                     return [
                         'id' => $bug->id,
                         'title' => $bug->title,
@@ -198,11 +190,7 @@ class ProjectBugController extends Controller
         if (Auth::user()->can('view-project-bug') && $canView) {
             $bug->load(['project:id,name', 'bugStage:id,name,color']);
 
-            $assignedUsers = [];
-            if ($bug->assigned_to) {
-                $userIds = is_array($bug->assigned_to) ? $bug->assigned_to : json_decode($bug->assigned_to, true);
-                $assignedUsers = User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-            }
+            $assignedUsers = $this->loadAssignedUsersSummary($bug->assigned_to);
 
             return response()->json([
                 'bug' => [
@@ -334,11 +322,7 @@ class ProjectBugController extends Controller
             foreach ($stages as $stage) {
                 $stageKey = strtolower(str_replace(' ', '-', $stage->name));
                 $stageBugs = $allBugs->where('stage_id', $stage->id)->map(function($bug) {
-                    $assignedUsers = [];
-                    if ($bug->assigned_to) {
-                        $userIds = is_array($bug->assigned_to) ? $bug->assigned_to : json_decode($bug->assigned_to, true);
-                        $assignedUsers = \App\Models\User::whereIn('id', $userIds)->select('id', 'name', 'avatar')->get();
-                    }
+                    $assignedUsers = $this->loadAssignedUsersSummary($bug->assigned_to);
                     return [
                         'id' => $bug->id,
                         'title' => $bug->title,

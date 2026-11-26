@@ -61,8 +61,11 @@ class ApprovalController extends Controller
                 'total_rejected' => $totalRejected,
                 'overdue_count'  => $overdueCount,
             ],
-            'users' => User::where('created_by', creatorId())
-                ->orWhere('id', creatorId())
+            'users' => User::where(function ($q) {
+                    $q->where('created_by', creatorId())->orWhere('id', creatorId());
+                })
+                ->where('is_disable', 0)
+                ->where('is_enable_login', 1)
                 ->get(['id', 'name', 'email']),
         ]);
     }
@@ -90,8 +93,11 @@ class ApprovalController extends Controller
 
         return Inertia::render('GadaacloudStudio/Approval/Show', [
             'request' => $formatted,
-            'users'   => User::where('created_by', creatorId())
-                ->orWhere('id', creatorId())
+            'users'   => User::where(function ($q) {
+                    $q->where('created_by', creatorId())->orWhere('id', creatorId());
+                })
+                ->where('is_disable', 0)
+                ->where('is_enable_login', 1)
                 ->get(['id', 'name', 'email']),
         ]);
     }

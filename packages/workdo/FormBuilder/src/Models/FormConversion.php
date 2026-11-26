@@ -59,7 +59,7 @@ class FormConversion extends Model
                     'users_id' => [
                         'label' => 'Team Members',
                         'type' => 'select',
-                        'options' =>  $user->emp()->select('id', 'name')->get(),
+                        'options' =>  $user->activeEmp()->select('id', 'name')->get(),
                     ],
                 ],
             ],
@@ -73,7 +73,7 @@ class FormConversion extends Model
                     'user_id' => [
                         'label' => 'Assigned User',
                         'type' => 'select',
-                        'options' => $user->emp([], ['vendor'])->select('id', 'name')->get()
+                        'options' => $user->activeEmp([], ['vendor'])->select('id', 'name')->get()
                     ],
                     'pipeline_id' => [
                         'label' => 'Pipeline',
@@ -124,7 +124,7 @@ class FormConversion extends Model
                     'assign_user_id' => [
                         'label' => 'Assigned User',
                         'type' => 'select',
-                        'options' =>  $user->emp()->select('id', 'name')->get(),
+                        'options' =>  $user->activeEmp()->select('id', 'name')->get(),
                     ],
                 ],
                 'Opportunity' => [
@@ -163,7 +163,7 @@ class FormConversion extends Model
                     'assign_user_id' => [
                         'label' => 'Assigned User',
                         'type' => 'select',
-                        'options' =>  $user->emp()->select('id', 'name')->get(),
+                        'options' =>  $user->activeEmp()->select('id', 'name')->get(),
                     ],
                     'stage_id' => [
                         'label' => 'Opportunity Stage',
@@ -220,7 +220,7 @@ class FormConversion extends Model
                         'label' => 'Assigned Users',
                         'type' => 'select',
                         'multiple' => true,
-                        'options' => $user->emp()->select('id', 'name')->get()
+                        'options' => $user->activeEmp()->select('id', 'name')->get()
                     ],
                 ],
                 'Article' => [

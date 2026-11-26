@@ -135,7 +135,7 @@ class LeadController extends Controller
                 ->withQueryString();
 
             $users = User::where('created_by', '=', creatorId())
-                ->emp([],['vendor'])
+                ->activeEmp([],['vendor'])
                 ->select('id', 'name')
                 ->get();
 
@@ -342,7 +342,7 @@ class LeadController extends Controller
                     $products = ProductServiceItem::where('created_by', '=', creatorId())->get()->pluck('name', 'id');
                 }
 
-                $users = User::where('created_by', '=', creatorId())->emp([],['vendor'])->get()->pluck('name', 'id');
+                $users = User::where('created_by', '=', creatorId())->activeEmp([],['vendor'])->get()->pluck('name', 'id');
                 $users->prepend(__('Select User'), null);
 
                 $lead->sources = explode(',', $lead->sources ?? '');
@@ -449,7 +449,7 @@ class LeadController extends Controller
     {
         if (Auth::user()->can('manage-lead-users')) {
             $users = User::where('created_by', '=', creatorId())
-                ->emp([],['vendor'])
+                ->activeEmp([],['vendor'])
                 ->whereNotIn('id', function ($q) use ($lead) {
                     $q->select('user_id')->from('user_leads')->where('lead_id', '=', $lead->id);
                 })

@@ -201,11 +201,17 @@ export default function Index() {
                 return (
                     <div className="flex items-center gap-1">
                         <div className="flex -space-x-1">
-                            {teamMembers.slice(0, maxVisible).map((user) => (
+                            {teamMembers.slice(0, maxVisible).map((user: any) => (
                                 <TooltipProvider key={user.id}>
                                     <Tooltip delayDuration={0}>
                                         <TooltipTrigger>
-                                            <div className="h-8 w-8 rounded-full border-2 border-background overflow-hidden">
+                                            <div
+                                                className={`h-8 w-8 rounded-full border-2 overflow-hidden ${
+                                                    user.is_deactivated
+                                                        ? 'border-red-400 opacity-65 grayscale'
+                                                        : 'border-background'
+                                                }`}
+                                            >
                                                 {user.avatar ? (
                                                     <img
                                                         src={getImagePath(user.avatar)}
@@ -222,7 +228,10 @@ export default function Index() {
                                             </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{user.name}</p>
+                                            <p>
+                                                {user.name}
+                                                {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                            </p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -551,11 +560,17 @@ export default function Index() {
                                                     <div className="flex items-center gap-1">
                                                         {project.team_members && project.team_members.length > 0 ? (
                                                             <div className="flex -space-x-1">
-                                                                {project.team_members.slice(0, 4).map((user) => (
+                                                                {project.team_members.slice(0, 4).map((user: any) => (
                                                                     <TooltipProvider key={user.id}>
                                                                         <Tooltip delayDuration={0}>
                                                                             <TooltipTrigger>
-                                                                                <div className="h-6 w-6 rounded-full border-2 border-background overflow-hidden">
+                                                                                <div
+                                                                                    className={`h-6 w-6 rounded-full border-2 overflow-hidden ${
+                                                                                        user.is_deactivated
+                                                                                            ? 'border-red-400 opacity-65 grayscale'
+                                                                                            : 'border-background'
+                                                                                    }`}
+                                                                                >
                                                                                     <img
                                                                                         src={user.avatar ? getImagePath(user.avatar) : getImagePath('avatar.png')}
                                                                                         alt={user.name}
@@ -564,7 +579,10 @@ export default function Index() {
                                                                                 </div>
                                                                             </TooltipTrigger>
                                                                             <TooltipContent>
-                                                                                <p>{user.name}</p>
+                                                                                <p>
+                                                                                    {user.name}
+                                                                                    {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                                                                </p>
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>

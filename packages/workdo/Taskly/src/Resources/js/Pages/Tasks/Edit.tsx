@@ -23,6 +23,8 @@ interface EditProps {
     teamMembers: Array<{
         id: number;
         name: string;
+        is_deactivated?: boolean;
+        account_status_label?: string;
     }>;
     taskStages?: TaskStage[];
 }
@@ -178,10 +180,14 @@ export default function Edit({ onSuccess, task, project, milestones, teamMembers
                 <div>
                     <Label required>{t('Assign To')}</Label>
                     <MultiSelectEnhanced
-                        options={teamMembers.map(member => ({
-                            value: member.id.toString(),
-                            label: member.name
-                        }))}
+                        options={(teamMembers || [])
+                            .filter(member => !member.is_deactivated || data.assigned_to.includes(member.id))
+                            .map(member => ({
+                                value: member.id.toString(),
+                                label: member.is_deactivated
+                                    ? `${member.name} (${member.account_status_label || t('Deactivated')})`
+                                    : member.name
+                            }))}
                         value={data.assigned_to || []}
                         onValueChange={(values) => updateData('assigned_to', values)}
                         placeholder={t('Select team members')}

@@ -41,7 +41,7 @@ class ProjectController extends Controller
         if (Auth::user()->can('manage-project')) {
             $items = Project::query()
                 ->select('id', 'name', 'description', 'budget', 'start_date', 'end_date', 'status', 'created_by')
-                ->with(['teamMembers:id,name,avatar'])
+                ->with(['teamMembers:' . implode(',', $this->userSelectColumns())])
                 ->where(function($q) {
                     if(Auth::user()->can('manage-any-project')) {
                          $q->where('created_by', creatorId());
@@ -82,20 +82,21 @@ class ProjectController extends Controller
                 ->withQueryString();
 
             $creatorId = creatorId();
-            $users = User::where('id', $creatorId)
-                ->orWhere(function ($q) use ($creatorId) {
-                    $q->where('created_by', $creatorId)->emp();
+            $users = User::where(function ($query) use ($creatorId) {
+                    $query->where(function ($ownerQuery) use ($creatorId) {
+                        $ownerQuery->where('id', $creatorId)
+                            ->where('is_disable', 0)
+                            ->where('is_enable_login', 1);
+                    })->orWhere(function ($q) use ($creatorId) {
+                        $q->where('created_by', $creatorId)->activeEmp();
+                    });
                 })
                 ->get(['id', 'name']);
 
-            // Transform items to include team_members with avatars and task count
+            // Transform items to include team_members with avatars, lifecycle flags, and task count
             $items->getCollection()->transform(function ($project) {
                 $project->team_members = $project->teamMembers->map(function ($member) {
-                    return [
-                        'id' => $member->id,
-                        'name' => $member->name,
-                        'avatar' => $member->avatar
-                    ];
+                    return $this->formatProjectUserSummary($member);
                 });
                 $project->task_count = ProjectTask::where('project_id', $project->id)->count();
 
@@ -168,7 +169,7 @@ class ProjectController extends Controller
     {
         if (Auth::user()->can('view-project') && $project->created_by == creatorId()) {
             $project->load([
-                'teamMembers:id,name,avatar',
+                'teamMembers:' . implode(',', $this->userSelectColumns()),
                 'clients:id,name',
                 'projectSponsor:id,name,avatar',
                 'milestones.approver:id,name',
@@ -178,6 +179,33 @@ class ProjectController extends Controller
                 'siteDiaries.loggedBy:id,name',
                 'logistics'
             ]);
+
+            $openTaskCounts = [];
+            ProjectTask::where('project_id', $project->id)
+                ->whereDoesntHave('taskStage', fn ($q) => $q->where('complete', true))
+                ->get(['id', 'assigned_to'])
+                ->each(function ($task) use (&$openTaskCounts) {
+                    foreach ($this->parseAssignedIds($task->assigned_to) as $uid) {
+                        $openTaskCounts[$uid] = ($openTaskCounts[$uid] ?? 0) + 1;
+                    }
+                });
+
+            $openBugCounts = [];
+            ProjectBug::where('project_id', $project->id)
+                ->whereDoesntHave('bugStage', fn ($q) => $q->where('complete', true))
+                ->get(['id', 'assigned_to'])
+                ->each(function ($bug) use (&$openBugCounts) {
+                    foreach ($this->parseAssignedIds($bug->assigned_to) as $uid) {
+                        $openBugCounts[$uid] = ($openBugCounts[$uid] ?? 0) + 1;
+                    }
+                });
+
+            $project->teamMembers->each(function ($member) use ($openTaskCounts, $openBugCounts) {
+                $member->setAttribute('is_deactivated', $member->is_deactivated);
+                $member->setAttribute('account_status_label', $member->account_status_label);
+                $member->setAttribute('open_task_count', $openTaskCounts[(int) $member->id] ?? 0);
+                $member->setAttribute('open_bug_count', $openBugCounts[(int) $member->id] ?? 0);
+            });
 
             $evmMetrics = $project->getEvmMetrics();
             $shareUrl = url('/p/track/' . $project->ensureShareToken());
@@ -200,7 +228,7 @@ class ProjectController extends Controller
                 }
             }
 
-            $teamMembers = User::emp()
+            $teamMembers = User::activeEmp()
                 ->where('created_by', creatorId())
                 ->whereNotIn('id', function ($q) use ($project) {
                     $q->select('user_id')->from('project_users')->where('project_id', '=', $project->id);
@@ -389,9 +417,13 @@ class ProjectController extends Controller
             $newProject->created_by = creatorId();
             $newProject->save();
 
-            // Duplicate based on selected options
+            // Duplicate based on selected options (only active team members)
             if ($request->get('all') || $request->get('teamMembers')) {
-                $teamMemberIds = $originalProject->teamMembers()->pluck('user_id')->toArray();
+                $teamMemberIds = $originalProject->teamMembers()
+                    ->where('users.is_disable', 0)
+                    ->where('users.is_enable_login', 1)
+                    ->pluck('user_id')
+                    ->toArray();
                 $newProject->teamMembers()->sync($teamMemberIds);
             }
 
@@ -472,9 +504,17 @@ class ProjectController extends Controller
     public function invite(Request $request, Project $project)
     {
         if (Auth::user()->can('invite-project-member') && $this->assertBelongsToTenant($project)) {
+            $creatorId = creatorId();
             $validated = $request->validate([
                 'user_ids' => 'required|array|min:1',
-                'user_ids.*' => self::tenantExists('users', 'id'),
+                'user_ids.*' => [
+                    'integer',
+                    \Illuminate\Validation\Rule::exists('users', 'id')->where(function ($query) use ($creatorId) {
+                        $query->where(function ($q) use ($creatorId) {
+                            $q->where('created_by', $creatorId)->orWhere('id', $creatorId);
+                        })->where('is_disable', 0)->where('is_enable_login', 1);
+                    }),
+                ],
             ]);
 
             DB::transaction(function () use ($project, $validated) {
@@ -497,6 +537,106 @@ class ProjectController extends Controller
         } else {
             return back()->with('error', __('Permission denied'));
         }
+    }
+
+    /**
+     * Reassign open tasks & bugs from a separated/departing member to an active member
+     * while preserving completed tasks, comments, and logged timesheets untouched.
+     */
+    public function reassignMemberWork(Request $request, Project $project)
+    {
+        if (
+            !(Auth::user()->can('edit-project') || Auth::user()->can('edit-project-task') || Auth::user()->can('invite-project-member'))
+            || !$this->assertBelongsToTenant($project)
+        ) {
+            return back()->with('error', __('Permission denied'));
+        }
+
+        $creatorId = (int) creatorId();
+        $validated = $request->validate([
+            'from_user_id' => ['required', 'integer', self::tenantExists('users', 'id')],
+            'to_user_id' => [
+                'required',
+                'integer',
+                'different:from_user_id',
+                \Illuminate\Validation\Rule::exists('users', 'id')->where(function ($query) use ($creatorId) {
+                    $query->where(function ($q) use ($creatorId) {
+                        $q->where('created_by', $creatorId)->orWhere('id', $creatorId);
+                    })->where('is_disable', 0)->where('is_enable_login', 1);
+                }),
+            ],
+            'remove_from_team' => ['nullable', 'boolean'],
+        ]);
+
+        $fromUserId = (int) $validated['from_user_id'];
+        $toUserId = (int) $validated['to_user_id'];
+        $reassignedTasks = 0;
+        $reassignedBugs = 0;
+
+        DB::transaction(function () use ($project, $fromUserId, $toUserId, $validated, &$reassignedTasks, &$reassignedBugs) {
+            // Reassign open tasks only (preserve Completed history & timesheets)
+            $openTasks = ProjectTask::where('project_id', $project->id)
+                ->whereDoesntHave('taskStage', fn ($q) => $q->where('complete', true))
+                ->get();
+
+            foreach ($openTasks as $task) {
+                $ids = $this->parseAssignedIds($task->assigned_to);
+                if (!in_array($fromUserId, $ids, true)) {
+                    continue;
+                }
+                $newIds = array_values(array_unique(array_map(
+                    fn ($id) => (int) $id === $fromUserId ? $toUserId : (int) $id,
+                    $ids
+                )));
+                $task->assigned_to = json_encode(array_map('strval', $newIds));
+                $task->save();
+                $reassignedTasks++;
+            }
+
+            // Reassign open bugs only
+            $openBugs = ProjectBug::where('project_id', $project->id)
+                ->whereDoesntHave('bugStage', fn ($q) => $q->where('complete', true))
+                ->get();
+
+            foreach ($openBugs as $bug) {
+                $ids = $this->parseAssignedIds($bug->assigned_to);
+                if (!in_array($fromUserId, $ids, true)) {
+                    continue;
+                }
+                $newIds = array_values(array_unique(array_map(
+                    fn ($id) => (int) $id === $fromUserId ? $toUserId : (int) $id,
+                    $ids
+                )));
+                $bug->assigned_to = json_encode(array_map('strval', $newIds));
+                $bug->save();
+                $reassignedBugs++;
+            }
+
+            // Ensure target member is part of project team
+            $project->teamMembers()->syncWithoutDetaching([$toUserId]);
+
+            if (!empty($validated['remove_from_team'])) {
+                $project->teamMembers()->detach($fromUserId);
+            }
+
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'user_type' => get_class(Auth::user()),
+                'project_id' => $project->id,
+                'log_type' => 'Reassign Member Work',
+                'remark' => json_encode([
+                    'from_user_id' => $fromUserId,
+                    'to_user_id' => $toUserId,
+                    'reassigned_tasks' => $reassignedTasks,
+                    'reassigned_bugs' => $reassignedBugs,
+                ]),
+            ]);
+        });
+
+        return back()->with('success', __('Reassigned :tasks open task(s) and :bugs open bug(s) successfully.', [
+            'tasks' => $reassignedTasks,
+            'bugs' => $reassignedBugs,
+        ]));
     }
 
     public function deleteMember(Request $request, Project $project)

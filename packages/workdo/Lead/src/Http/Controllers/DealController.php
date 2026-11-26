@@ -257,6 +257,8 @@ class DealController extends Controller
 
                 $assignedUserIds = $deal->userDeals->pluck('user_id')->toArray();
                 $availableUsers = User::where('created_by', creatorId())
+                    ->where('is_disable', 0)
+                    ->where('is_enable_login', 1)
                     ->whereNotIn('id', $assignedUserIds)
                     ->get(['id', 'name']);
                 $availableProducts = module_is_active('ProductService') ? ProductServiceItem::where('created_by', creatorId())->get(['id', 'name']) : [];

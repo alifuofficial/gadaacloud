@@ -21,7 +21,8 @@ import { getImagePath } from '@/utils/helpers';
 import { 
     Plus, Trash2, Edit, FolderKanban, Kanban, List, Bug, CheckSquare, 
     Calendar, Activity, Image, File, FileText, Video, Music, Download, Eye,
-    CheckCircle2, XCircle, Clock, GitGraph, HardHat, Ship, LayoutDashboard
+    CheckCircle2, XCircle, Clock, GitGraph, HardHat, Ship, LayoutDashboard,
+    ArrowRightLeft
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { DataTable } from "@/components/ui/data-table";
@@ -57,7 +58,17 @@ interface Project {
     share_token?: string;
     user: { id: number; name: string; };
     creator: { id: number; name: string; };
-    team_members: Array<{ id: number; name: string; email?: string }>;
+    team_members: Array<{
+        id: number;
+        name: string;
+        email?: string;
+        avatar?: string;
+        is_disable?: number;
+        is_deactivated?: boolean;
+        account_status_label?: string;
+        open_task_count?: number;
+        open_bug_count?: number;
+    }>;
     clients: Array<{ id: number; name: string; }>;
     milestones: Array<{
         id: number;
@@ -169,6 +180,13 @@ export default function Show() {
 
     const [deleteState, setDeleteState] = useState({ isOpen: false, userId: null as number | null, userName: '' });
     const [deleteClientState, setDeleteClientState] = useState({ isOpen: false, clientId: null as number | null, clientName: '' });
+    const [reassignState, setReassignState] = useState({
+        isOpen: false,
+        fromUserId: null as number | null,
+        fromUserName: '',
+        openTasks: 0,
+        openBugs: 0,
+    });
 
     const [milestoneDeleteState, setMilestoneDeleteState] = useState({ isOpen: false, milestoneId: null as number | null });
 
@@ -191,6 +209,19 @@ export default function Show() {
 
     const { data, setData, post, processing, errors, reset } = useForm({
         user_ids: [],
+    });
+
+    const {
+        data: reassignData,
+        setData: setReassignData,
+        post: postReassign,
+        processing: reassignProcessing,
+        errors: reassignErrors,
+        reset: resetReassign,
+    } = useForm({
+        from_user_id: 0,
+        to_user_id: '',
+        remove_from_team: true,
     });
 
     const { data: clientData, setData: setClientData, post: postClient, processing: clientProcessing, errors: clientErrors, reset: resetClient } = useForm({
@@ -280,6 +311,42 @@ export default function Show() {
             }
         });
     };
+
+    const openReassignDialog = (member: any) => {
+        setReassignData({
+            from_user_id: member.id,
+            to_user_id: '',
+            remove_from_team: !!member.is_deactivated,
+        });
+        setReassignState({
+            isOpen: true,
+            fromUserId: member.id,
+            fromUserName: member.name,
+            openTasks: member.open_task_count || 0,
+            openBugs: member.open_bug_count || 0,
+        });
+    };
+
+    const handleReassignSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reassignData.to_user_id) {
+            return;
+        }
+        postReassign(route('project.reassign-member', project.id), {
+            onSuccess: () => {
+                setReassignState({ isOpen: false, fromUserId: null, fromUserName: '', openTasks: 0, openBugs: 0 });
+                resetReassign();
+            },
+        });
+    };
+
+    const activeReassignTargets = Array.from(
+        new Map(
+            [...(project.team_members || []), ...(teamMembers || [])]
+                .filter((u: any) => !u.is_deactivated && u.id !== reassignState.fromUserId)
+                .map((u: any) => [u.id, u])
+        ).values()
+    );
 
     const handleClientSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -635,31 +702,79 @@ export default function Show() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {project.team_members.map((member) => (
-                                <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                    <span className="text-sm">{member.name}</span>
-                                    {auth.user?.permissions?.includes('delete-project-member') && (
-                                        <TooltipProvider>
-                                            <Tooltip delayDuration={0}>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => openDeleteDialog(member.id, member.name)}
-                                                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{t('Delete')}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
+                            {(project.team_members || []).map((member) => {
+                                const openWorkCount = (member.open_task_count || 0) + (member.open_bug_count || 0);
+                                const isDeactivated = !!member.is_deactivated || member.is_disable === 1;
+
+                                return (
+                                <div
+                                    key={member.id}
+                                    className={`flex items-center justify-between gap-2 p-2 rounded ${
+                                        isDeactivated ? 'bg-red-50/70 border border-red-200/70' : 'bg-gray-50'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                        <span className={`text-sm truncate ${isDeactivated ? 'text-muted-foreground line-through' : ''}`}>
+                                            {member.name}
+                                        </span>
+                                        {isDeactivated && (
+                                            <span className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-red-100 text-red-700 shrink-0">
+                                                {t(member.account_status_label || 'Deactivated')}
+                                            </span>
+                                        )}
+                                        {openWorkCount > 0 && (
+                                            <span className="px-1.5 py-0.5 text-[11px] rounded bg-amber-100 text-amber-800 shrink-0">
+                                                {openWorkCount} {t('open')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        {(isDeactivated || openWorkCount > 0) &&
+                                            (auth.user?.permissions?.includes('edit-project') ||
+                                                auth.user?.permissions?.includes('edit-project-task') ||
+                                                auth.user?.permissions?.includes('invite-project-member')) && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={0}>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => openReassignDialog(member)}
+                                                            className="h-6 w-6 p-0 text-amber-700 hover:text-amber-800"
+                                                        >
+                                                            <ArrowRightLeft className="h-3 w-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{t('Reassign Open Work')}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                        {auth.user?.permissions?.includes('delete-project-member') && (
+                                            <TooltipProvider>
+                                                <Tooltip delayDuration={0}>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => openDeleteDialog(member.id, member.name)}
+                                                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{t('Delete')}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                    </div>
                                 </div>
-                            ))}
-                            {project.team_members.length === 0 && (
+                                );
+                            })}
+                            {(project.team_members || []).length === 0 && (
                                 <p className="text-sm text-gray-500">{t('No team members added yet.')}</p>
                             )}
                         </div>
@@ -1170,6 +1285,67 @@ export default function Show() {
                 </TabsContent>
             )}
             </Tabs>
+
+            <Dialog open={reassignState.isOpen} onOpenChange={(open) => setReassignState((prev) => ({ ...prev, isOpen: open }))}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('Reassign Open Work')}</DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleReassignSubmit} className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            {t('Transfer open tasks (:tasks) and open bugs (:bugs) from {{name}} to an active team member. Completed work and timesheets remain preserved.', {
+                                tasks: reassignState.openTasks,
+                                bugs: reassignState.openBugs,
+                                name: reassignState.fromUserName,
+                            })}
+                        </p>
+
+                        <div>
+                            <Label required>{t('Reassign To Active Member')}</Label>
+                            <Select
+                                value={reassignData.to_user_id || undefined}
+                                onValueChange={(val) => setReassignData('to_user_id', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={t('Select active team member')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(activeReassignTargets || []).map((user: any) => (
+                                        <SelectItem key={user.id} value={user.id.toString()}>
+                                            {user.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {reassignErrors.to_user_id && <p className="text-sm text-red-500 mt-1">{reassignErrors.to_user_id}</p>}
+                        </div>
+
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={!!reassignData.remove_from_team}
+                                onChange={(e) => setReassignData('remove_from_team', e.target.checked)}
+                                className="rounded border-gray-300"
+                            />
+                            <span>{t('Remove from active project team roster after transfer')}</span>
+                        </label>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setReassignState((prev) => ({ ...prev, isOpen: false }))}
+                            >
+                                {t('Cancel')}
+                            </Button>
+                            <Button type="submit" disabled={reassignProcessing || !reassignData.to_user_id}>
+                                {reassignProcessing ? t('Reassigning...') : t('Reassign Open Work')}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-md">

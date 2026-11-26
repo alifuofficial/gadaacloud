@@ -417,7 +417,7 @@ class LeadApiController extends Controller
     {
         try {
             $users = User::where('created_by', '=', creatorId())
-                ->emp([], ['vendor'])
+                ->activeEmp([], ['vendor'])
                 ->select('id', 'name')
                 ->get();
 

@@ -238,7 +238,7 @@ class ProjectApiController extends Controller
     {
         try {
             $users = User::where('created_by', creatorId())
-                ->emp()
+                ->activeEmp()
                 ->get(['id', 'name', 'email', 'type'])
                 ->map(function ($user) {
                     return [

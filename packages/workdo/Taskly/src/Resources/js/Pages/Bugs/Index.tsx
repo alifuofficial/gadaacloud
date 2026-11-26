@@ -89,11 +89,17 @@ export default function Index() {
             return (
                 <div className="flex items-center gap-1">
                     <div className="flex -space-x-1">
-                        {assignedUsers.slice(0, maxVisible).map((user) => (
+                        {assignedUsers.slice(0, maxVisible).map((user: any) => (
                             <TooltipProvider key={user.id}>
                                 <Tooltip delayDuration={0}>
                                     <TooltipTrigger>
-                                        <div className="h-8 w-8 rounded-full border-2 border-background overflow-hidden bg-gray-100 flex items-center justify-center">
+                                        <div
+                                            className={`h-8 w-8 rounded-full border-2 overflow-hidden bg-gray-100 flex items-center justify-center ${
+                                                user.is_deactivated
+                                                    ? 'border-red-400 opacity-65 grayscale'
+                                                    : 'border-background'
+                                            }`}
+                                        >
                                             {user.avatar ? (
                                                 <img
                                                     src={getImagePath(user.avatar)}
@@ -106,7 +112,10 @@ export default function Index() {
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>{user.name}</p>
+                                        <p>
+                                            {user.name}
+                                            {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                        </p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -204,11 +213,17 @@ export default function Index() {
                 return (
                     <div className="flex items-center gap-1">
                         <div className="flex -space-x-1">
-                            {assignedUsers.slice(0, maxVisible).map((user) => (
+                            {assignedUsers.slice(0, maxVisible).map((user: any) => (
                                 <TooltipProvider key={user.id}>
                                     <Tooltip delayDuration={0}>
                                         <TooltipTrigger>
-                                            <div className="h-8 w-8 rounded-full border-2 border-background overflow-hidden bg-gray-100 flex items-center justify-center">
+                                            <div
+                                                className={`h-8 w-8 rounded-full border-2 overflow-hidden bg-gray-100 flex items-center justify-center ${
+                                                    user.is_deactivated
+                                                        ? 'border-red-400 opacity-65 grayscale'
+                                                        : 'border-background'
+                                                }`}
+                                            >
                                                 {user.avatar ? (
                                                     <img
                                                         src={getImagePath(user.avatar)}
@@ -221,7 +236,10 @@ export default function Index() {
                                             </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{user.name}</p>
+                                            <p>
+                                                {user.name}
+                                                {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                            </p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>

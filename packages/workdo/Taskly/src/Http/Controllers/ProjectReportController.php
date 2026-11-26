@@ -173,6 +173,8 @@ class ProjectReportController extends Controller
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
+                    'is_deactivated' => $user->is_deactivated,
+                    'account_status_label' => $user->account_status_label,
                     'assigned_tasks' => $assignedTasks,
                     'done_tasks' => $doneTasks
                 ];

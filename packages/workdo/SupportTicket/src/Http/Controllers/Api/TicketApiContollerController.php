@@ -73,6 +73,8 @@ class TicketApiContollerController extends Controller
 
             $staff = User::where('created_by', creatorId())
                 ->where('type', 'staff')
+                ->where('is_disable', 0)
+                ->where('is_enable_login', 1)
                 ->select('id', 'name', 'email')
                 ->get();
             $clients = User::where('created_by', creatorId())

@@ -201,7 +201,13 @@ export default function BugKanban() {
                                 <TooltipProvider key={index}>
                                     <Tooltip delayDuration={0}>
                                         <TooltipTrigger>
-                                            <div className="h-8 w-8 rounded-full border-2 border-white overflow-hidden bg-gray-100 flex items-center justify-center">
+                                            <div
+                                                className={`h-8 w-8 rounded-full border-2 overflow-hidden bg-gray-100 flex items-center justify-center ${
+                                                    user.is_deactivated
+                                                        ? 'border-red-400 opacity-65 grayscale'
+                                                        : 'border-white'
+                                                }`}
+                                            >
                                                 {user.avatar ? (
                                                     <img
                                                         src={getImagePath(user.avatar)}
@@ -214,7 +220,10 @@ export default function BugKanban() {
                                             </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{user.name}</p>
+                                            <p>
+                                                {user.name}
+                                                {user.is_deactivated ? ` (${t(user.account_status_label || 'Deactivated')})` : ''}
+                                            </p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
