@@ -11,11 +11,16 @@ use Workdo\ZoomMeeting\Events\UpdateZoomMeeting;
 use Workdo\ZoomMeeting\Events\DestroyZoomMeeting;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
+use Workdo\ZoomMeeting\Traits\ZoomMeetingControllerHelpers;
+use Workdo\ZoomMeeting\Traits\ZoomMeetingDateHelpers;
 
 class ZoomMeetingController extends Controller
 {
+    use ZoomMeetingControllerHelpers, ZoomMeetingDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-zoom-meetings')){
@@ -51,8 +56,8 @@ class ZoomMeetingController extends Controller
                         $q->whereDate('start_time', $dateRange);
                     }
                 })
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['title', 'meeting_id', 'start_time', 'duration', 'status', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
 
@@ -104,10 +109,16 @@ class ZoomMeetingController extends Controller
                 $zoommeeting->host_id = $validated['host_id'];
                 $zoommeeting->creator_id = Auth::id();
                 $zoommeeting->created_by = creatorId();
-                $zoommeeting->save();
+                DB::transaction(function () use ($zoommeeting) {
+                    $zoommeeting->save();
+                });
 
                 // Dispatch event for packages to handle their fields
-                CreateZoomMeeting::dispatch($request, $zoommeeting);
+                try {
+                    CreateZoomMeeting::dispatch($request, $zoommeeting);
+                } catch (\Throwable $e) {
+                    \Log::warning('CreateZoomMeeting dispatch failed: ' . $e->getMessage());
+                }
 
                 return redirect()->route('zoommeeting.zoom-meetings.index')->with('success', __('The zoom meeting has been created successfully.'));
             } catch (\Exception $e) {
@@ -121,7 +132,7 @@ class ZoomMeetingController extends Controller
 
     public function update(UpdateZoomMeetingRequest $request, ZoomMeeting $zoommeeting)
     {
-        if(Auth::user()->can('edit-zoom-meetings') && $zoommeeting->status === 'Scheduled'){
+        if(Auth::user()->can('edit-zoom-meetings') && $this->assertBelongsToTenant($zoommeeting) && $zoommeeting->status === 'Scheduled'){
             if (company_setting('zoom_enabled') !== 'on') {
                 return redirect()->back()->with('error', __('Zoom integration is disabled'));
             }
@@ -159,10 +170,16 @@ class ZoomMeetingController extends Controller
                 $zoommeeting->recording = $validated['recording'];
                 $zoommeeting->participants = $validated['participants'];
                 $zoommeeting->host_id = $validated['host_id'];
-                $zoommeeting->save();
+                DB::transaction(function () use ($zoommeeting) {
+                    $zoommeeting->save();
+                });
 
                 // Dispatch event for packages to handle their fields
-                UpdateZoomMeeting::dispatch($request, $zoommeeting);
+                try {
+                    UpdateZoomMeeting::dispatch($request, $zoommeeting);
+                } catch (\Throwable $e) {
+                    \Log::warning('UpdateZoomMeeting dispatch failed: ' . $e->getMessage());
+                }
 
                 return redirect()->back()->with('success', __('The zoom meeting details are updated successfully.'));
             } catch (\Exception $e) {
@@ -176,7 +193,7 @@ class ZoomMeetingController extends Controller
 
     public function destroy(ZoomMeeting $zoommeeting)
     {
-        if(Auth::user()->can('delete-zoom-meetings')){
+        if(Auth::user()->can('delete-zoom-meetings') && $this->assertBelongsToTenant($zoommeeting)){
             try {
 
                 // Delete meeting via Zoom API if meeting_id exists and integration is enabled
@@ -187,9 +204,15 @@ class ZoomMeetingController extends Controller
 
 
                 // Dispatch event for packages to handle their fields
-                DestroyZoomMeeting::dispatch($zoommeeting);
+                try {
+                    DestroyZoomMeeting::dispatch($zoommeeting);
+                } catch (\Throwable $e) {
+                    \Log::warning('DestroyZoomMeeting dispatch failed: ' . $e->getMessage());
+                }
 
-                $zoommeeting->delete();
+                DB::transaction(function () use ($zoommeeting) {
+                    $zoommeeting->delete();
+                });
                 return redirect()->back()->with('success', __('The zoom meeting has been deleted.'));
             } catch (\Exception $e) {
                 return redirect()->back()->with('error', $e->getMessage());
@@ -204,7 +227,7 @@ class ZoomMeetingController extends Controller
 
     public function updateStatus(ZoomMeeting $zoommeeting)
     {
-        if(Auth::user()->can('update-zoom-meeting-status')){
+        if(Auth::user()->can('update-zoom-meeting-status') && $this->assertBelongsToTenant($zoommeeting)){
             $status = request('status');
 
             if (!in_array($status, ['Scheduled', 'Started', 'Ended', 'Cancelled'])) {

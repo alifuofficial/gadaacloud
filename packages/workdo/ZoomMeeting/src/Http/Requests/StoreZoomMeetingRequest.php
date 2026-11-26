@@ -3,6 +3,7 @@
 namespace Workdo\ZoomMeeting\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\ZoomMeeting\Traits\ZoomMeetingControllerHelpers;
 
 class StoreZoomMeetingRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class StoreZoomMeetingRequest extends FormRequest
             'recording' => 'boolean',
             'status' => 'required',
             'participants' => 'nullable|array',
-            'host_id' => 'nullable|exists:users,id'
+            'host_id' => ['nullable', ZoomMeetingControllerHelpers::tenantExists('users', 'id')]
         ];
     }
 }
