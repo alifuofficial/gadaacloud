@@ -12,11 +12,15 @@ use Workdo\GadaacloudStudio\Models\WorkflowStep;
 use Workdo\GadaacloudStudio\Models\WorkflowRequest;
 use Workdo\GadaacloudStudio\Models\WorkflowLog;
 use Workdo\GadaacloudStudio\Services\WorkflowService;
+use Workdo\GadaacloudStudio\Traits\GadaacloudStudioControllerHelpers;
+use Workdo\GadaacloudStudio\Traits\GadaacloudStudioDateHelpers;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
 
 class WorkflowController extends Controller
 {
+    use GadaacloudStudioControllerHelpers, GadaacloudStudioDateHelpers;
     /**
      * Full registry of supported target document models across modules.
      * Dynamically filters based on tenant's active plan subscription and packages.
@@ -270,35 +274,38 @@ class WorkflowController extends Controller
             'steps.*.name'                      => 'required|string|max:255',
             'steps.*.approver_type'             => 'required|in:role,user',
             'steps.*.approver_role'             => 'required_if:steps.*.approver_type,role|nullable|string',
-            'steps.*.approver_user_id'          => 'required_if:steps.*.approver_type,user|nullable|integer',
+            'steps.*.approver_user_id'          => ['required_if:steps.*.approver_type,user', 'nullable', 'integer', Rule::exists('users', 'id')->where(fn ($q) => $q->where('created_by', creatorId())->orWhere('id', creatorId()))],
             'steps.*.condition_field'           => 'nullable|string|max:100',
             'steps.*.condition_operator'        => 'nullable|in:gt,gte,lt,lte,eq,neq',
             'steps.*.condition_value'           => 'nullable|string|max:100',
             'steps.*.skip_if_condition_fails'   => 'nullable|boolean',
         ]);
 
-        $workflow = Workflow::create([
-            'name'         => $request->name,
-            'target_model' => $request->target_model,
-            'description'  => $request->description,
-            'is_active'    => true,
-            'created_by'   => creatorId()
-        ]);
-
-        foreach ($request->steps as $index => $step) {
-            WorkflowStep::create([
-                'workflow_id'            => $workflow->id,
-                'name'                   => $step['name'],
-                'approver_type'          => $step['approver_type'],
-                'approver_role'          => $step['approver_type'] === 'role' ? $step['approver_role'] : null,
-                'approver_user_id'       => $step['approver_type'] === 'user' ? $step['approver_user_id'] : null,
-                'sequence'               => $index + 1,
-                'condition_field'        => $step['condition_field'] ?? null,
-                'condition_operator'     => $step['condition_operator'] ?? null,
-                'condition_value'        => $step['condition_value'] ?? null,
-                'skip_if_condition_fails'=> $step['skip_if_condition_fails'] ?? false,
+        DB::transaction(function () use ($request) {
+            $workflow = Workflow::create([
+                'name'         => $request->name,
+                'target_model' => $request->target_model,
+                'description'  => $request->description,
+                'is_active'    => true,
+                'created_by'   => creatorId(),
             ]);
-        }
+
+            foreach ($request->steps as $index => $step) {
+                WorkflowStep::create([
+                    'workflow_id'            => $workflow->id,
+                    'name'                   => $step['name'],
+                    'approver_type'          => $step['approver_type'],
+                    'approver_role'          => $step['approver_type'] === 'role' ? $step['approver_role'] : null,
+                    'approver_user_id'       => $step['approver_type'] === 'user' ? $step['approver_user_id'] : null,
+                    'sequence'               => $index + 1,
+                    'condition_field'        => $step['condition_field'] ?? null,
+                    'condition_operator'     => $step['condition_operator'] ?? null,
+                    'condition_value'        => $step['condition_value'] ?? null,
+                    'skip_if_condition_fails'=> $step['skip_if_condition_fails'] ?? false,
+                    'created_by'             => creatorId(),
+                ]);
+            }
+        });
 
         return redirect()->route('gadaacloud-studio.workflows.index')
             ->with('success', __('Workflow created successfully.'));
@@ -347,73 +354,76 @@ class WorkflowController extends Controller
             'steps.*.name'                      => 'required|string|max:255',
             'steps.*.approver_type'             => 'required|in:role,user',
             'steps.*.approver_role'             => 'required_if:steps.*.approver_type,role|nullable|string',
-            'steps.*.approver_user_id'          => 'required_if:steps.*.approver_type,user|nullable|integer',
+            'steps.*.approver_user_id'          => ['required_if:steps.*.approver_type,user', 'nullable', 'integer', Rule::exists('users', 'id')->where(fn ($q) => $q->where('created_by', creatorId())->orWhere('id', creatorId()))],
             'steps.*.condition_field'           => 'nullable|string|max:100',
             'steps.*.condition_operator'        => 'nullable|in:gt,gte,lt,lte,eq,neq',
             'steps.*.condition_value'           => 'nullable|string|max:100',
             'steps.*.skip_if_condition_fails'   => 'nullable|boolean',
         ]);
 
-        $workflow->update([
-            'name'         => $request->name,
-            'target_model' => $request->target_model,
-            'description'  => $request->description,
-        ]);
+        DB::transaction(function () use ($request, $workflow) {
+            $workflow->update([
+                'name'         => $request->name,
+                'target_model' => $request->target_model,
+                'description'  => $request->description,
+            ]);
 
-        $existingStepIds = $workflow->steps->pluck('id')->toArray();
-        $retainedStepIds = [];
+            $existingStepIds = $workflow->steps->pluck('id')->toArray();
+            $retainedStepIds = [];
 
-        foreach ($request->steps as $index => $step) {
-            $stepId = !empty($step['id']) ? (int) $step['id'] : null;
-            $stepPayload = [
-                'name'                   => $step['name'],
-                'approver_type'          => $step['approver_type'],
-                'approver_role'          => $step['approver_type'] === 'role' ? $step['approver_role'] : null,
-                'approver_user_id'       => $step['approver_type'] === 'user' ? $step['approver_user_id'] : null,
-                'sequence'               => $index + 1,
-                'condition_field'        => $step['condition_field'] ?? null,
-                'condition_operator'     => $step['condition_operator'] ?? null,
-                'condition_value'        => $step['condition_value'] ?? null,
-                'skip_if_condition_fails'=> !empty($step['skip_if_condition_fails']),
-            ];
+            foreach ($request->steps as $index => $step) {
+                $stepId = !empty($step['id']) ? (int) $step['id'] : null;
+                $stepPayload = [
+                    'name'                   => $step['name'],
+                    'approver_type'          => $step['approver_type'],
+                    'approver_role'          => $step['approver_type'] === 'role' ? $step['approver_role'] : null,
+                    'approver_user_id'       => $step['approver_type'] === 'user' ? $step['approver_user_id'] : null,
+                    'sequence'               => $index + 1,
+                    'condition_field'        => $step['condition_field'] ?? null,
+                    'condition_operator'     => $step['condition_operator'] ?? null,
+                    'condition_value'        => $step['condition_value'] ?? null,
+                    'skip_if_condition_fails'=> !empty($step['skip_if_condition_fails']),
+                ];
 
-            if ($stepId && in_array($stepId, $existingStepIds)) {
-                $existingStep = WorkflowStep::find($stepId);
-                if ($existingStep) {
-                    $existingStep->update($stepPayload);
-                    $retainedStepIds[] = $existingStep->id;
-                }
-            } else {
-                $stepPayload['workflow_id'] = $workflow->id;
-                $newStep = WorkflowStep::create($stepPayload);
-                $retainedStepIds[] = $newStep->id;
-            }
-        }
-
-        // Only delete steps that were explicitly removed from the workflow definition
-        $stepsToDelete = array_diff($existingStepIds, $retainedStepIds);
-        if (!empty($stepsToDelete)) {
-            // Re-assign or finalize any pending request currently at a deleted step
-            $firstRetainedStep = WorkflowStep::where('workflow_id', $workflow->id)
-                ->whereIn('id', $retainedStepIds)
-                ->orderBy('sequence', 'asc')
-                ->first();
-
-            $pendingAtDeleted = WorkflowRequest::where('workflow_id', $workflow->id)
-                ->whereIn('current_step_id', $stepsToDelete)
-                ->where('status', 'pending')
-                ->get();
-
-            foreach ($pendingAtDeleted as $reqAtDel) {
-                if ($firstRetainedStep) {
-                    $reqAtDel->update(['current_step_id' => $firstRetainedStep->id]);
+                if ($stepId && in_array($stepId, $existingStepIds)) {
+                    $existingStep = WorkflowStep::find($stepId);
+                    if ($existingStep) {
+                        $existingStep->update($stepPayload);
+                        $retainedStepIds[] = $existingStep->id;
+                    }
                 } else {
-                    $reqAtDel->update(['status' => 'approved', 'current_step_id' => null]);
+                    $stepPayload['workflow_id'] = $workflow->id;
+                    $stepPayload['created_by']  = creatorId();
+                    $newStep = WorkflowStep::create($stepPayload);
+                    $retainedStepIds[] = $newStep->id;
                 }
             }
 
-            WorkflowStep::whereIn('id', $stepsToDelete)->delete();
-        }
+            // Only delete steps that were explicitly removed from the workflow definition
+            $stepsToDelete = array_diff($existingStepIds, $retainedStepIds);
+            if (!empty($stepsToDelete)) {
+                // Re-assign or finalize any pending request currently at a deleted step
+                $firstRetainedStep = WorkflowStep::where('workflow_id', $workflow->id)
+                    ->whereIn('id', $retainedStepIds)
+                    ->orderBy('sequence', 'asc')
+                    ->first();
+
+                $pendingAtDeleted = WorkflowRequest::where('workflow_id', $workflow->id)
+                    ->whereIn('current_step_id', $stepsToDelete)
+                    ->where('status', 'pending')
+                    ->get();
+
+                foreach ($pendingAtDeleted as $reqAtDel) {
+                    if ($firstRetainedStep) {
+                        $reqAtDel->update(['current_step_id' => $firstRetainedStep->id]);
+                    } else {
+                        $reqAtDel->update(['status' => 'approved', 'current_step_id' => null]);
+                    }
+                }
+
+                WorkflowStep::whereIn('id', $stepsToDelete)->delete();
+            }
+        });
 
         return redirect()->route('gadaacloud-studio.workflows.index')
             ->with('success', __('Workflow updated successfully.'));
@@ -492,28 +502,33 @@ class WorkflowController extends Controller
             return redirect()->back()->with('error', __('Template not found.'));
         }
 
-        $workflow = Workflow::create([
-            'name'         => $request->name,
-            'target_model' => $request->target_model,
-            'description'  => $tpl['description'] ?? null,
-            'is_active'    => true,
-            'created_by'   => creatorId(),
-        ]);
-
-        foreach ($tpl['steps'] as $index => $step) {
-            WorkflowStep::create([
-                'workflow_id'            => $workflow->id,
-                'name'                   => $step['name'],
-                'approver_type'          => $step['approver_type'],
-                'approver_role'          => $step['approver_role'] ?? null,
-                'approver_user_id'       => $step['approver_user_id'] ?? null,
-                'sequence'               => $index + 1,
-                'condition_field'        => $step['condition_field'] ?? null,
-                'condition_operator'     => $step['condition_operator'] ?? null,
-                'condition_value'        => $step['condition_value'] ?? null,
-                'skip_if_condition_fails'=> $step['skip_if_condition_fails'] ?? false,
+        $workflow = DB::transaction(function () use ($request, $tpl) {
+            $workflow = Workflow::create([
+                'name'         => $request->name,
+                'target_model' => $request->target_model,
+                'description'  => $tpl['description'] ?? null,
+                'is_active'    => true,
+                'created_by'   => creatorId(),
             ]);
-        }
+
+            foreach ($tpl['steps'] as $index => $step) {
+                WorkflowStep::create([
+                    'workflow_id'            => $workflow->id,
+                    'name'                   => $step['name'],
+                    'approver_type'          => $step['approver_type'],
+                    'approver_role'          => $step['approver_role'] ?? null,
+                    'approver_user_id'       => $step['approver_user_id'] ?? null,
+                    'sequence'               => $index + 1,
+                    'condition_field'        => $step['condition_field'] ?? null,
+                    'condition_operator'     => $step['condition_operator'] ?? null,
+                    'condition_value'        => $step['condition_value'] ?? null,
+                    'skip_if_condition_fails'=> $step['skip_if_condition_fails'] ?? false,
+                    'created_by'             => creatorId(),
+                ]);
+            }
+
+            return $workflow;
+        });
 
         return redirect()->route('gadaacloud-studio.workflows.edit', $workflow->id)
             ->with('success', __('Workflow cloned from template. Review and customize below.'));

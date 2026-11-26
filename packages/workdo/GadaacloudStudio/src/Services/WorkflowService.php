@@ -105,6 +105,7 @@ class WorkflowService
                     'comment'             => __('Step auto-skipped: threshold condition [:condition] not triggered.', [
                         'condition' => $skStep->conditionLabel(),
                     ]),
+                    'created_by'          => $companyId,
                 ]);
             }
 
@@ -114,6 +115,7 @@ class WorkflowService
                 'user_id'             => Auth::id() ?? $companyId,
                 'action'              => 'approved',
                 'comment'             => __('Workflow auto-approved: document values fell below all conditional approval thresholds.'),
+                'created_by'          => $companyId,
             ]);
 
             self::syncDocumentStatus($req, 'approved', Auth::user());
@@ -141,6 +143,7 @@ class WorkflowService
                 'comment'             => __('Step auto-skipped on submission: condition [:condition] not met.', [
                     'condition' => $skStep->conditionLabel(),
                 ]),
+                'created_by'          => $companyId,
             ]);
         }
 
@@ -151,6 +154,7 @@ class WorkflowService
             'user_id'             => Auth::id() ?? $companyId,
             'action'              => 'submitted',
             'comment'             => $options['note'] ?? __('Submitted for approval at stage: :stage', ['stage' => $firstEligibleStep->name]),
+            'created_by'          => $companyId,
         ]);
 
         return $req;

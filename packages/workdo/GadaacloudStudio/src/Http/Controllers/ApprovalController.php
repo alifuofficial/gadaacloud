@@ -11,10 +11,14 @@ use Workdo\GadaacloudStudio\Models\WorkflowRequest;
 use Workdo\GadaacloudStudio\Models\WorkflowStep;
 use Workdo\GadaacloudStudio\Models\WorkflowLog;
 use Workdo\GadaacloudStudio\Models\WorkflowDelegation;
+use Workdo\GadaacloudStudio\Traits\GadaacloudStudioControllerHelpers;
+use Workdo\GadaacloudStudio\Traits\GadaacloudStudioDateHelpers;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 
 class ApprovalController extends Controller
 {
+    use GadaacloudStudioControllerHelpers, GadaacloudStudioDateHelpers;
     // ─────────────────────────────────────────────────────────────────────────
     // Index — Approval Center
     // ─────────────────────────────────────────────────────────────────────────
@@ -113,32 +117,35 @@ class ApprovalController extends Controller
             return redirect()->back()->with('error', __('You are not authorized to approve this step.'));
         }
 
-        WorkflowLog::create([
-            'workflow_request_id' => $req->id,
-            'workflow_step_id'    => $step->id,
-            'user_id'             => $user->id,
-            'action'              => 'approve',
-            'comment'             => $request->comment,
-        ]);
+        DB::transaction(function () use ($req, $step, $user, $request) {
+            WorkflowLog::create([
+                'workflow_request_id' => $req->id,
+                'workflow_step_id'    => $step->id,
+                'user_id'             => $user->id,
+                'action'              => 'approve',
+                'comment'             => $request->comment,
+                'created_by'          => $req->created_by,
+            ]);
 
-        // Deactivate any delegations for this step
-        WorkflowDelegation::where('workflow_request_id', $req->id)
-            ->where('workflow_step_id', $step->id)
-            ->update(['is_active' => false]);
+            // Deactivate any delegations for this step
+            WorkflowDelegation::where('workflow_request_id', $req->id)
+                ->where('workflow_step_id', $step->id)
+                ->update(['is_active' => false]);
 
-        // Advance to next step, evaluating conditions
-        $nextStep = $this->getNextEligibleStep($req, $step);
+            // Advance to next step, evaluating conditions
+            $nextStep = $this->getNextEligibleStep($req, $step);
 
-        if ($nextStep) {
-            $req->current_step_id      = $nextStep->id;
-            $req->delegated_to_user_id = null;
-        } else {
-            $req->status               = 'approved';
-            $req->current_step_id      = null;
-            $req->delegated_to_user_id = null;
-            \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'approved', $user);
-        }
-        $req->save();
+            if ($nextStep) {
+                $req->current_step_id      = $nextStep->id;
+                $req->delegated_to_user_id = null;
+            } else {
+                $req->status               = 'approved';
+                $req->current_step_id      = null;
+                $req->delegated_to_user_id = null;
+                \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'approved', $user);
+            }
+            $req->save();
+        });
 
         return redirect()->back()->with('success', __('Step approved successfully.'));
     }
@@ -160,20 +167,23 @@ class ApprovalController extends Controller
             return redirect()->back()->with('error', __('You are not authorized to reject this step.'));
         }
 
-        WorkflowLog::create([
-            'workflow_request_id' => $req->id,
-            'workflow_step_id'    => $step->id,
-            'user_id'             => $user->id,
-            'action'              => 'reject',
-            'comment'             => $request->comment,
-        ]);
+        DB::transaction(function () use ($req, $step, $user, $request) {
+            WorkflowLog::create([
+                'workflow_request_id' => $req->id,
+                'workflow_step_id'    => $step->id,
+                'user_id'             => $user->id,
+                'action'              => 'reject',
+                'comment'             => $request->comment,
+                'created_by'          => $req->created_by,
+            ]);
 
-        $req->status               = 'rejected';
-        $req->current_step_id      = null;
-        $req->delegated_to_user_id = null;
-        $req->save();
+            $req->status               = 'rejected';
+            $req->current_step_id      = null;
+            $req->delegated_to_user_id = null;
+            $req->save();
 
-        \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'rejected', $user);
+            \Workdo\GadaacloudStudio\Services\WorkflowService::syncDocumentStatus($req, 'rejected', $user);
+        });
 
         return redirect()->back()->with('success', __('Request rejected.'));
     }
@@ -185,7 +195,7 @@ class ApprovalController extends Controller
     public function delegate(Request $request, $id)
     {
         $request->validate([
-            'delegate_to_user_id' => 'required|exists:users,id',
+            'delegate_to_user_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->where('created_by', creatorId())->orWhere('id', creatorId()))],
             'reason'              => 'nullable|string|max:500',
             'valid_until'         => 'nullable|date|after:today',
         ]);
@@ -220,35 +230,39 @@ class ApprovalController extends Controller
             return redirect()->back()->with('error', __('You are not authorized to delegate this step.'));
         }
 
-        // Deactivate previous delegations for this step
-        WorkflowDelegation::where('workflow_request_id', $req->id)
-            ->where('workflow_step_id', $step->id)
-            ->update(['is_active' => false]);
+        DB::transaction(function () use ($req, $step, $user, $targetUser, $request) {
+            // Deactivate previous delegations for this step
+            WorkflowDelegation::where('workflow_request_id', $req->id)
+                ->where('workflow_step_id', $step->id)
+                ->update(['is_active' => false]);
 
-        WorkflowDelegation::create([
-            'workflow_request_id' => $req->id,
-            'workflow_step_id'    => $step->id,
-            'delegated_by_user_id'=> $user->id,
-            'delegated_to_user_id'=> $targetUser->id,
-            'reason'              => $request->reason,
-            'valid_from'          => now(),
-            'valid_until'         => $request->valid_until,
-            'is_active'           => true,
-        ]);
+            WorkflowDelegation::create([
+                'workflow_request_id' => $req->id,
+                'workflow_step_id'    => $step->id,
+                'delegated_by_user_id'=> $user->id,
+                'delegated_to_user_id'=> $targetUser->id,
+                'reason'              => $request->reason,
+                'valid_from'          => now(),
+                'valid_until'         => $request->valid_until,
+                'is_active'           => true,
+                'created_by'          => $req->created_by,
+            ]);
 
-        $req->delegated_to_user_id = $targetUser->id;
-        $req->save();
+            $req->delegated_to_user_id = $targetUser->id;
+            $req->save();
 
-        WorkflowLog::create([
-            'workflow_request_id' => $req->id,
-            'workflow_step_id'    => $step->id,
-            'user_id'             => $user->id,
-            'action'              => 'delegated',
-            'comment'             => __('Delegated to :name. Reason: :reason', [
-                'name'   => $targetUser->name,
-                'reason' => $request->reason ?? '—',
-            ]),
-        ]);
+            WorkflowLog::create([
+                'workflow_request_id' => $req->id,
+                'workflow_step_id'    => $step->id,
+                'user_id'             => $user->id,
+                'action'              => 'delegated',
+                'comment'             => __('Delegated to :name. Reason: :reason', [
+                    'name'   => $targetUser->name,
+                    'reason' => $request->reason ?? '—',
+                ]),
+                'created_by'          => $req->created_by,
+            ]);
+        });
 
         return redirect()->back()->with('success', __('Step delegated successfully.'));
     }

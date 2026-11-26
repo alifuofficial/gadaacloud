@@ -2,12 +2,16 @@
 
 namespace Workdo\GadaacloudStudio\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class WorkflowStep extends Model
 {
+    use HasFactory, TenantScoped;
+
     protected $fillable = [
         'workflow_id',
         'name',
@@ -20,6 +24,7 @@ class WorkflowStep extends Model
         'condition_operator',
         'condition_value',
         'skip_if_condition_fails',
+        'created_by',
     ];
 
     protected $casts = [

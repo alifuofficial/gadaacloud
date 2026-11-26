@@ -2,12 +2,16 @@
 
 namespace Workdo\GadaacloudStudio\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
+use App\Traits\TenantScoped;
 
 class WorkflowDelegation extends Model
 {
+    use HasFactory, TenantScoped;
+
     protected $fillable = [
         'workflow_request_id',
         'workflow_step_id',
@@ -17,6 +21,7 @@ class WorkflowDelegation extends Model
         'valid_from',
         'valid_until',
         'is_active',
+        'created_by',
     ];
 
     protected $casts = [
