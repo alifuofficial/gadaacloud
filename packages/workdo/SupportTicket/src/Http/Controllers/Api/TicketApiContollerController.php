@@ -9,21 +9,23 @@ use App\Traits\ApiResponseTrait;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Workdo\SupportTicket\Models\Conversion;
 use Workdo\SupportTicket\Models\KnowledgeBaseCategory;
 use Workdo\SupportTicket\Models\Ticket;
 use Workdo\SupportTicket\Models\TicketCategory;
 use Workdo\SupportTicket\Models\TicketField;
+use Workdo\SupportTicket\Traits\SupportTicketControllerHelpers;
 
 class TicketApiContollerController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, SupportTicketControllerHelpers;
 
     public function index(Request $request)
     {
         try {
-            $perPage = $request->get('per_page', 10);
+            $perPage = $this->safePerPage(10, 100);
 
             $tickets = Ticket::with('tcategory')
                 ->where(function ($q) {
@@ -104,7 +106,7 @@ class TicketApiContollerController extends Controller
                 $validator = Validator::make($request->all(), [
                     'account_type' => 'required|string|in:custom,staff,client,vendor',
                     'email'        => 'required|string|email|max:255',
-                    'category'     => 'required|exists:ticket_categories,id',
+                    'category'     => ['required', SupportTicketControllerHelpers::tenantExists('ticket_categories', 'id')],
                     'subject'      => 'required|string|max:255',
                     'description'  => 'required|string',
                     'status'       => 'required|string|in:In Progress,On Hold,Closed',
@@ -114,7 +116,7 @@ class TicketApiContollerController extends Controller
                     return $input->account_type === 'custom';
                 });
 
-                $validator->sometimes('user_id', 'required|exists:users,id', function ($input) {
+                $validator->sometimes('user_id', ['required', SupportTicketControllerHelpers::tenantExists('users', 'id')], function ($input) {
                     return $input->account_type !== 'custom';
                 });
                 
@@ -166,11 +168,15 @@ class TicketApiContollerController extends Controller
 
                 $validated['attachments'] = json_encode($attachments);
 
-                $ticket = Ticket::create($validated);
+                $ticket = DB::transaction(function () use ($validated, $request) {
+                    $ticket = Ticket::create($validated);
 
-                if ($request->has('fields') && !empty($request->fields)) {
-                    TicketField::saveData($ticket, $request->fields);
-                }
+                    if ($request->has('fields') && !empty($request->fields)) {
+                        TicketField::saveData($ticket, $request->fields);
+                    }
+
+                    return $ticket;
+                });
 
                 if (!empty(company_setting('New Ticket')) && company_setting('New Ticket') == true) {
                     $uArr = [
@@ -201,12 +207,12 @@ class TicketApiContollerController extends Controller
                 $validator = Validator::make($request->all(), [
                     'name'         => 'required|string|max:255',
                     'email'        => 'required|string|email|max:255',
-                    'category'     => 'required|exists:ticket_categories,id',
+                    'category'     => ['required', SupportTicketControllerHelpers::tenantExists('ticket_categories', 'id')],
                     'subject'      => 'required|string|max:255',
                     'description'  => 'required|string',
                     'status'       => 'nullable|in:In Progress,On Hold,Closed',
                     'account_type' => 'required|in:staff,client,vendor,custom',
-                    'user_id'      => 'required_unless:account_type,custom|exists:users,id',
+                    'user_id'      => ['required_unless:account_type,custom', SupportTicketControllerHelpers::tenantExists('users', 'id')],
                     'attachments'  => 'nullable|array',
                     'fields'       => 'nullable|array'
                 ]);
@@ -215,7 +221,7 @@ class TicketApiContollerController extends Controller
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $ticket = Ticket::find($id);
+                $ticket = Ticket::where('created_by', creatorId())->find($id);
                 if (!$ticket) {
                     return $this->errorResponse('Ticket not found', null, 404);
                 }
@@ -223,7 +229,7 @@ class TicketApiContollerController extends Controller
                 $validated = $validator->validated();
 
                 if (in_array($validated['account_type'], ['staff', 'client', 'vendor'])) {
-                    $user = User::find($validated['user_id']);
+                    $user = User::where('created_by', creatorId())->find($validated['user_id']);
                     if ($user) {
                         $validated['name']  = $user->name;
                         $validated['email'] = $user->email;
@@ -234,11 +240,13 @@ class TicketApiContollerController extends Controller
                     $validated['user_id'] = null;
                 }
 
-                $ticket->update($validated);
+                DB::transaction(function () use ($ticket, $validated, $request) {
+                    $ticket->update($validated);
 
-                if ($request->has('fields') && !empty($request->fields)) {
-                    TicketField::saveData($ticket, $request->fields);
-                }
+                    if ($request->has('fields') && !empty($request->fields)) {
+                        TicketField::saveData($ticket, $request->fields);
+                    }
+                });
 
                 return $this->successResponse('', 'Ticket updated successfully');
             } else {
@@ -254,14 +262,18 @@ class TicketApiContollerController extends Controller
         try {
             if (Auth::user()->can('delete-support-tickets')) {
 
-                $ticket = Ticket::find($id);
+                $ticket = Ticket::where('created_by', creatorId())->find($id);
 
                 if (!$ticket) {
                     return $this->errorResponse('Ticket not found', null, 404);
                 }
-                Conversion::where('ticket_id', $ticket->id)->delete();
 
                 $attachments = json_decode($ticket->attachments, true) ?? [];
+
+                DB::transaction(function () use ($ticket) {
+                    Conversion::where('ticket_id', $ticket->id)->delete();
+                    $ticket->delete();
+                });
 
                 foreach ($attachments as $attachment) {
                     if (isset($attachment['path'])) {
@@ -270,8 +282,6 @@ class TicketApiContollerController extends Controller
                 }
 
                 Storage::disk('public')->deleteDirectory('tickets/' . $ticket->ticket_id);
-
-                $ticket->delete();
 
                 return $this->successResponse('', 'Ticket deleted successfully');
             } else {
@@ -295,14 +305,16 @@ class TicketApiContollerController extends Controller
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $ticket = Ticket::find($id);
+                $ticket = Ticket::where('created_by', creatorId())->find($id);
 
                 if (!$ticket) {
                     return $this->errorResponse('Ticket not found', 404);
                 }
 
-                $ticket->note = $request->note;
-                $ticket->save();
+                DB::transaction(function () use ($ticket, $request) {
+                    $ticket->note = $request->note;
+                    $ticket->save();
+                });
 
                 return $this->successResponse('', 'Note saved successfully');
             } else {
@@ -329,10 +341,10 @@ class TicketApiContollerController extends Controller
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $ticket = Ticket::find($id);
+                $ticket = Ticket::where('created_by', creatorId())->find($id);
 
                 if (!$ticket) {
-                    return redirect()->back()->with('error', __('Ticket not found'));
+                    return $this->errorResponse('Ticket not found', null, 404);
                 }
                 $attachments = [];
 
@@ -356,20 +368,23 @@ class TicketApiContollerController extends Controller
                     }
                 }
 
-                $conversion              = new Conversion();
-                $conversion->ticket_id   = $ticket->id;
-                $conversion->description = $request->description;
-                $conversion->sender      = Auth::id();
-                $conversion->attachments = json_encode($attachments);
-                $conversion->creator_id  = Auth::id();
-                $conversion->created_by  = creatorId();
-                $conversion->save();
+                $conversion = DB::transaction(function () use ($ticket, $request, $attachments) {
+                    $conversion              = new Conversion();
+                    $conversion->ticket_id   = $ticket->id;
+                    $conversion->description = $request->description;
+                    $conversion->sender      = Auth::id();
+                    $conversion->attachments = json_encode($attachments);
+                    $conversion->creator_id  = Auth::id();
+                    $conversion->created_by  = creatorId();
+                    $conversion->save();
 
+                    if ($request->has('status') && in_array($request->status, ['open', 'In Progress', 'Closed', 'On Hold'])) {
+                        $ticket->status = $request->status;
+                        $ticket->save();
+                    }
 
-                if ($request->has('status') && in_array($request->status, ['open', 'In Progress', 'Closed', 'On Hold'])) {
-                    $ticket->status = $request->status;
-                    $ticket->save();
-                }
+                    return $conversion;
+                });
 
                 // Send email notification for reply
                 if (!empty(company_setting('New Ticket Reply')) && company_setting('New Ticket Reply') == true) {

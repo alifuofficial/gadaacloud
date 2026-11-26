@@ -4,6 +4,7 @@ namespace Workdo\Goal\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Goal\Events\CreateGoalCategory;
 use Workdo\Goal\Events\DestroyGoalCategory;
@@ -69,14 +70,17 @@ class GoalCategoryController extends Controller
         $validated = $request->validated();
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        $category = new GoalCategory();
-        $category->category_name = $validated['category_name'];
-        $category->category_code = $validated['category_code'];
-        $category->description = $validated['description'] ?? null;
-        $category->is_active = $validated['is_active'];
-        $category->creator_id = Auth::id();
-        $category->created_by = creatorId();
-        $category->save();
+        $category = DB::transaction(function () use ($validated) {
+            $category = new GoalCategory();
+            $category->category_name = $validated['category_name'];
+            $category->category_code = $validated['category_code'];
+            $category->description = $validated['description'] ?? null;
+            $category->is_active = $validated['is_active'];
+            $category->creator_id = Auth::id();
+            $category->created_by = creatorId();
+            $category->save();
+            return $category;
+        });
 
         CreateGoalCategory::dispatch($request, $category);
 
@@ -92,11 +96,13 @@ class GoalCategoryController extends Controller
         $validated = $request->validated();
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        $category->category_name = $validated['category_name'];
-        $category->category_code = $validated['category_code'];
-        $category->description = $validated['description'] ?? null;
-        $category->is_active = $validated['is_active'];
-        $category->save();
+        DB::transaction(function () use ($category, $validated) {
+            $category->category_name = $validated['category_name'];
+            $category->category_code = $validated['category_code'];
+            $category->description = $validated['description'] ?? null;
+            $category->is_active = $validated['is_active'];
+            $category->save();
+        });
 
         UpdateGoalCategory::dispatch($request, $category);
 
@@ -115,7 +121,9 @@ class GoalCategoryController extends Controller
 
         DestroyGoalCategory::dispatch($category);
 
-        $category->delete();
+        DB::transaction(function () use ($category) {
+            $category->delete();
+        });
 
         return redirect()->back()->with('success', __('The category has been deleted.'));
     }

@@ -49,12 +49,15 @@ class CategoryController extends Controller
                 'color' => 'required|string|max:7',
             ]);
 
-            $category = new ProductServiceCategory();
-            $category->name = $validated['name'];
-            $category->color = $validated['color'];
-            $category->creator_id = Auth::id();
-            $category->created_by = creatorId();
-            $category->save();
+            $category = DB::transaction(function () use ($validated) {
+                $category = new ProductServiceCategory();
+                $category->name = $validated['name'];
+                $category->color = $validated['color'];
+                $category->creator_id = Auth::id();
+                $category->created_by = creatorId();
+                $category->save();
+                return $category;
+            });
 
             // Dispatch event for packages to handle their fields
             CreateProductServiceCategory::dispatch($request, $category);
@@ -75,9 +78,11 @@ class CategoryController extends Controller
                 'color' => 'required|string|max:7',
             ]);
 
-            $itemCategory->name = $validated['name'];
-            $itemCategory->color = $validated['color'];
-            $itemCategory->save();
+            DB::transaction(function () use ($itemCategory, $validated) {
+                $itemCategory->name = $validated['name'];
+                $itemCategory->color = $validated['color'];
+                $itemCategory->save();
+            });
 
              // Dispatch event for packages to handle their fields
             UpdateProductServiceCategory::dispatch($request, $itemCategory);
@@ -96,7 +101,9 @@ class CategoryController extends Controller
 
             DestroyProductServiceCategory::dispatch($itemCategory);
 
-            $itemCategory->delete();
+            DB::transaction(function () use ($itemCategory) {
+                $itemCategory->delete();
+            });
 
             return redirect()->route('product-service.item-categories.index')->with('success', __('The category has been deleted.'));
         }

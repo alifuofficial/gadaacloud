@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Workdo\Hrm\Models\Holiday;
 use Workdo\Hrm\Models\LeaveApplication;
@@ -77,7 +78,7 @@ class LeaveApiController extends Controller
             if (Auth::user()->can('create-leave-applications')) {
 
                 $validator = Validator::make($request->all(), [
-                    'leave_type_id' => 'required|exists:leave_types,id',
+                    'leave_type_id' => ['required', HrmControllerHelpers::tenantExists('leave_types', 'id')],
                     'start_date'    => 'required|date',
                     'end_date'      => 'required|date|after_or_equal:start_date',
                     'reason'        => 'required|string',
@@ -117,7 +118,7 @@ class LeaveApiController extends Controller
                 $totalDays = $startDate->diff($endDate)->days + 1;
 
                     // Get leave type details
-                $leaveType = LeaveType::find($validated['leave_type_id']);
+                $leaveType = LeaveType::where('created_by', $creatorId)->find($validated['leave_type_id']);
                 if (!$leaveType) {
                     return $this->errorResponse('Invalid leave type selected.');
                 }
@@ -190,7 +191,9 @@ class LeaveApiController extends Controller
 
                     $leaveapplication->attachment = ltrim($path['url'], '/');
                 }
-                $leaveapplication->save();
+                DB::transaction(function () use ($leaveapplication) {
+                    $leaveapplication->save();
+                });
 
                 $data = [
                     'id'               => $leaveapplication->id,

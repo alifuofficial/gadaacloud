@@ -5,6 +5,7 @@ namespace Workdo\Taskly\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Workdo\Taskly\Models\Project;
 use Workdo\Taskly\Models\ProjectBoq;
 use Workdo\Taskly\Models\ProjectSiteDiary;
@@ -31,19 +32,21 @@ class ProjectWorkspaceController extends Controller
 
         $amount = (float) ($validated['quantity'] * $validated['rate']);
 
-        $boq = new ProjectBoq();
-        $boq->project_id = $project->id;
-        $boq->item_no = $validated['item_no'];
-        $boq->description = $validated['description'];
-        $boq->unit = $validated['unit'];
-        $boq->quantity = $validated['quantity'];
-        $boq->rate = $validated['rate'];
-        $boq->amount = $amount;
-        $boq->actual_quantity = 0;
-        $boq->actual_amount = 0;
-        $boq->status = 'pending';
-        $boq->created_by = creatorId();
-        $boq->save();
+        DB::transaction(function () use ($project, $validated, $amount) {
+            $boq = new ProjectBoq();
+            $boq->project_id = $project->id;
+            $boq->item_no = $validated['item_no'];
+            $boq->description = $validated['description'];
+            $boq->unit = $validated['unit'];
+            $boq->quantity = $validated['quantity'];
+            $boq->rate = $validated['rate'];
+            $boq->amount = $amount;
+            $boq->actual_quantity = 0;
+            $boq->actual_amount = 0;
+            $boq->status = 'pending';
+            $boq->created_by = creatorId();
+            $boq->save();
+        });
 
         return back()->with('success', __('BoQ line item created successfully.'));
     }
@@ -57,10 +60,12 @@ class ProjectWorkspaceController extends Controller
             'status' => 'required|in:pending,in_progress,completed',
         ]);
 
-        $boq->actual_quantity = $validated['actual_quantity'];
-        $boq->actual_amount = (float) ($validated['actual_quantity'] * $boq->rate);
-        $boq->status = $validated['status'];
-        $boq->save();
+        DB::transaction(function () use ($boq, $validated) {
+            $boq->actual_quantity = $validated['actual_quantity'];
+            $boq->actual_amount = (float) ($validated['actual_quantity'] * $boq->rate);
+            $boq->status = $validated['status'];
+            $boq->save();
+        });
 
         return back()->with('success', __('BoQ line item updated successfully.'));
     }
@@ -68,7 +73,9 @@ class ProjectWorkspaceController extends Controller
     public function destroyBoq($boqId)
     {
         $boq = ProjectBoq::where('created_by', creatorId())->findOrFail($boqId);
-        $boq->delete();
+        DB::transaction(function () use ($boq) {
+            $boq->delete();
+        });
 
         return back()->with('success', __('BoQ item deleted successfully.'));
     }
@@ -90,17 +97,19 @@ class ProjectWorkspaceController extends Controller
             'challenges' => 'nullable|string',
         ]);
 
-        $diary = new ProjectSiteDiary();
-        $diary->project_id = $project->id;
-        $diary->date = $validated['date'];
-        $diary->weather = $validated['weather'];
-        $diary->workforce_count = $validated['workforce_count'];
-        $diary->machinery_hours = $validated['machinery_hours'] ?? 0;
-        $diary->work_completed = $validated['work_completed'];
-        $diary->challenges = $validated['challenges'] ?? null;
-        $diary->logged_by = Auth::id();
-        $diary->created_by = creatorId();
-        $diary->save();
+        DB::transaction(function () use ($project, $validated) {
+            $diary = new ProjectSiteDiary();
+            $diary->project_id = $project->id;
+            $diary->date = $validated['date'];
+            $diary->weather = $validated['weather'];
+            $diary->workforce_count = $validated['workforce_count'];
+            $diary->machinery_hours = $validated['machinery_hours'] ?? 0;
+            $diary->work_completed = $validated['work_completed'];
+            $diary->challenges = $validated['challenges'] ?? null;
+            $diary->logged_by = Auth::id();
+            $diary->created_by = creatorId();
+            $diary->save();
+        });
 
         return back()->with('success', __('Site diary logged successfully.'));
     }
@@ -108,7 +117,9 @@ class ProjectWorkspaceController extends Controller
     public function destroySiteDiary($diaryId)
     {
         $diary = ProjectSiteDiary::where('created_by', creatorId())->findOrFail($diaryId);
-        $diary->delete();
+        DB::transaction(function () use ($diary) {
+            $diary->delete();
+        });
 
         return back()->with('success', __('Site diary deleted successfully.'));
     }
@@ -136,17 +147,19 @@ class ProjectWorkspaceController extends Controller
             'demurrage_daily_cost' => 'nullable|numeric|min:0',
         ]);
 
-        $logistics = ProjectLogistics::firstOrNew(['project_id' => $project->id]);
-        $logistics->fill($validated);
-        $logistics->created_by = creatorId();
+        DB::transaction(function () use ($project, $validated) {
+            $logistics = ProjectLogistics::firstOrNew(['project_id' => $project->id]);
+            $logistics->fill($validated);
+            $logistics->created_by = creatorId();
 
-        // Calculate demurrage start date if discharge date is set
-        if (!empty($validated['discharge_date'])) {
-            $discharge = \Carbon\Carbon::parse($validated['discharge_date']);
-            $logistics->demurrage_start_date = $discharge->copy()->addDays((int) $validated['port_free_days']);
-        }
+            // Calculate demurrage start date if discharge date is set
+            if (!empty($validated['discharge_date'])) {
+                $discharge = \Carbon\Carbon::parse($validated['discharge_date']);
+                $logistics->demurrage_start_date = $discharge->copy()->addDays((int) $validated['port_free_days']);
+            }
 
-        $logistics->save();
+            $logistics->save();
+        });
 
         return back()->with('success', __('Logistics shipment tracking updated.'));
     }
@@ -161,12 +174,14 @@ class ProjectWorkspaceController extends Controller
             $q->where('created_by', creatorId());
         })->findOrFail($milestoneId);
 
-        $milestone->approval_status = 'approved';
-        $milestone->approved_by = Auth::id();
-        $milestone->approved_at = now();
-        $milestone->status = 'Complete';
-        $milestone->progress = 100;
-        $milestone->save();
+        DB::transaction(function () use ($milestone) {
+            $milestone->approval_status = 'approved';
+            $milestone->approved_by = Auth::id();
+            $milestone->approved_at = now();
+            $milestone->status = 'Complete';
+            $milestone->progress = 100;
+            $milestone->save();
+        });
 
         return back()->with('success', __('Milestone approved and marked as complete.'));
     }
@@ -181,10 +196,12 @@ class ProjectWorkspaceController extends Controller
             $q->where('created_by', creatorId());
         })->findOrFail($milestoneId);
 
-        $milestone->approval_status = 'rejected';
-        $milestone->rejection_reason = $validated['rejection_reason'];
-        $milestone->status = 'Incomplete';
-        $milestone->save();
+        DB::transaction(function () use ($milestone, $validated) {
+            $milestone->approval_status = 'rejected';
+            $milestone->rejection_reason = $validated['rejection_reason'];
+            $milestone->status = 'Incomplete';
+            $milestone->save();
+        });
 
         return back()->with('success', __('Milestone rejected with feedback provided.'));
     }

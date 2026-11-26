@@ -5,14 +5,17 @@ namespace Workdo\Taskly\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Taskly\Events\CreateBugStage;
 use Workdo\Taskly\Events\DestroyBugStage;
 use Workdo\Taskly\Events\UpdateBugStage;
 use Workdo\Taskly\Models\BugStage;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class BugStageController extends Controller
 {
+    use TasklyControllerHelpers;
     public function index()
     {
         if(Auth::user()->can('manage-bug-stages')){
@@ -45,26 +48,30 @@ class BugStageController extends Controller
                 'color' => 'required|string|max:7',
             ]);
 
-            // Increment order of existing stages
-            BugStage::where('created_by', creatorId())->increment('order');
-            
-            // Set all existing stages as incomplete
-            BugStage::where('created_by', creatorId())->update(['complete' => false]);
-            
-            $bugStage = new BugStage();
-            $bugStage->name = $validated['name'];
-            $bugStage->color = $validated['color'];
-            $bugStage->complete = false;
-            $bugStage->order = 0; // Always first
-            $bugStage->creator_id = Auth::id();
-            $bugStage->created_by = creatorId();
-            $bugStage->save();
-            
-            // Set the last stage (highest order) as complete
-            BugStage::where('created_by', creatorId())
-                ->orderBy('order', 'desc')
-                ->first()
-                ?->update(['complete' => true]);
+            $bugStage = DB::transaction(function () use ($validated) {
+                // Increment order of existing stages
+                BugStage::where('created_by', creatorId())->increment('order');
+
+                // Set all existing stages as incomplete
+                BugStage::where('created_by', creatorId())->update(['complete' => false]);
+
+                $bugStage = new BugStage();
+                $bugStage->name = $validated['name'];
+                $bugStage->color = $validated['color'];
+                $bugStage->complete = false;
+                $bugStage->order = 0; // Always first
+                $bugStage->creator_id = Auth::id();
+                $bugStage->created_by = creatorId();
+                $bugStage->save();
+
+                // Set the last stage (highest order) as complete
+                BugStage::where('created_by', creatorId())
+                    ->orderBy('order', 'desc')
+                    ->first()
+                    ?->update(['complete' => true]);
+
+                return $bugStage;
+            });
 
             // Dispatch event for packages to handle their fields
             CreateBugStage::dispatch($request, $bugStage);
@@ -77,15 +84,17 @@ class BugStageController extends Controller
 
     public function update(Request $request, BugStage $bugStage)
     {
-        if(Auth::user()->can('edit-bug-stages')){
+        if (Auth::user()->can('edit-bug-stages') && $this->assertBelongsToTenant($bugStage)) {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'color' => 'required|string|max:7',
             ]);
 
-            $bugStage->name = $validated['name'];
-            $bugStage->color = $validated['color'];
-            $bugStage->save();
+            DB::transaction(function () use ($bugStage, $validated) {
+                $bugStage->name = $validated['name'];
+                $bugStage->color = $validated['color'];
+                $bugStage->save();
+            });
 
              // Dispatch event for packages to handle their fields
             UpdateBugStage::dispatch($request, $bugStage);
@@ -97,11 +106,13 @@ class BugStageController extends Controller
 
     public function destroy(BugStage $bugStage)
     {
-        if(Auth::user()->can('delete-bug-stages')){
+        if (Auth::user()->can('delete-bug-stages') && $this->assertBelongsToTenant($bugStage)) {
 
             DestroyBugStage::dispatch($bugStage);
 
-            $bugStage->delete();
+            DB::transaction(function () use ($bugStage) {
+                $bugStage->delete();
+            });
 
             return back()->with('success', __('The bug stage has been deleted.'));
         }
@@ -113,25 +124,27 @@ class BugStageController extends Controller
         if(Auth::user()->can('edit-bug-stages')){
             $validated = $request->validate([
                 'stages' => 'required|array',
-                'stages.*.id' => 'required|exists:bug_stages,id',
+                'stages.*.id' => ['required', self::tenantExists('bug_stages', 'id')],
                 'stages.*.order' => 'required|integer',
                 'stages.*.complete' => 'required|boolean',
             ]);
 
-            foreach ($validated['stages'] as $stageData) {
-                BugStage::where('id', $stageData['id'])
-                    ->where('created_by', creatorId())
-                    ->update(['order' => $stageData['order']]);
-            }
-            
-            // Set all stages as incomplete first
-            BugStage::where('created_by', creatorId())->update(['complete' => false]);
-            
-            // Set the last stage (highest order) as complete
-            BugStage::where('created_by', creatorId())
-                ->orderBy('order', 'desc')
-                ->first()
-                ?->update(['complete' => true]);
+            DB::transaction(function () use ($validated) {
+                foreach ($validated['stages'] as $stageData) {
+                    BugStage::where('id', $stageData['id'])
+                        ->where('created_by', creatorId())
+                        ->update(['order' => $stageData['order']]);
+                }
+
+                // Set all stages as incomplete first
+                BugStage::where('created_by', creatorId())->update(['complete' => false]);
+
+                // Set the last stage (highest order) as complete
+                BugStage::where('created_by', creatorId())
+                    ->orderBy('order', 'desc')
+                    ->first()
+                    ?->update(['complete' => true]);
+            });
 
             return back()->with('success', __('Bug stages reordered successfully.'));
         }

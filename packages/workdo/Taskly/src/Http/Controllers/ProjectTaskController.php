@@ -295,6 +295,10 @@ class ProjectTaskController extends Controller
 
     public function move(Request $request, ProjectTask $task)
     {
+        if (!$this->assertBelongsToTenant($task)) {
+            return response()->json(['error' => __('Permission denied')], 403);
+        }
+
         // Check if user can edit task OR is assigned to the task
         $assignedUserIds = $task->assigned_to ? (is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true)) : [];
         $canMove = Auth::user()->can('edit-project-task') ||
@@ -303,7 +307,7 @@ class ProjectTaskController extends Controller
 
         if ($canMove) {
             $request->validate([
-                'stage_id' => 'required|exists:task_stages,id'
+                'stage_id' => ['required', self::tenantExists('task_stages', 'id')]
             ]);
 
             $oldStage = TaskStage::find($task->stage_id);
@@ -312,20 +316,22 @@ class ProjectTaskController extends Controller
             $request['old_stage_id'] = $task->stage_id;
             $request['new_stage_id'] = $request->stage_id;
 
-            $task->update(['stage_id' => $request->stage_id]);
+            DB::transaction(function () use ($task, $request, $oldStage, $newStage) {
+                $task->update(['stage_id' => $request->stage_id]);
 
-            // Log activity
-            ActivityLog::create([
-                'user_id' => Auth::user()->id,
-                'user_type' => get_class(Auth::user()),
-                'project_id' => $task->project_id,
-                'log_type' => 'Move',
-                'remark' => json_encode([
-                    'title' => $task->title,
-                    'old_status' => $oldStage ? $oldStage->name : 'Unknown',
-                    'new_status' => $newStage ? $newStage->name : 'Unknown',
-                ]),
-            ]);
+                // Log activity
+                ActivityLog::create([
+                    'user_id' => Auth::user()->id,
+                    'user_type' => get_class(Auth::user()),
+                    'project_id' => $task->project_id,
+                    'log_type' => 'Move',
+                    'remark' => json_encode([
+                        'title' => $task->title,
+                        'old_status' => $oldStage ? $oldStage->name : 'Unknown',
+                        'new_status' => $newStage ? $newStage->name : 'Unknown',
+                    ]),
+                ]);
+            });
 
             UpdateProjectTaskStage::dispatch($request, $task);
 

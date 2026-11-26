@@ -4,6 +4,7 @@ namespace Workdo\Goal\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Goal\Events\CreateGoalTracking;
 use Workdo\Goal\Events\DestroyGoalTracking;
@@ -73,19 +74,22 @@ class GoalTrackingController extends Controller
 
         $validated = $request->validated();
 
-        $tracking = new GoalTracking();
-        $tracking->goal_id = $validated['goal_id'];
-        $tracking->tracking_date = $validated['tracking_date'];
-        $tracking->previous_amount = $validated['previous_amount'];
-        $tracking->contribution_amount = $validated['contribution_amount'];
-        $tracking->current_amount = $validated['current_amount'];
-        $tracking->progress_percentage = $validated['progress_percentage'];
-        $tracking->days_remaining = $validated['days_remaining'];
-        $tracking->projected_completion_date = $validated['projected_completion_date'] ?? null;
-        $tracking->on_track_status = $validated['on_track_status'];
-        $tracking->creator_id = Auth::id();
-        $tracking->created_by = creatorId();
-        $tracking->save();
+        $tracking = DB::transaction(function () use ($validated) {
+            $tracking = new GoalTracking();
+            $tracking->goal_id = $validated['goal_id'];
+            $tracking->tracking_date = $validated['tracking_date'];
+            $tracking->previous_amount = $validated['previous_amount'];
+            $tracking->contribution_amount = $validated['contribution_amount'];
+            $tracking->current_amount = $validated['current_amount'];
+            $tracking->progress_percentage = $validated['progress_percentage'];
+            $tracking->days_remaining = $validated['days_remaining'];
+            $tracking->projected_completion_date = $validated['projected_completion_date'] ?? null;
+            $tracking->on_track_status = $validated['on_track_status'];
+            $tracking->creator_id = Auth::id();
+            $tracking->created_by = creatorId();
+            $tracking->save();
+            return $tracking;
+        });
 
         CreateGoalTracking::dispatch($request, $tracking);
 
@@ -100,18 +104,20 @@ class GoalTrackingController extends Controller
 
         $validated = $request->validated();
 
-        if (isset($validated['goal_id'])) {
-            $goalTracking->goal_id = $validated['goal_id'];
-        }
-        $goalTracking->tracking_date = $validated['tracking_date'] ?? $goalTracking->tracking_date;
-        $goalTracking->previous_amount = $validated['previous_amount'] ?? $goalTracking->previous_amount;
-        $goalTracking->contribution_amount = $validated['contribution_amount'] ?? $goalTracking->contribution_amount;
-        $goalTracking->current_amount = $validated['current_amount'] ?? $goalTracking->current_amount;
-        $goalTracking->progress_percentage = $validated['progress_percentage'] ?? $goalTracking->progress_percentage;
-        $goalTracking->days_remaining = $validated['days_remaining'] ?? $goalTracking->days_remaining;
-        $goalTracking->projected_completion_date = $validated['projected_completion_date'] ?? $goalTracking->projected_completion_date;
-        $goalTracking->on_track_status = $validated['on_track_status'] ?? $goalTracking->on_track_status;
-        $goalTracking->save();
+        DB::transaction(function () use ($goalTracking, $validated) {
+            if (isset($validated['goal_id'])) {
+                $goalTracking->goal_id = $validated['goal_id'];
+            }
+            $goalTracking->tracking_date = $validated['tracking_date'] ?? $goalTracking->tracking_date;
+            $goalTracking->previous_amount = $validated['previous_amount'] ?? $goalTracking->previous_amount;
+            $goalTracking->contribution_amount = $validated['contribution_amount'] ?? $goalTracking->contribution_amount;
+            $goalTracking->current_amount = $validated['current_amount'] ?? $goalTracking->current_amount;
+            $goalTracking->progress_percentage = $validated['progress_percentage'] ?? $goalTracking->progress_percentage;
+            $goalTracking->days_remaining = $validated['days_remaining'] ?? $goalTracking->days_remaining;
+            $goalTracking->projected_completion_date = $validated['projected_completion_date'] ?? $goalTracking->projected_completion_date;
+            $goalTracking->on_track_status = $validated['on_track_status'] ?? $goalTracking->on_track_status;
+            $goalTracking->save();
+        });
 
         UpdateGoalTracking::dispatch($request, $goalTracking);
 
@@ -139,7 +145,9 @@ class GoalTrackingController extends Controller
 
         DestroyGoalTracking::dispatch($goalTracking);
 
-        $goalTracking->delete();
+        DB::transaction(function () use ($goalTracking) {
+            $goalTracking->delete();
+        });
 
         return redirect()->route('goal.tracking.index')->with('success', __('The tracking has been deleted.'));
     }

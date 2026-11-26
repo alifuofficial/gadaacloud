@@ -6,14 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Workdo\Lead\Models\DealStage;
 use Workdo\Lead\Models\LeadStage;
 use Workdo\Lead\Models\Pipeline;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class PipelineApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, LeadControllerHelpers;
 
     public function index()
     {
@@ -80,54 +82,56 @@ class PipelineApiController extends Controller
             'Close',
         ];
 
-        $pipeline               = new Pipeline();
-        $pipeline->name         = $request->name;
-        $pipeline->creator_id   = Auth::id();
-        $pipeline->created_by   = creatorId();
-        $pipeline->save();
+        DB::transaction(function () use ($request, $lead_stages, $deal_stages) {
+            $pipeline               = new Pipeline();
+            $pipeline->name         = $request->name;
+            $pipeline->creator_id   = Auth::id();
+            $pipeline->created_by   = creatorId();
+            $pipeline->save();
 
-        // Create Lead Stages
-        foreach ($lead_stages as $index => $stage_name) {
-            $leadStage = LeadStage::where('name', $stage_name)
-                ->where('pipeline_id',$pipeline->id)
-                ->where('created_by', creatorId())
-                ->exists();
+            // Create Lead Stages
+            foreach ($lead_stages as $index => $stage_name) {
+                $leadStage = LeadStage::where('name', $stage_name)
+                    ->where('pipeline_id', $pipeline->id)
+                    ->where('created_by', creatorId())
+                    ->exists();
 
-            if (empty($leadStage)) {
-                $leadStage              = new LeadStage();
-                $leadStage->name        = $stage_name;
-                $leadStage->pipeline_id = $pipeline->id;
-                $leadStage->order       = $index + 1;
-                $leadStage->creator_id  = Auth::id();
-                $leadStage->created_by  = creatorId();
-                $leadStage->save();
+                if (empty($leadStage)) {
+                    $leadStage              = new LeadStage();
+                    $leadStage->name        = $stage_name;
+                    $leadStage->pipeline_id = $pipeline->id;
+                    $leadStage->order       = $index + 1;
+                    $leadStage->creator_id  = Auth::id();
+                    $leadStage->created_by  = creatorId();
+                    $leadStage->save();
+                }
             }
-        }
 
-        // Create Deal Stages
-        foreach ($deal_stages as $index => $stage_name) {
-            $dealStage = DealStage::where('name', $stage_name)
-                ->where('pipeline_id',$pipeline->id)
-                ->where('created_by', creatorId())
-                ->exists();
+            // Create Deal Stages
+            foreach ($deal_stages as $index => $stage_name) {
+                $dealStage = DealStage::where('name', $stage_name)
+                    ->where('pipeline_id', $pipeline->id)
+                    ->where('created_by', creatorId())
+                    ->exists();
 
-            if (empty($dealStage)) {
-                $dealStage              = new DealStage();
-                $dealStage->name        = $stage_name;
-                $dealStage->pipeline_id = $pipeline->id;
-                $dealStage->order       = $index + 1;
-                $dealStage->creator_id  = Auth::id();
-                $dealStage->created_by  = creatorId();
-                $dealStage->save();
+                if (empty($dealStage)) {
+                    $dealStage              = new DealStage();
+                    $dealStage->name        = $stage_name;
+                    $dealStage->pipeline_id = $pipeline->id;
+                    $dealStage->order       = $index + 1;
+                    $dealStage->creator_id  = Auth::id();
+                    $dealStage->created_by  = creatorId();
+                    $dealStage->save();
+                }
             }
-        }
+        });
         return $this->successResponse('', 'Pipeline created successfully');
     }
 
     private function updatePipeline(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'pipeline_id' => 'required|exists:pipelines,id',
+            'pipeline_id' => ['required', LeadControllerHelpers::tenantExists('pipelines', 'id')],
             'name'        => 'required|max:20',
         ]);
 
@@ -143,8 +147,10 @@ class PipelineApiController extends Controller
             return $this->errorResponse('Pipeline not found');
         }
 
-        $pipeline->name = $request->name;
-        $pipeline->save();
+        DB::transaction(function () use ($pipeline, $request) {
+            $pipeline->name = $request->name;
+            $pipeline->save();
+        });
 
         return $this->successResponse('', 'Pipeline updated successfully');
     }

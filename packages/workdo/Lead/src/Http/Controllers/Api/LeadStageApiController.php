@@ -6,13 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Workdo\Lead\Models\LeadStage;
 use Workdo\Lead\Models\Pipeline;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class LeadStageApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, LeadControllerHelpers;
 
     public function index(Request $request)
     {
@@ -56,23 +58,28 @@ class LeadStageApiController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'name'        => 'required|max:100',
-                'pipeline_id' => 'required|integer|exists:pipelines,id',
+                'pipeline_id' => ['required', 'integer', LeadControllerHelpers::tenantExists('pipelines', 'id')],
             ]);
 
             if ($validator->fails()) {
                 return $this->validationErrorResponse($validator->errors());
             }
-            $maxOrder = LeadStage::where('pipeline_id', $request->pipeline_id)
-                ->where('created_by', creatorId())
-                ->max('order') ?? 0;
 
-            $leadstage              = new LeadStage();
-            $leadstage->name        = $request->name;
-            $leadstage->pipeline_id = $request->pipeline_id;
-            $leadstage->order       = $maxOrder + 1;
-            $leadstage->creator_id  = Auth::id();
-            $leadstage->created_by  = creatorId();
-            $leadstage->save();
+            $leadstage = DB::transaction(function () use ($request) {
+                $maxOrder = LeadStage::where('pipeline_id', $request->pipeline_id)
+                    ->where('created_by', creatorId())
+                    ->max('order') ?? 0;
+
+                $leadstage              = new LeadStage();
+                $leadstage->name        = $request->name;
+                $leadstage->pipeline_id = $request->pipeline_id;
+                $leadstage->order       = $maxOrder + 1;
+                $leadstage->creator_id  = Auth::id();
+                $leadstage->created_by  = creatorId();
+                $leadstage->save();
+
+                return $leadstage;
+            });
 
             return $this->successResponse($leadstage, 'Lead Stage created successfully');
         } catch (\Exception $e) {
@@ -84,37 +91,39 @@ class LeadStageApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'lead_stage_id' => 'required|exists:lead_stages,id',
+                'lead_stage_id' => ['required', LeadControllerHelpers::tenantExists('lead_stages', 'id')],
                 'name'          => 'required|string',
-                'pipeline_id'   => 'required|exists:pipelines,id',
+                'pipeline_id'   => ['required', LeadControllerHelpers::tenantExists('pipelines', 'id')],
             ]);
 
             if ($validator->fails()) {
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $leadstage = LeadStage::findOrFail($request->lead_stage_id);
+            $leadstage = LeadStage::where('created_by', creatorId())->findOrFail($request->lead_stage_id);
 
-            $oldPipelineId = $leadstage->pipeline_id;
-            $newPipelineId = $request->pipeline_id;
-            $oldOrder      = $leadstage->order;
+            DB::transaction(function () use ($leadstage, $request) {
+                $oldPipelineId = $leadstage->pipeline_id;
+                $newPipelineId = $request->pipeline_id;
+                $oldOrder      = $leadstage->order;
 
-            if ($oldPipelineId != $newPipelineId) {
-                $maxOrder = LeadStage::where('pipeline_id', $newPipelineId)
-                    ->where('created_by', creatorId())
-                    ->max('order') ?? 0;
+                if ($oldPipelineId != $newPipelineId) {
+                    $maxOrder = LeadStage::where('pipeline_id', $newPipelineId)
+                        ->where('created_by', creatorId())
+                        ->max('order') ?? 0;
 
-                $leadstage->order = $maxOrder + 1;
+                    $leadstage->order = $maxOrder + 1;
 
-                LeadStage::where('pipeline_id', $oldPipelineId)
-                    ->where('created_by', creatorId())
-                    ->where('order', '>', $oldOrder)
-                    ->decrement('order');
-            }
+                    LeadStage::where('pipeline_id', $oldPipelineId)
+                        ->where('created_by', creatorId())
+                        ->where('order', '>', $oldOrder)
+                        ->decrement('order');
+                }
 
-            $leadstage->name        = $request->name;
-            $leadstage->pipeline_id = $newPipelineId;
-            $leadstage->save();
+                $leadstage->name = $request->name;
+                $leadstage->pipeline_id = $newPipelineId;
+                $leadstage->save();
+            });
 
             return $this->successResponse('', 'Lead stage updated successfully');
         } catch (\Exception $e) {

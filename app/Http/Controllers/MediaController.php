@@ -6,13 +6,16 @@ use App\Models\MediaDirectory;
 use App\Models\User;
 use App\Services\StorageConfigService;
 use App\Services\DynamicStorageService;
+use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 class MediaController extends Controller
 {
+    use ControllerHelpers;
     public function page()
     {
         if(Auth::user()->can('manage-media')){
@@ -466,13 +469,19 @@ class MediaController extends Controller
     public function updateMediaDirectory(Request $request, $mediaId)
     {
         $request->validate([
-            'directory_id' => 'nullable|exists:media_directories,id',
+            'directory_id' => ['nullable', self::tenantExists('media_directories', 'id')],
         ], [
             'directory_id.exists' => __('Selected directory does not exist.'),
         ]);
 
         $media = Media::findOrFail($mediaId);
-        $media->update(['directory_id' => $request->directory_id]);
+        if (!Auth::user()->hasRole('superadmin') && (int) ($media->created_by ?? 0) !== (int) creatorId()) {
+            return response()->json(['message' => __('Permission denied')], 403);
+        }
+
+        DB::transaction(function () use ($media, $request) {
+            $media->update(['directory_id' => $request->directory_id]);
+        });
 
         return response()->json([
             'message' => __('The media moved successfully.')

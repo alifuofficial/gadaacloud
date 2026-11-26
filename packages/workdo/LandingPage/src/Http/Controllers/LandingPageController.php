@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\User;
 use Workdo\LandingPage\Models\LandingPageSetting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Workdo\LandingPage\Models\CustomPage;
 use Illuminate\Support\Facades\Auth;
@@ -141,20 +142,22 @@ class LandingPageController extends Controller
                 'landingPageEnabled' => 'nullable'
             ]);
 
-            if ($request->has('landingPageEnabled')) {
-                $val = in_array($request->landingPageEnabled, ['on', '1', true, 1], true) ? 'on' : 'off';
-                \App\Models\Setting::updateOrCreate(
-                    ['key' => 'landingPageEnabled', 'created_by' => 1],
-                    ['value' => $val]
-                );
-            }
-
             // Handle image paths - store only filename
             if (isset($validated['config_sections']['sections'])) {
                 $this->processImagePaths($validated['config_sections']['sections']);
             }
 
-            LandingPageSetting::updateOrCreate(['id' => 1], $validated);
+            DB::transaction(function () use ($request, $validated) {
+                if ($request->has('landingPageEnabled')) {
+                    $val = in_array($request->landingPageEnabled, ['on', '1', true, 1], true) ? 'on' : 'off';
+                    \App\Models\Setting::updateOrCreate(
+                        ['key' => 'landingPageEnabled', 'created_by' => 1],
+                        ['value' => $val]
+                    );
+                }
+
+                LandingPageSetting::updateOrCreate(['id' => 1], $validated);
+            });
 
             // Always clear landing page settings cache so updates take effect immediately
             Cache::forget('landing_page_settings');

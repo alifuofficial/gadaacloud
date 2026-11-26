@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Workdo\Taskly\Models\Project;
 use Workdo\Taskly\Models\ProjectTask;
 use Illuminate\Support\Facades\Validator;
@@ -126,19 +127,27 @@ class ProjectApiController extends Controller
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $validated            = $validator->validated();
-            $project              = new Project();
-            $project->name        = $validated['name'];
-            $project->description = $validated['description'];
-            $project->budget      = $validated['budget'];
-            $project->start_date  = $validated['start_date'];
-            $project->end_date    = $validated['end_date'];
-            $project->status      = 'Ongoing';
-            $project->creator_id  = Auth::id();
-            $project->created_by  = creatorId();
-            $project->save();
+            $validated = $validator->validated();
+            $project = DB::transaction(function () use ($validated) {
+                $project              = new Project();
+                $project->name        = $validated['name'];
+                $project->description = $validated['description'];
+                $project->budget      = $validated['budget'];
+                $project->start_date  = $validated['start_date'];
+                $project->end_date    = $validated['end_date'];
+                $project->status      = 'Ongoing';
+                $project->creator_id  = Auth::id();
+                $project->created_by  = creatorId();
+                $project->save();
 
-            $project->teamMembers()->sync($validated['user_ids']);
+                $tenantUserIds = User::where('created_by', creatorId())
+                    ->whereIn('id', $validated['user_ids'])
+                    ->pluck('id')
+                    ->all();
+                $project->teamMembers()->sync($tenantUserIds);
+
+                return $project;
+            });
 
             $responseData = [
                 'id'          => $project->id,
@@ -166,7 +175,7 @@ class ProjectApiController extends Controller
     {
         if (Auth::user()->can('edit-project')) {
             $validator = Validator::make($request->all(), [
-                'project_id'  => 'required|exists:projects,id',
+                'project_id'  => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 'name'        => 'required|string',
                 'description' => 'required|string',
                 'budget'      => 'required|numeric|gt:0',
@@ -181,21 +190,27 @@ class ProjectApiController extends Controller
             }
 
             $validated = $validator->validated();
-            $project   = Project::findOrFail($validated['project_id']);
+            $project   = Project::where('created_by', creatorId())->findOrFail($validated['project_id']);
 
-            $project->name        = $validated['name'];
-            $project->description = $validated['description'];
-            $project->budget      = $validated['budget'];
-            $project->start_date  = $validated['start_date'];
-            $project->end_date    = $validated['end_date'];
-            if (isset($validated['status'])) {
-                $project->status = $validated['status'];
-            }
-            $project->save();
+            DB::transaction(function () use ($project, $validated) {
+                $project->name        = $validated['name'];
+                $project->description = $validated['description'];
+                $project->budget      = $validated['budget'];
+                $project->start_date  = $validated['start_date'];
+                $project->end_date    = $validated['end_date'];
+                if (isset($validated['status'])) {
+                    $project->status = $validated['status'];
+                }
+                $project->save();
 
-            if (isset($validated['user_ids'])) {
-                $project->teamMembers()->sync($validated['user_ids']);
-            }
+                if (isset($validated['user_ids'])) {
+                    $tenantUserIds = User::where('created_by', creatorId())
+                        ->whereIn('id', $validated['user_ids'])
+                        ->pluck('id')
+                        ->all();
+                    $project->teamMembers()->sync($tenantUserIds);
+                }
+            });
 
             $responseData = [
                 'id'          => $project->id,
@@ -244,7 +259,7 @@ class ProjectApiController extends Controller
         try {
             if (Auth::user()->can('delete-project')) {
                 $validator = Validator::make($request->all(), [
-                    'project_id' => 'required|exists:projects,id',
+                    'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 ]);
 
                 if ($validator->fails()) {
@@ -253,17 +268,20 @@ class ProjectApiController extends Controller
 
                 $project = Project::findOrFail($request->project_id);
 
-                if ($project->created_by != creatorId()) {
+                if (!$this->assertBelongsToTenant($project)) {
                     return $this->errorResponse('Project Not Found', 404);
                 }
-                ProjectTask::where('project_id', $project->id)->delete();
-                ProjectBug::where('project_id', $project->id)->delete();
-                ProjectMilestone::where('project_id', $project->id)->delete();
-                ActivityLog::where('project_id', $project->id)->delete();
-                ProjectClient::where('project_id', $project->id)->delete();
-                ProjectUser::where('project_id', $project->id)->delete();
 
-                $project->delete();
+                DB::transaction(function () use ($project) {
+                    ProjectTask::where('project_id', $project->id)->delete();
+                    ProjectBug::where('project_id', $project->id)->delete();
+                    ProjectMilestone::where('project_id', $project->id)->delete();
+                    ActivityLog::where('project_id', $project->id)->delete();
+                    ProjectClient::where('project_id', $project->id)->delete();
+                    ProjectUser::where('project_id', $project->id)->delete();
+
+                    $project->delete();
+                });
 
                 return $this->successResponse('', 'Project Deleted successfully.');
             } else {
@@ -279,7 +297,7 @@ class ProjectApiController extends Controller
         try {
             if (Auth::user()->can('view-project')) {
                 $validator = Validator::make($request->all(), [
-                    'project_id' => 'required|exists:projects,id',
+                    'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 ]);
 
                 if ($validator->fails()) {
@@ -364,7 +382,7 @@ class ProjectApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'project_id' => 'required|exists:projects,id',
+                'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 'status'     => 'required|in:Ongoing,Finished,OnHold',
             ]);
 
@@ -372,9 +390,14 @@ class ProjectApiController extends Controller
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $project         = Project::find($request->project_id);
-            $project->status = $request->status;
-            $project->save();
+            $project = Project::where('created_by', creatorId())->find($request->project_id);
+            if (!$project) {
+                return $this->errorResponse('Project Not Found', 404);
+            }
+            DB::transaction(function () use ($project, $request) {
+                $project->status = $request->status;
+                $project->save();
+            });
 
             return $this->successResponse('', 'Project Status Change Successfully.');
         } catch (\Exception $e) {
@@ -386,7 +409,7 @@ class ProjectApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'project_id' => 'required|exists:projects,id',
+                'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
             ]);
 
             if ($validator->fails()) {
@@ -420,8 +443,8 @@ class ProjectApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'project_id' => 'required|exists:projects,id',
-                'file'       => 'required|file'
+                'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
+                'file'       => 'required|file|max:20480'
             ]);
 
             if ($validator->fails()) {

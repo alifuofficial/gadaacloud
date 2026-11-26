@@ -11,6 +11,7 @@ use App\Models\User;
 use Workdo\LandingPage\Models\MarketplaceSetting;
 use Workdo\LandingPage\Models\LandingPageSetting;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MarketplaceController extends Controller
 {
@@ -93,7 +94,9 @@ class MarketplaceController extends Controller
                 $this->processImagePaths($validated['config_sections']['sections']);
             }
 
-            MarketplaceSetting::updateOrCreate(['module' => $validated['module']], $validated);
+            DB::transaction(function () use ($validated) {
+                MarketplaceSetting::updateOrCreate(['module' => $validated['module']], $validated);
+            });
         
             return back()->with('success', 'Marketplace settings saved successfully');
         }

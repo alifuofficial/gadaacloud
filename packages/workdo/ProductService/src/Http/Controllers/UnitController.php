@@ -48,11 +48,14 @@ class UnitController extends Controller
                 'unit_name' => 'required|string|max:255',
             ]);
 
-            $unit = new ProductServiceUnit();
-            $unit->unit_name = $validated['unit_name'];
-            $unit->creator_id = Auth::id();
-            $unit->created_by = creatorId();
-            $unit->save();
+            $unit = DB::transaction(function () use ($validated) {
+                $unit = new ProductServiceUnit();
+                $unit->unit_name = $validated['unit_name'];
+                $unit->creator_id = Auth::id();
+                $unit->created_by = creatorId();
+                $unit->save();
+                return $unit;
+            });
 
             // Dispatch event for packages to handle their fields
             CreateProductServiceUnit::dispatch($request, $unit);
@@ -72,8 +75,10 @@ class UnitController extends Controller
                 'unit_name' => 'required|string|max:255',
             ]);
 
-            $unit->unit_name = $validated['unit_name'];
-            $unit->save();
+            DB::transaction(function () use ($unit, $validated) {
+                $unit->unit_name = $validated['unit_name'];
+                $unit->save();
+            });
 
             // Dispatch event for packages to handle their fields
             UpdateProductServiceUnit::dispatch($request, $unit);
@@ -93,7 +98,9 @@ class UnitController extends Controller
             // Dispatch event for packages to handle their fields
             DestroyProductServiceUnit::dispatch($unit);
 
-            $unit->delete();
+            DB::transaction(function () use ($unit) {
+                $unit->delete();
+            });
 
             return redirect()->route('product-service.units.index')->with('success', __('The unit has been deleted.'));
         }

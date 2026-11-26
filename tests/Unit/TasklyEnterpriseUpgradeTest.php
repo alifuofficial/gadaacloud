@@ -81,4 +81,24 @@ class TasklyEnterpriseUpgradeTest extends TestCase
         $this->assertStringStartsWith('2024-', $resolved['from_date']);
         $this->assertStringStartsWith('2025-', $resolved['to_date']);
     }
+
+    public function test_taskly_controllers_have_no_raw_sort_or_unscoped_inline_exists(): void
+    {
+        $controllers = [
+            base_path('packages/workdo/Taskly/src/Http/Controllers/Api/TaskApiController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/Api/ProjectApiController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/BugStageController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/TaskStageController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/TaskTimesheetController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/ProjectController.php'),
+            base_path('packages/workdo/Taskly/src/Http/Controllers/ProjectTaskController.php'),
+        ];
+
+        foreach ($controllers as $file) {
+            $content = file_get_contents($file);
+            $this->assertDoesNotMatchRegularExpression('/->orderBy\(\s*\$request->sort/', $content, basename($file));
+            $this->assertDoesNotMatchRegularExpression("/['\"](?:[^'\"]*\\|)?exists:[^'\"]+['\"]/", $content, basename($file) . ' contains unscoped exists:');
+            $this->assertStringContainsString('DB::transaction', $content, basename($file));
+        }
+    }
 }

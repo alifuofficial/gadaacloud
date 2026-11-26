@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Workdo\Taskly\Models\ProjectTask;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -15,10 +16,11 @@ use Workdo\Taskly\Models\TaskComment;
 use Workdo\Taskly\Models\TaskSubtask;
 use Workdo\Taskly\Events\UpdateProjectTaskStage;
 use Workdo\Taskly\Models\Project;
+use Workdo\Taskly\Traits\TasklyControllerHelpers;
 
 class TaskApiController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, TasklyControllerHelpers;
 
     public function index(Request $request)
     {
@@ -46,10 +48,15 @@ class TaskApiController extends Controller
                         }
                     })
                     ->when($request->project_id, fn($q) => $q->where('project_id', $request->project_id))
-                    ->when($request->status && in_array($request->status, ['High', 'Medium', 'Low']), fn($q) => $q->where('priority', $request->status))
-                    ->when($request->sort, fn($q) => $q->orderBy($request->sort, $request->get('direction', 'asc')), fn($q) => $q->latest());
+                    ->when($request->status && in_array($request->status, ['High', 'Medium', 'Low']), fn($q) => $q->where('priority', $request->status));
 
-                $items = $items->get();
+                $items = $this->applySafeSort($items, [
+                    'id' => 'id',
+                    'title' => 'title',
+                    'priority' => 'priority',
+                    'stage_id' => 'stage_id',
+                    'created_at' => 'created_at',
+                ], 'latest')->get();
                 $items->transform(function ($task) {
                       // Parse duration
                     if ($task->duration && strpos($task->duration, ' - ') !== false) {
@@ -120,48 +127,52 @@ class TaskApiController extends Controller
     {
         if (Auth::user()->can('create-project-task')) {
             $validator = Validator::make($request->all(), [
-                'project_id'   => 'required|exists:projects,id',
+                'project_id'   => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 'title'        => 'required|string|max:255',
                 'priority'     => 'nullable|in:High,Medium,Low',
                 'assigned_to'  => 'required|array|min:1',
                 'duration'     => 'required|string',
                 'description'  => 'required|string',
-                'milestone_id' => 'required|exists:project_milestones,id',
-                'stage_id'     => 'nullable|exists:task_stages,id'
+                'milestone_id' => ['required', TasklyControllerHelpers::projectChildExists('project_milestones', 'id')],
+                'stage_id'     => ['nullable', TasklyControllerHelpers::tenantExists('task_stages', 'id')]
             ]);
 
             if ($validator->fails()) {
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $validated          = $validator->validated();
-            $task               = new ProjectTask();
-            $task->project_id   = $validated['project_id'];
-            $task->milestone_id = $validated['milestone_id'] ?? null;
-            $task->title        = $validated['title'];
-            $task->priority     = $validated['priority'];
-            $task->assigned_to  = json_encode($validated['assigned_to']);
-            $task->duration     = $validated['duration'];
-            $task->description  = $validated['description'] ?? '';
+            $validated = $validator->validated();
+            $task = DB::transaction(function () use ($validated) {
+                $task               = new ProjectTask();
+                $task->project_id   = $validated['project_id'];
+                $task->milestone_id = $validated['milestone_id'] ?? null;
+                $task->title        = $validated['title'];
+                $task->priority     = $validated['priority'];
+                $task->assigned_to  = json_encode($validated['assigned_to']);
+                $task->duration     = $validated['duration'];
+                $task->description  = $validated['description'] ?? '';
 
-            if (isset($validated['stage_id'])) {
-                $task->stage_id = $validated['stage_id'];
-            } else {
-                $firstStage     = TaskStage::where('created_by', creatorId())->orderBy('order')->first();
-                $task->stage_id = $firstStage ? $firstStage->id : null;
-            }
+                if (isset($validated['stage_id'])) {
+                    $task->stage_id = $validated['stage_id'];
+                } else {
+                    $firstStage     = TaskStage::where('created_by', creatorId())->orderBy('order')->first();
+                    $task->stage_id = $firstStage ? $firstStage->id : null;
+                }
 
-            $task->creator_id = Auth::id();
-            $task->created_by = creatorId();
-            $task->save();
+                $task->creator_id = Auth::id();
+                $task->created_by = creatorId();
+                $task->save();
 
-            ActivityLog::create([
-                'user_id'    => Auth::user()->id,
-                'user_type'  => get_class(Auth::user()),
-                'project_id' => $task->project_id,
-                'log_type'   => 'Create Task',
-                'remark'     => json_encode(['title' => $task->title]),
-            ]);
+                ActivityLog::create([
+                    'user_id'    => Auth::user()->id,
+                    'user_type'  => get_class(Auth::user()),
+                    'project_id' => $task->project_id,
+                    'log_type'   => 'Create Task',
+                    'remark'     => json_encode(['title' => $task->title]),
+                ]);
+
+                return $task;
+            });
 
             $assignedUsers = User::whereIn('id', $validated['assigned_to'])
                 ->select('id', 'name', 'email', 'avatar')
@@ -197,13 +208,13 @@ class TaskApiController extends Controller
     {
         if (Auth::user()->can('edit-project-task')) {
             $validator = Validator::make($request->all(), [
-                'task_id'      => 'required|exists:project_tasks,id',
+                'task_id'      => ['required', TasklyControllerHelpers::tenantExists('project_tasks', 'id')],
                 'title'        => 'required|string|max:255',
                 'priority'     => 'nullable|in:High,Medium,Low',
                 'assigned_to'  => 'required|array|min:1',
                 'duration'     => 'required|string',
                 'description'  => 'required|string',
-                'stage_id'     => 'nullable|exists:task_stages,id'
+                'stage_id'     => ['nullable', TasklyControllerHelpers::tenantExists('task_stages', 'id')]
             ]);
 
             if ($validator->fails()) {
@@ -211,16 +222,18 @@ class TaskApiController extends Controller
             }
 
             $validated = $validator->validated();
-            $task      = ProjectTask::findOrFail($validated['task_id']);
+            $task      = ProjectTask::where('created_by', creatorId())->findOrFail($validated['task_id']);
 
-            $task->title        = $validated['title'];
-            $task->priority     = $validated['priority'];
-            $task->assigned_to  = json_encode($validated['assigned_to']);
-            $task->duration     = $validated['duration'];
-            $task->description  = $validated['description'] ?? '';
-            $task->milestone_id = $validated['milestone_id'] ?? null;
-            $task->stage_id     = $validated['stage_id'] ?? $task->stage_id;
-            $task->save();
+            DB::transaction(function () use ($task, $validated) {
+                $task->title        = $validated['title'];
+                $task->priority     = $validated['priority'];
+                $task->assigned_to  = json_encode($validated['assigned_to']);
+                $task->duration     = $validated['duration'];
+                $task->description  = $validated['description'] ?? '';
+                $task->milestone_id = $validated['milestone_id'] ?? null;
+                $task->stage_id     = $validated['stage_id'] ?? $task->stage_id;
+                $task->save();
+            });
 
             $assignedUsers = User::whereIn('id', $validated['assigned_to'])
                 ->select('id', 'name', 'email', 'avatar')
@@ -257,19 +270,21 @@ class TaskApiController extends Controller
         try {
             if (Auth::user()->can('delete-project-task')) {
                 $validator = Validator::make($request->all(), [
-                    'task_id' => 'required|exists:project_tasks,id',
+                    'task_id' => ['required', TasklyControllerHelpers::tenantExists('project_tasks', 'id')],
                 ]);
 
                 if ($validator->fails()) {
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $task = ProjectTask::findOrFail($request->task_id);
+                $task = ProjectTask::where('created_by', creatorId())->findOrFail($request->task_id);
 
-                TaskComment::where('task_id', $task->id)->delete();
-                TaskSubtask::where('task_id', $task->id)->delete();
+                DB::transaction(function () use ($task) {
+                    TaskComment::where('task_id', $task->id)->delete();
+                    TaskSubtask::where('task_id', $task->id)->delete();
 
-                $task->delete();
+                    $task->delete();
+                });
 
                 return $this->successResponse('', 'Task deleted successfully.');
             } else {
@@ -285,14 +300,15 @@ class TaskApiController extends Controller
         try {
             if (Auth::user()->can('view-project-task')) {
                 $validator = Validator::make($request->all(), [
-                    'task_id' => 'required|exists:project_tasks,id',
+                    'task_id' => ['required', TasklyControllerHelpers::tenantExists('project_tasks', 'id')],
                 ]);
 
                 if ($validator->fails()) {
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $task = ProjectTask::with(['project:id,name', 'milestone:id,title'])
+                $task = ProjectTask::where('created_by', creatorId())
+                    ->with(['project:id,name', 'milestone:id,title'])
                     ->findOrFail($request->task_id);
 
                 $assignedUsers = [];
@@ -348,15 +364,15 @@ class TaskApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'task_id'  => 'required|exists:project_tasks,id',
-                'stage_id' => 'required|exists:task_stages,id'
+                'task_id'  => ['required', TasklyControllerHelpers::tenantExists('project_tasks', 'id')],
+                'stage_id' => ['required', TasklyControllerHelpers::tenantExists('task_stages', 'id')]
             ]);
 
             if ($validator->fails()) {
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $task = ProjectTask::findOrFail($request->task_id);
+            $task = ProjectTask::where('created_by', creatorId())->findOrFail($request->task_id);
 
             $assignedUserIds = $task->assigned_to ? (is_array($task->assigned_to) ? $task->assigned_to : json_decode($task->assigned_to, true)) : [];
             $canMove         = Auth::user()->can('edit-project-task') ||
@@ -368,21 +384,23 @@ class TaskApiController extends Controller
                     $oldStage = TaskStage::find($task->stage_id);
                     $newStage = TaskStage::find($request->stage_id);
 
-                    $task->update(['stage_id' => $request->stage_id]);
+                    DB::transaction(function () use ($task, $request, $oldStage, $newStage) {
+                        $task->update(['stage_id' => $request->stage_id]);
 
-                    ActivityLog::create([
-                        'user_id'    => Auth::user()->id,
-                        'user_type'  => get_class(Auth::user()),
-                        'project_id' => $task->project_id,
-                        'log_type'   => 'Move',
-                        'remark'     => json_encode([
-                            'title'      => $task->title,
-                            'old_status' => $oldStage ? $oldStage->name : 'Unknown',
-                            'new_status' => $newStage ? $newStage->name : 'Unknown',
-                        ]),
-                    ]);
+                        ActivityLog::create([
+                            'user_id'    => Auth::user()->id,
+                            'user_type'  => get_class(Auth::user()),
+                            'project_id' => $task->project_id,
+                            'log_type'   => 'Move',
+                            'remark'     => json_encode([
+                                'title'      => $task->title,
+                                'old_status' => $oldStage ? $oldStage->name : 'Unknown',
+                                'new_status' => $newStage ? $newStage->name : 'Unknown',
+                            ]),
+                        ]);
+                    });
 
-                    $request->merge(['old_stage_id' => $oldStage->id, 'new_stage_id' => $newStage->id]);
+                    $request->merge(['old_stage_id' => optional($oldStage)->id, 'new_stage_id' => optional($newStage)->id]);
                 }
 
                 return $this->successResponse('', 'Task stage updated successfully.');
@@ -399,7 +417,7 @@ class TaskApiController extends Controller
         try {
             if (Auth::user()->can('manage-project-task')) {
                 $validator = Validator::make($request->all(), [
-                    'project_id' => 'required|exists:projects,id',
+                    'project_id' => ['required', TasklyControllerHelpers::tenantExists('projects', 'id')],
                 ]);
 
                 if ($validator->fails()) {

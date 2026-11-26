@@ -49,12 +49,15 @@ class TaxController extends Controller
                 'rate' => 'required|numeric|min:0|max:100',
             ]);
 
-            $tax = new ProductServiceTax();
-            $tax->tax_name = $validated['tax_name'];
-            $tax->rate = $validated['rate'];
-            $tax->creator_id = Auth::id();
-            $tax->created_by = creatorId();
-            $tax->save();
+            $tax = DB::transaction(function () use ($validated) {
+                $tax = new ProductServiceTax();
+                $tax->tax_name = $validated['tax_name'];
+                $tax->rate = $validated['rate'];
+                $tax->creator_id = Auth::id();
+                $tax->created_by = creatorId();
+                $tax->save();
+                return $tax;
+            });
 
             // Dispatch event for packages to handle their fields
             CreateProductServiceTax::dispatch($request, $tax);
@@ -75,9 +78,11 @@ class TaxController extends Controller
                 'rate' => 'required|numeric|min:0|max:100',
             ]);
 
-            $tax->tax_name = $validated['tax_name'];
-            $tax->rate = $validated['rate'];
-            $tax->save();
+            DB::transaction(function () use ($tax, $validated) {
+                $tax->tax_name = $validated['tax_name'];
+                $tax->rate = $validated['rate'];
+                $tax->save();
+            });
 
             // Dispatch event for packages to handle their fields
             UpdateProductServiceTax::dispatch($request, $tax);
@@ -96,7 +101,9 @@ class TaxController extends Controller
             // Dispatch event for packages to handle their fields
             DestroyProductServiceTax::dispatch($tax);
 
-            $tax->delete();
+            DB::transaction(function () use ($tax) {
+                $tax->delete();
+            });
 
             return redirect()->route('product-service.taxes.index')->with('success', __('The tax has been deleted.'));
         }

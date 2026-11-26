@@ -109,7 +109,7 @@ class BankTransactionController extends Controller
         }
 
         $request->validate([
-            'bank_account_id'  => 'required|exists:bank_accounts,id',
+            'bank_account_id'  => ['required', AccountControllerHelpers::tenantExists('bank_accounts', 'id')],
             'statement_format' => 'required|in:cbe,telebirr,generic_csv',
             'file'             => 'required|file|mimes:csv,txt|max:10240',
         ]);

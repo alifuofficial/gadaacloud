@@ -471,26 +471,27 @@ class ProjectController extends Controller
 
     public function invite(Request $request, Project $project)
     {
-        if (Auth::user()->can('invite-project-member')) {
+        if (Auth::user()->can('invite-project-member') && $this->assertBelongsToTenant($project)) {
             $validated = $request->validate([
                 'user_ids' => 'required|array|min:1',
-                'user_ids.*' => 'exists:users,id',
+                'user_ids.*' => self::tenantExists('users', 'id'),
             ]);
 
-            $project->teamMembers()->syncWithoutDetaching($validated['user_ids']);
+            DB::transaction(function () use ($project, $validated) {
+                $project->teamMembers()->syncWithoutDetaching($validated['user_ids']);
+
+                foreach ($validated['user_ids'] as $userId) {
+                    ActivityLog::create([
+                        'user_id' => Auth::user()->id,
+                        'user_type' => get_class(Auth::user()),
+                        'project_id' => $project->id,
+                        'log_type' => 'Invite User',
+                        'remark' => json_encode(['user_id' => $userId]),
+                    ]);
+                }
+            });
 
             ProjectInviteMember::dispatch($request, $project);
-
-            // Log activity
-            foreach ($validated['user_ids'] as $userId) {
-                ActivityLog::create([
-                    'user_id' => Auth::user()->id,
-                    'user_type' => get_class(Auth::user()),
-                    'project_id' => $project->id,
-                    'log_type' => 'Invite User',
-                    'remark' => json_encode(['user_id' => $userId]),
-                ]);
-            }
 
             return back()->with('success', __('User added to project successfully.'));
         } else {
@@ -500,12 +501,14 @@ class ProjectController extends Controller
 
     public function deleteMember(Request $request, Project $project)
     {
-        if (Auth::user()->can('delete-project-member')) {
+        if (Auth::user()->can('delete-project-member') && $this->assertBelongsToTenant($project)) {
             $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
+                'user_id' => ['required', self::tenantExists('users', 'id')],
             ]);
 
-            $project->teamMembers()->detach($validated['user_id']);
+            DB::transaction(function () use ($project, $validated) {
+                $project->teamMembers()->detach($validated['user_id']);
+            });
 
             ProjectDeleteShareToClient::dispatch($request, $project);
 
@@ -517,29 +520,30 @@ class ProjectController extends Controller
 
     public function inviteClient(Request $request, Project $project)
     {
-        if (Auth::user()->can('invite-project-client')) {
+        if (Auth::user()->can('invite-project-client') && $this->assertBelongsToTenant($project)) {
             $validated = $request->validate([
                 'client_ids' => 'required|array|min:1',
-                'client_ids.*' => 'exists:users,id',
+                'client_ids.*' => self::tenantExists('users', 'id'),
             ]);
 
-            $project->clients()->attach($validated['client_ids']);
+            DB::transaction(function () use ($project, $validated) {
+                $project->clients()->attach($validated['client_ids']);
+
+                foreach ($validated['client_ids'] as $clientId) {
+                    $client = User::where('created_by', creatorId())->find($clientId);
+                    if ($client) {
+                        ActivityLog::create([
+                            'user_id' => Auth::user()->id,
+                            'user_type' => get_class(Auth::user()),
+                            'project_id' => $project->id,
+                            'log_type' => 'Share with Client',
+                            'remark' => json_encode(['client_id' => $client->id]),
+                        ]);
+                    }
+                }
+            });
 
             ProjectShareToClient::dispatch($request, $project);
-
-            // Log activity
-            foreach ($validated['client_ids'] as $clientId) {
-                $client = User::find($clientId);
-                if ($client) {
-                    ActivityLog::create([
-                        'user_id' => Auth::user()->id,
-                        'user_type' => get_class(Auth::user()),
-                        'project_id' => $project->id,
-                        'log_type' => 'Share with Client',
-                        'remark' => json_encode(['client_id' => $client->id]),
-                    ]);
-                }
-            }
 
             return back()->with('success', __('Client added to project successfully.'));
         } else {
@@ -549,14 +553,16 @@ class ProjectController extends Controller
 
     public function deleteClient(Request $request, Project $project)
     {
-        if (Auth::user()->can('delete-project-client')) {
+        if (Auth::user()->can('delete-project-client') && $this->assertBelongsToTenant($project)) {
             $validated = $request->validate([
-                'client_id' => 'required|exists:users,id',
+                'client_id' => ['required', self::tenantExists('users', 'id')],
             ]);
 
             ProjectDeleteClient::dispatch($request, $project);
 
-            $project->clients()->detach($validated['client_id']);
+            DB::transaction(function () use ($project, $validated) {
+                $project->clients()->detach($validated['client_id']);
+            });
 
             return back()->with('success', __('Client removed from project successfully.'));
         } else {

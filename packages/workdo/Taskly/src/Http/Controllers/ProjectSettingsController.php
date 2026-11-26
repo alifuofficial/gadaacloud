@@ -5,6 +5,7 @@ namespace Workdo\Taskly\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProjectSettingsController extends Controller
@@ -81,18 +82,20 @@ class ProjectSettingsController extends Controller
             $createdBy = creatorId();
             $incomingSettings = $request->input('settings', []);
 
-            foreach ($incomingSettings as $key => $value) {
-                // Normalize booleans to 'on' or 'off'
-                if (is_bool($value)) {
-                    $val = $value ? 'on' : 'off';
-                } elseif ($value === null) {
-                    $val = '';
-                } else {
-                    $val = (string) $value;
-                }
+            DB::transaction(function () use ($incomingSettings, $createdBy) {
+                foreach ($incomingSettings as $key => $value) {
+                    // Normalize booleans to 'on' or 'off'
+                    if (is_bool($value)) {
+                        $val = $value ? 'on' : 'off';
+                    } elseif ($value === null) {
+                        $val = '';
+                    } else {
+                        $val = (string) $value;
+                    }
 
-                setSetting($key, $val, $createdBy);
-            }
+                    setSetting($key, $val, $createdBy);
+                }
+            });
 
             return redirect()->back()->with('success', __('Project configurations and preferences saved successfully.'));
         }

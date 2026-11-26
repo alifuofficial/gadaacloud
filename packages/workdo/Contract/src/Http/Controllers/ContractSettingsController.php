@@ -5,6 +5,7 @@ namespace Workdo\Contract\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ContractSettingsController extends Controller
@@ -22,9 +23,11 @@ class ContractSettingsController extends Controller
 
             $settings = $request->input('settings', []);
             try {
-                foreach ($settings as $key => $value) {
-                    setSetting($key, $value, creatorId());
-                }
+                DB::transaction(function () use ($settings) {
+                    foreach ($settings as $key => $value) {
+                        setSetting($key, $value, creatorId());
+                    }
+                });
 
                 return back()->with("success", __('Contract settings updated successfully.'));
             } catch (\Exception $e) {

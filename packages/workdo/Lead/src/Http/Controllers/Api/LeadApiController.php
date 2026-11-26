@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use Workdo\Lead\Models\Label;
@@ -220,7 +221,7 @@ class LeadApiController extends Controller
             if (Auth::user()->can('edit-leads')) {
 
                 $validator = Validator::make($request->all(), [
-                    'lead_id'     => 'required|integer|exists:leads,id',
+                    'lead_id'     => ['required', 'integer', LeadControllerHelpers::tenantExists('leads', 'id')],
                     'name'        => 'required|max:100',
                     'email'       => 'required|email',
                     'subject'     => 'required|max:200',
@@ -244,19 +245,21 @@ class LeadApiController extends Controller
                     return $this->errorResponse('Lead not found');
                 }
 
-                $lead->name        = $request->name;
-                $lead->email       = $request->email;
-                $lead->subject     = $request->subject;
-                $lead->user_id     = $request->user_id;
-                $lead->phone       = $request->phone;
-                $lead->date        = $request->date;
-                $lead->pipeline_id = $request->pipeline_id ?? $lead->pipeline_id;
-                $lead->stage_id    = $request->stage_id ?? $lead->stage_id;
-                $lead->sources     = $request->sources ?? $lead->sources;
-                $lead->products    = $request->products ?? $lead->products;
-                $lead->notes       = $request->notes ?? $lead->notes;
-                $lead->labels      = $request->input('labels', $lead->labels);
-                $lead->save();
+                DB::transaction(function () use ($lead, $request) {
+                    $lead->name        = $request->name;
+                    $lead->email       = $request->email;
+                    $lead->subject     = $request->subject;
+                    $lead->user_id     = $request->user_id;
+                    $lead->phone       = $request->phone;
+                    $lead->date        = $request->date;
+                    $lead->pipeline_id = $request->pipeline_id ?? $lead->pipeline_id;
+                    $lead->stage_id    = $request->stage_id ?? $lead->stage_id;
+                    $lead->sources     = $request->sources ?? $lead->sources;
+                    $lead->products    = $request->products ?? $lead->products;
+                    $lead->notes       = $request->notes ?? $lead->notes;
+                    $lead->labels      = $request->input('labels', $lead->labels);
+                    $lead->save();
+                });
 
                 return $this->successResponse('', 'Lead updated successfully');
             } else {
@@ -271,32 +274,39 @@ class LeadApiController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'lead_id'  => 'required|exists:leads,id',
-                'stage_id' => 'required|exists:lead_stages,id',
+                'lead_id'  => ['required', LeadControllerHelpers::tenantExists('leads', 'id')],
+                'stage_id' => ['required', LeadControllerHelpers::tenantExists('lead_stages', 'id')],
             ]);
 
             if ($validator->fails()) {
                 return $this->validationErrorResponse($validator->errors());
             }
 
-            $lead = Lead::find($request->lead_id);
-
-            if ($lead->stage_id != $request->stage_id) {
-                $newStage = LeadStage::find($request->stage_id);
-
-                LeadActivityLog::create([
-                    'user_id'  => Auth::user()->id,
-                    'lead_id'  => $lead->id,
-                    'log_type' => 'Move',
-                    'remark'   => json_encode([
-                        'title'      => $lead->name,
-                        'old_status' => $lead->stage->name,
-                        'new_status' => $newStage->name,
-                    ]),
-                ]);
+            $lead = Lead::where('created_by', creatorId())->find($request->lead_id);
+            if (!$lead) {
+                return $this->errorResponse('Lead not found', 404);
             }
 
-            Lead::where('id', $request->lead_id)->update(['order' => $request->order, 'stage_id' => $request->stage_id]);
+            DB::transaction(function () use ($lead, $request) {
+                if ($lead->stage_id != $request->stage_id) {
+                    $newStage = LeadStage::where('created_by', creatorId())->find($request->stage_id);
+
+                    LeadActivityLog::create([
+                        'user_id'  => Auth::user()->id,
+                        'lead_id'  => $lead->id,
+                        'log_type' => 'Move',
+                        'remark'   => json_encode([
+                            'title'      => $lead->name,
+                            'old_status' => optional($lead->stage)->name,
+                            'new_status' => optional($newStage)->name,
+                        ]),
+                    ]);
+                }
+
+                Lead::where('created_by', creatorId())
+                    ->where('id', $request->lead_id)
+                    ->update(['order' => $request->order, 'stage_id' => $request->stage_id]);
+            });
 
             return $this->successResponse('', 'Lead moved successfully');
         } catch (\Exception $e) {
@@ -306,8 +316,8 @@ class LeadApiController extends Controller
     public function leadDetails(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'pipeline_id' => 'required|integer|exists:pipelines,id',
-            'lead_id'     => 'required|integer|exists:leads,id'
+            'pipeline_id' => ['required', 'integer', LeadControllerHelpers::tenantExists('pipelines', 'id')],
+            'lead_id'     => ['required', 'integer', LeadControllerHelpers::tenantExists('leads', 'id')]
         ]);
 
         if ($validator->fails()) {
@@ -321,6 +331,9 @@ class LeadApiController extends Controller
         try {
 
             $lead = Lead::where('created_by', '=', creatorId())->where('pipeline_id', $pipelineId)->where('id', $leadId)->first();
+            if (!$lead) {
+                return $this->errorResponse('Lead not found', 404);
+            }
 
             $stageCnt = LeadStage::where('pipeline_id', '=', $lead->pipeline_id)->where('created_by', '=', $lead->created_by)->get();
             $i        = 0;
@@ -377,22 +390,19 @@ class LeadApiController extends Controller
         try {
             if (Auth::user()->can('delete-leads')) {
                 $validator = Validator::make($request->all(), [
-                    'lead_id' => 'required|exists:leads,id',
+                    'lead_id' => ['required', LeadControllerHelpers::tenantExists('leads', 'id')],
                 ]);
 
                 if ($validator->fails()) {
                     return $this->validationErrorResponse($validator->errors());
                 }
 
-                $lead = Lead::findOrFail($request->lead_id);
+                $lead = Lead::where('created_by', creatorId())->findOrFail($request->lead_id);
 
-                if ($lead->created_by != creatorId()) {
-                    return $this->errorResponse('Lead Not Found', 404);
-                }
-
-                LeadActivityLog::where('lead_id', '=', $lead->id)->delete();
-
-                $lead->delete();
+                DB::transaction(function () use ($lead) {
+                    LeadActivityLog::where('lead_id', '=', $lead->id)->delete();
+                    $lead->delete();
+                });
 
                 return $this->successResponse('', 'Lead Deleted successfully');
             } else {

@@ -4,6 +4,7 @@ namespace Workdo\Goal\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Goal\Events\CreateGoalMilestone;
 use Workdo\Goal\Events\DestroyGoalMilestone;
@@ -74,17 +75,20 @@ class GoalMilestoneController extends Controller
 
         $validated = $request->validated();
 
-        $milestone = new GoalMilestone();
-        $milestone->goal_id = $validated['goal_id'];
-        $milestone->milestone_name = $validated['milestone_name'];
-        $milestone->milestone_description = $validated['milestone_description'] ?? null;
-        $milestone->target_amount = $validated['target_amount'];
-        $milestone->target_date = $validated['target_date'];
-        $milestone->achieved_amount = 0.0;
-        $milestone->status = 'pending';
-        $milestone->creator_id = Auth::id();
-        $milestone->created_by = creatorId();
-        $milestone->save();
+        $milestone = DB::transaction(function () use ($validated) {
+            $milestone = new GoalMilestone();
+            $milestone->goal_id = $validated['goal_id'];
+            $milestone->milestone_name = $validated['milestone_name'];
+            $milestone->milestone_description = $validated['milestone_description'] ?? null;
+            $milestone->target_amount = $validated['target_amount'];
+            $milestone->target_date = $validated['target_date'];
+            $milestone->achieved_amount = 0.0;
+            $milestone->status = 'pending';
+            $milestone->creator_id = Auth::id();
+            $milestone->created_by = creatorId();
+            $milestone->save();
+            return $milestone;
+        });
 
         CreateGoalMilestone::dispatch($request, $milestone);
 
@@ -99,18 +103,20 @@ class GoalMilestoneController extends Controller
 
         $validated = $request->validated();
 
-        if (isset($validated['goal_id'])) {
-            $milestone->goal_id = $validated['goal_id'];
-        }
-        $milestone->milestone_name = $validated['milestone_name'];
-        $milestone->milestone_description = $validated['milestone_description'] ?? null;
-        $milestone->target_amount = $validated['target_amount'];
-        $milestone->target_date = $validated['target_date'];
-        if (isset($validated['achieved_amount'])) {
-            $milestone->achieved_amount = $validated['achieved_amount'];
-        }
-        $milestone->status = $validated['status'];
-        $milestone->save();
+        DB::transaction(function () use ($milestone, $validated) {
+            if (isset($validated['goal_id'])) {
+                $milestone->goal_id = $validated['goal_id'];
+            }
+            $milestone->milestone_name = $validated['milestone_name'];
+            $milestone->milestone_description = $validated['milestone_description'] ?? null;
+            $milestone->target_amount = $validated['target_amount'];
+            $milestone->target_date = $validated['target_date'];
+            if (isset($validated['achieved_amount'])) {
+                $milestone->achieved_amount = $validated['achieved_amount'];
+            }
+            $milestone->status = $validated['status'];
+            $milestone->save();
+        });
 
         UpdateGoalMilestone::dispatch($request, $milestone);
 
@@ -138,7 +144,9 @@ class GoalMilestoneController extends Controller
 
         DestroyGoalMilestone::dispatch($milestone);
 
-        $milestone->delete();
+        DB::transaction(function () use ($milestone) {
+            $milestone->delete();
+        });
 
         return redirect()->route('goal.milestones.index')->with('success', __('The milestone has been deleted.'));
     }
