@@ -7,6 +7,7 @@ use Workdo\Recruitment\Http\Requests\StoreCandidateRequest;
 use Workdo\Recruitment\Http\Requests\UpdateCandidateRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Recruitment\Models\JobPosting;
 use Workdo\Recruitment\Models\CandidateSources;
@@ -212,9 +213,10 @@ class CandidateController extends Controller
             $candidate->creator_id = Auth::id();
             $candidate->created_by = creatorId();
             $candidate->tracking_id = $trackingId;
-            $candidate->save();
-
-            CreateCandidate::dispatch($request, $candidate);
+            DB::transaction(function () use ($request, $candidate) {
+                $candidate->save();
+                CreateCandidate::dispatch($request, $candidate);
+            });
 
             return redirect()->route('recruitment.candidates.index')->with('success', __('The candidate has been created successfully.'));
         } else {
@@ -288,9 +290,10 @@ class CandidateController extends Controller
             $candidate->job_id = $validated['job_id'];
             $candidate->source_id = $validated['source_id'];
 
-            $candidate->save();
-
-            UpdateCandidate::dispatch($request, $candidate);
+            DB::transaction(function () use ($request, $candidate) {
+                $candidate->save();
+                UpdateCandidate::dispatch($request, $candidate);
+            });
 
             return redirect()->back()->with('success', __('The candidate details are updated successfully.'));
         } else {
@@ -300,7 +303,12 @@ class CandidateController extends Controller
 
     public function destroy(Candidate $candidate)
     {
-        if (Auth::user()->can('delete-candidates')) {
+        if (Auth::user()->can('delete-candidates') && $this->assertBelongsToTenant($candidate)) {
+            DB::transaction(function () use ($candidate) {
+                DestroyCandidate::dispatch($candidate);
+                $candidate->delete();
+            });
+
             // Delete profile photo file if exists
             if ($candidate->profile_path) {
                 delete_file($candidate->profile_path);
@@ -315,9 +323,6 @@ class CandidateController extends Controller
             if ($candidate->cover_letter_path) {
                 delete_file($candidate->cover_letter_path);
             }
-
-            DestroyCandidate::dispatch($candidate);
-            $candidate->delete();
 
             return redirect()->back()->with('success', __('The candidate has been deleted.'));
         } else {

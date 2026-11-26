@@ -7,6 +7,7 @@ use Workdo\Recruitment\Http\Requests\StoreJobPostingRequest;
 use Workdo\Recruitment\Http\Requests\UpdateJobPostingRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Hrm\Models\Branch;
 use Workdo\Hrm\Models\Department;
@@ -194,9 +195,10 @@ class JobPostingController extends Controller
 
             $jobposting->creator_id = Auth::id();
             $jobposting->created_by = creatorId();
-            $jobposting->save();
-
-            CreateJobPosting::dispatch($request, $jobposting);
+            DB::transaction(function () use ($request, $jobposting) {
+                $jobposting->save();
+                CreateJobPosting::dispatch($request, $jobposting);
+            });
 
             return redirect()->route('recruitment.job-postings.index')->with('success', __('The job posting has been created successfully.'));
         }
@@ -225,7 +227,7 @@ class JobPostingController extends Controller
 
     public function update(UpdateJobPostingRequest $request, JobPosting $jobposting)
     {
-        if(Auth::user()->can('edit-job-postings')){
+        if(Auth::user()->can('edit-job-postings') && $this->assertBelongsToTenant($jobposting)){
             $validated = $request->validated();
 
             // Generate application URL based on type
@@ -264,9 +266,10 @@ class JobPostingController extends Controller
             $jobposting->visibility = json_encode($validated['visibility'] ?? []);
             $jobposting->custom_questions = json_encode($validated['custom_questions'] ?? []);
 
-            $jobposting->save();
-
-            UpdateJobPosting::dispatch($request, $jobposting);
+            DB::transaction(function () use ($request, $jobposting) {
+                $jobposting->save();
+                UpdateJobPosting::dispatch($request, $jobposting);
+            });
 
             return redirect()->back()->with('success', __('The job posting details are updated successfully.'));
         }
@@ -277,10 +280,11 @@ class JobPostingController extends Controller
 
     public function destroy(JobPosting $jobposting)
     {
-        if(Auth::user()->can('delete-job-postings')){
-            DestroyJobPosting::dispatch($jobposting);
-
-            $jobposting->delete();
+        if(Auth::user()->can('delete-job-postings') && $this->assertBelongsToTenant($jobposting)){
+            DB::transaction(function () use ($jobposting) {
+                DestroyJobPosting::dispatch($jobposting);
+                $jobposting->delete();
+            });
 
             return redirect()->back()->with('success', __('The job posting has been deleted.'));
         }
@@ -291,17 +295,19 @@ class JobPostingController extends Controller
 
     public function togglePublish(JobPosting $jobposting)
     {
-        if(Auth::user()->can('publish-job-postings')){
-            if($jobposting->status === 'draft' || $jobposting->status === '0') {
-                $jobposting->status = 'active';
-                $jobposting->is_published = true;
-                $jobposting->publish_date = now()->format('Y-m-d');
-            } else {
-                $jobposting->status = 'draft';
-                $jobposting->is_published = false;
-                $jobposting->publish_date = null;
-            }
-            $jobposting->save();
+        if(Auth::user()->can('publish-job-postings') && $this->assertBelongsToTenant($jobposting)){
+            DB::transaction(function () use ($jobposting) {
+                if($jobposting->status === 'draft' || $jobposting->status === '0') {
+                    $jobposting->status = 'active';
+                    $jobposting->is_published = true;
+                    $jobposting->publish_date = now()->format('Y-m-d');
+                } else {
+                    $jobposting->status = 'draft';
+                    $jobposting->is_published = false;
+                    $jobposting->publish_date = null;
+                }
+                $jobposting->save();
+            });
 
             return redirect()->back()->with('success', __('Job posting status updated successfully.'));
         }

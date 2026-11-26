@@ -9,10 +9,13 @@ use Workdo\EIMS\Models\EimsInvoice;
 use Workdo\EIMS\Models\EimsOfflineQueue;
 use Workdo\EIMS\Models\EimsTenantSetting;
 use Workdo\EIMS\Services\EimsClientService;
+use Workdo\EIMS\Traits\EimsControllerHelpers;
+use Workdo\EIMS\Traits\EimsDateHelpers;
 use Carbon\Carbon;
 
 class EimsDashboardController extends Controller
 {
+    use EimsControllerHelpers, EimsDateHelpers;
     public function index(EimsClientService $client): Response
     {
         $tenantId = creatorId();

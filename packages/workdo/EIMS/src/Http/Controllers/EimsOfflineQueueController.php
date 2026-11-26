@@ -7,20 +7,26 @@ use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Workdo\EIMS\Models\EimsOfflineQueue;
 use Workdo\EIMS\Services\EimsOfflineResiliencyService;
+use Workdo\EIMS\Traits\EimsControllerHelpers;
+use Workdo\EIMS\Traits\EimsDateHelpers;
 
 class EimsOfflineQueueController extends Controller
 {
+    use EimsControllerHelpers, EimsDateHelpers;
+
     public function index(Request $request): Response
     {
-        $query = EimsOfflineQueue::with('eimsInvoice')->latest('id');
+        $query = EimsOfflineQueue::with('eimsInvoice');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        $items = $query->paginate(15)->withQueryString();
+        $this->applySafeSort($query, ['id', 'status', 'attempts', 'created_at'], $request->sort, $request->direction, 'id', 'desc');
+        $items = $query->paginate($this->safePerPage(15, 100))->withQueryString();
 
         // Calculate queue metrics
         $activeCount = EimsOfflineQueue::whereIn('status', [EimsOfflineQueue::STATUS_QUEUED, EimsOfflineQueue::STATUS_PROCESSING])->count();
@@ -50,7 +56,12 @@ class EimsOfflineQueueController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $item = EimsOfflineQueue::findOrFail($id);
-        $item->delete();
+        if (!$this->assertBelongsToTenant($item)) {
+            return redirect()->back()->with('error', __('Permission denied'));
+        }
+        DB::transaction(function () use ($item) {
+            $item->delete();
+        });
 
         return redirect()->back()->with('success', 'Offline queue item removed.');
     }

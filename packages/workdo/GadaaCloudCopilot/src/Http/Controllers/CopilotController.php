@@ -14,9 +14,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Workdo\GadaaCloudCopilot\Traits\GadaaCloudCopilotControllerHelpers;
+use Workdo\GadaaCloudCopilot\Traits\GadaaCloudCopilotDateHelpers;
 
 class CopilotController extends Controller
 {
+    use GadaaCloudCopilotControllerHelpers, GadaaCloudCopilotDateHelpers;
     public function index()
     {
         $companyId = creatorId();
@@ -396,33 +399,37 @@ class CopilotController extends Controller
             $totalAmt   = floatval($request->input('total_amount', rand(5000, 45000)));
             $vatAmt     = round($totalAmt * 0.15, 2);
 
-            $purchaseInvoiceId = null;
-            if (Schema::hasTable('purchase_invoices')) {
-                $purchaseInvoiceId = DB::table('purchase_invoices')->insertGetId([
-                    'created_by'     => $companyId,
-                    'invoice_number' => $invNum,
-                    'total_amount'   => $totalAmt,
-                    'paid_amount'    => 0,
-                    'balance_amount' => $totalAmt,
-                    'status'         => 'draft',
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ]);
-            }
+            $purchaseInvoiceId = DB::transaction(function () use ($companyId, $invNum, $totalAmt, $vatAmt, $vendorName) {
+                $purchaseInvoiceId = null;
+                if (Schema::hasTable('purchase_invoices')) {
+                    $purchaseInvoiceId = DB::table('purchase_invoices')->insertGetId([
+                        'created_by'     => $companyId,
+                        'invoice_number' => $invNum,
+                        'total_amount'   => $totalAmt,
+                        'paid_amount'    => 0,
+                        'balance_amount' => $totalAmt,
+                        'status'         => 'draft',
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
+                    ]);
+                }
 
-            // Automatically Log in DocumentChatter
-            if ($purchaseInvoiceId && Schema::hasTable('chatter_messages')) {
-                DB::table('chatter_messages')->insert([
-                    'created_by' => $companyId,
-                    'model_type' => 'purchase_invoice',
-                    'model_id'   => $purchaseInvoiceId,
-                    'user_id'    => $companyId,
-                    'message'    => "📄 **Draft Purchase Invoice #{$invNum}** auto-created from inbound email PDF (`{$vendorName}`). Subtotal: ETB " . number_format($totalAmt - $vatAmt, 2) . " | VAT (15%): ETB " . number_format($vatAmt, 2),
-                    'type'       => 'note',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+                // Automatically Log in DocumentChatter
+                if ($purchaseInvoiceId && Schema::hasTable('chatter_messages')) {
+                    DB::table('chatter_messages')->insert([
+                        'created_by' => $companyId,
+                        'model_type' => 'purchase_invoice',
+                        'model_id'   => $purchaseInvoiceId,
+                        'user_id'    => $companyId,
+                        'message'    => "📄 **Draft Purchase Invoice #{$invNum}** auto-created from inbound email PDF (`{$vendorName}`). Subtotal: ETB " . number_format($totalAmt - $vatAmt, 2) . " | VAT (15%): ETB " . number_format($vatAmt, 2),
+                        'type'       => 'note',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                return $purchaseInvoiceId;
+            });
 
             return response()->json([
                 'success'           => true,

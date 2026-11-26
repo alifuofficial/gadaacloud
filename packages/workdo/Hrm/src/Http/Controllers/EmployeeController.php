@@ -9,6 +9,7 @@ use Workdo\Hrm\Http\Requests\StoreEmployeeRequest;
 use Workdo\Hrm\Http\Requests\UpdateEmployeeRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
 use Workdo\Hrm\Models\Branch;
@@ -130,52 +131,56 @@ class EmployeeController extends Controller
 
         if (Auth::user()->can('create-employees')) {
             $validated = $request->validated();
-            $employee = new Employee();
-            $employee->employee_id = $validated['employee_id'];
-            $employee->date_of_birth = $validated['date_of_birth'];
-            $employee->gender = $validated['gender'];
-            $employee->shift = !empty($validated['shift_id']) ? $validated['shift_id'] : null;
-            $employee->date_of_joining = $validated['date_of_joining'];
-            $employee->employment_type = $validated['employment_type'];
-            $employee->address_line_1 = $validated['address_line_1'];
-            $employee->address_line_2 = $validated['address_line_2'] ?? null;
-            $employee->city = $validated['city'];
-            $employee->state = $validated['state'];
-            $employee->country = $validated['country'];
-            $employee->postal_code = $validated['postal_code'];
-            $employee->emergency_contact_name = $validated['emergency_contact_name'];
-            $employee->emergency_contact_relationship = $validated['emergency_contact_relationship'];
-            $employee->emergency_contact_number = $validated['emergency_contact_number'];
-            $employee->bank_name = $validated['bank_name'];
-            $employee->account_holder_name = $validated['account_holder_name'];
-            $employee->account_number = $validated['account_number'];
-            $employee->bank_identifier_code = $validated['bank_identifier_code'];
-            $employee->bank_branch = $validated['bank_branch'];
-            $employee->tax_payer_id = $validated['tax_payer_id'] ?? null;
-            $employee->basic_salary = $validated['basic_salary'];
-            $employee->is_pension_applicable = $request->boolean('is_pension_applicable', true);
-            $employee->is_tax_exempt = $request->boolean('is_tax_exempt', false);
-            $employee->hours_per_day = $validated['hours_per_day'];
-            $employee->days_per_week = $validated['days_per_week'];
-            $employee->rate_per_hour = $validated['rate_per_hour'];
-            $employee->user_id = $validated['user_id'];
-            $employee->branch_id = $validated['branch_id'];
-            $employee->department_id = $validated['department_id'];
-            $employee->designation_id = $validated['designation_id'];
+            $employee = DB::transaction(function () use ($request, $validated) {
+                $employee = new Employee();
+                $employee->employee_id = $validated['employee_id'];
+                $employee->date_of_birth = $validated['date_of_birth'];
+                $employee->gender = $validated['gender'];
+                $employee->shift = !empty($validated['shift_id']) ? $validated['shift_id'] : null;
+                $employee->date_of_joining = $validated['date_of_joining'];
+                $employee->employment_type = $validated['employment_type'];
+                $employee->address_line_1 = $validated['address_line_1'];
+                $employee->address_line_2 = $validated['address_line_2'] ?? null;
+                $employee->city = $validated['city'];
+                $employee->state = $validated['state'];
+                $employee->country = $validated['country'];
+                $employee->postal_code = $validated['postal_code'];
+                $employee->emergency_contact_name = $validated['emergency_contact_name'];
+                $employee->emergency_contact_relationship = $validated['emergency_contact_relationship'];
+                $employee->emergency_contact_number = $validated['emergency_contact_number'];
+                $employee->bank_name = $validated['bank_name'];
+                $employee->account_holder_name = $validated['account_holder_name'];
+                $employee->account_number = $validated['account_number'];
+                $employee->bank_identifier_code = $validated['bank_identifier_code'];
+                $employee->bank_branch = $validated['bank_branch'];
+                $employee->tax_payer_id = $validated['tax_payer_id'] ?? null;
+                $employee->basic_salary = $validated['basic_salary'];
+                $employee->is_pension_applicable = $request->boolean('is_pension_applicable', true);
+                $employee->is_tax_exempt = $request->boolean('is_tax_exempt', false);
+                $employee->hours_per_day = $validated['hours_per_day'];
+                $employee->days_per_week = $validated['days_per_week'];
+                $employee->rate_per_hour = $validated['rate_per_hour'];
+                $employee->user_id = $validated['user_id'];
+                $employee->branch_id = $validated['branch_id'];
+                $employee->department_id = $validated['department_id'];
+                $employee->designation_id = $validated['designation_id'];
 
-            $managerId = $validated['manager_id'] ?? null;
-            if (in_array($managerId, ['none', '', 'null', 'undefined'], true)) {
-                $managerId = null;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'manager_id')) {
-                $employee->manager_id = $managerId;
-            }
+                $managerId = $validated['manager_id'] ?? null;
+                if (in_array($managerId, ['none', '', 'null', 'undefined'], true)) {
+                    $managerId = null;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'manager_id')) {
+                    $employee->manager_id = $managerId;
+                }
 
-            $employee->creator_id = Auth::id();
-            $employee->created_by = creatorId();
-            $employee->save();
+                $employee->creator_id = Auth::id();
+                $employee->created_by = creatorId();
+                $employee->save();
 
-            CreateEmployee::dispatch($request, $employee);
+                CreateEmployee::dispatch($request, $employee);
+
+                return $employee;
+            });
 
             // Store documents
             if ($request->has('documents')) {
@@ -249,46 +254,49 @@ class EmployeeController extends Controller
 
     public function update(UpdateEmployeeRequest $request, Employee $employee)
     { 
-        if (Auth::user()->can('edit-employees')) {
+        if (Auth::user()->can('edit-employees') && $this->assertBelongsToTenant($employee)) {
             $validated = $request->validated();
-            $employee->date_of_birth = $validated['date_of_birth'];
-            $employee->gender = $validated['gender'];
-            $employee->shift = $validated['shift_id'];
-            $employee->date_of_joining = $validated['date_of_joining'];
-            $employee->employment_type = $validated['employment_type'];
-            $employee->address_line_1 = $validated['address_line_1'];
-            $employee->address_line_2 = $validated['address_line_2'];
-            $employee->city = $validated['city'];
-            $employee->state = $validated['state'];
-            $employee->country = $validated['country'];
-            $employee->postal_code = $validated['postal_code'];
-            $employee->emergency_contact_name = $validated['emergency_contact_name'];
-            $employee->emergency_contact_relationship = $validated['emergency_contact_relationship'];
-            $employee->emergency_contact_number = $validated['emergency_contact_number'];
-            $employee->bank_name = $validated['bank_name'];
-            $employee->account_holder_name = $validated['account_holder_name'];
-            $employee->account_number = $validated['account_number'];
-            $employee->bank_identifier_code = $validated['bank_identifier_code'];
-            $employee->bank_branch = $validated['bank_branch'];
-            $employee->tax_payer_id = $validated['tax_payer_id'];
-            $employee->basic_salary = $validated['basic_salary'];
-            if ($request->has('is_pension_applicable')) {
-                $employee->is_pension_applicable = $request->boolean('is_pension_applicable');
-            }
-            if ($request->has('is_tax_exempt')) {
-                $employee->is_tax_exempt = $request->boolean('is_tax_exempt');
-            }
-            $employee->hours_per_day = $validated['hours_per_day'];
-            $employee->days_per_week = $validated['days_per_week'];
-            $employee->rate_per_hour = $validated['rate_per_hour'];
-            $employee->branch_id = $validated['branch_id'];
-            $employee->department_id = $validated['department_id'];
-            $employee->designation_id = $validated['designation_id'];
-            $employee->manager_id = $validated['manager_id'] ?? null;
 
-            $employee->save();
+            DB::transaction(function () use ($request, $employee, $validated) {
+                $employee->date_of_birth = $validated['date_of_birth'];
+                $employee->gender = $validated['gender'];
+                $employee->shift = $validated['shift_id'];
+                $employee->date_of_joining = $validated['date_of_joining'];
+                $employee->employment_type = $validated['employment_type'];
+                $employee->address_line_1 = $validated['address_line_1'];
+                $employee->address_line_2 = $validated['address_line_2'];
+                $employee->city = $validated['city'];
+                $employee->state = $validated['state'];
+                $employee->country = $validated['country'];
+                $employee->postal_code = $validated['postal_code'];
+                $employee->emergency_contact_name = $validated['emergency_contact_name'];
+                $employee->emergency_contact_relationship = $validated['emergency_contact_relationship'];
+                $employee->emergency_contact_number = $validated['emergency_contact_number'];
+                $employee->bank_name = $validated['bank_name'];
+                $employee->account_holder_name = $validated['account_holder_name'];
+                $employee->account_number = $validated['account_number'];
+                $employee->bank_identifier_code = $validated['bank_identifier_code'];
+                $employee->bank_branch = $validated['bank_branch'];
+                $employee->tax_payer_id = $validated['tax_payer_id'];
+                $employee->basic_salary = $validated['basic_salary'];
+                if ($request->has('is_pension_applicable')) {
+                    $employee->is_pension_applicable = $request->boolean('is_pension_applicable');
+                }
+                if ($request->has('is_tax_exempt')) {
+                    $employee->is_tax_exempt = $request->boolean('is_tax_exempt');
+                }
+                $employee->hours_per_day = $validated['hours_per_day'];
+                $employee->days_per_week = $validated['days_per_week'];
+                $employee->rate_per_hour = $validated['rate_per_hour'];
+                $employee->branch_id = $validated['branch_id'];
+                $employee->department_id = $validated['department_id'];
+                $employee->designation_id = $validated['designation_id'];
+                $employee->manager_id = $validated['manager_id'] ?? null;
 
-            UpdateEmployee::dispatch($request, $employee);
+                $employee->save();
+
+                UpdateEmployee::dispatch($request, $employee);
+            });
 
             // Handle document updates
             if ($request->has('documents')) {
@@ -323,9 +331,11 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee)
     {
-        if (Auth::user()->can('delete-employees')) {
-            DestroyEmployee::dispatch($employee);
-            $employee->delete();
+        if (Auth::user()->can('delete-employees') && $this->assertBelongsToTenant($employee)) {
+            DB::transaction(function () use ($employee) {
+                DestroyEmployee::dispatch($employee);
+                $employee->delete();
+            });
 
             return redirect()->back()->with('success', __('The employee has been deleted.'));
         } else {

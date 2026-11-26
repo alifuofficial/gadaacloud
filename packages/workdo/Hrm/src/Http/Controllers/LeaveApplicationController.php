@@ -9,6 +9,7 @@ use Workdo\Hrm\Http\Requests\StoreLeaveApplicationRequest;
 use Workdo\Hrm\Http\Requests\UpdateLeaveApplicationRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
@@ -181,21 +182,25 @@ class LeaveApplicationController extends Controller
                     ]);
             }
 
-            $leaveapplication = new LeaveApplication();
-            $leaveapplication->start_date = $validated['start_date'];
-            $leaveapplication->end_date = $validated['end_date'];
-            $leaveapplication->total_days = $totalDays;
-            $leaveapplication->reason = $validated['reason'];
-            $leaveapplication->attachment = $validated['attachment'] ?? null;
-            $leaveapplication->status = 'pending';
-            $leaveapplication->employee_id = $validated['employee_id'];
-            $leaveapplication->leave_type_id = $validated['leave_type_id'];
+            $leaveapplication = DB::transaction(function () use ($request, $validated, $totalDays) {
+                $leaveapplication = new LeaveApplication();
+                $leaveapplication->start_date = $validated['start_date'];
+                $leaveapplication->end_date = $validated['end_date'];
+                $leaveapplication->total_days = $totalDays;
+                $leaveapplication->reason = $validated['reason'];
+                $leaveapplication->attachment = $validated['attachment'] ?? null;
+                $leaveapplication->status = 'pending';
+                $leaveapplication->employee_id = $validated['employee_id'];
+                $leaveapplication->leave_type_id = $validated['leave_type_id'];
 
-            $leaveapplication->creator_id = Auth::id();
-            $leaveapplication->created_by = creatorId();
-            $leaveapplication->save();
+                $leaveapplication->creator_id = Auth::id();
+                $leaveapplication->created_by = creatorId();
+                $leaveapplication->save();
 
-            CreateLeaveApplication::dispatch($request, $leaveapplication);
+                CreateLeaveApplication::dispatch($request, $leaveapplication);
+
+                return $leaveapplication;
+            });
 
             return redirect()->route('hrm.leave-applications.index')->with('success', __('The leaveapplication has been created successfully.'));
         } else {
@@ -273,17 +278,19 @@ class LeaveApplicationController extends Controller
                     ]);
             }
 
-            $leaveapplication->employee_id = $validated['employee_id'];
-            $leaveapplication->leave_type_id = $validated['leave_type_id'];
-            $leaveapplication->start_date = $validated['start_date'];
-            $leaveapplication->end_date = $validated['end_date'];
-            $leaveapplication->total_days = $totalDays;
-            $leaveapplication->reason = $validated['reason'];
-            $leaveapplication->attachment = $validated['attachment'] ?? null;
+            DB::transaction(function () use ($request, $leaveapplication, $validated, $totalDays) {
+                $leaveapplication->employee_id = $validated['employee_id'];
+                $leaveapplication->leave_type_id = $validated['leave_type_id'];
+                $leaveapplication->start_date = $validated['start_date'];
+                $leaveapplication->end_date = $validated['end_date'];
+                $leaveapplication->total_days = $totalDays;
+                $leaveapplication->reason = $validated['reason'];
+                $leaveapplication->attachment = $validated['attachment'] ?? null;
 
-            $leaveapplication->save();
+                $leaveapplication->save();
 
-            UpdateLeaveApplication::dispatch($request, $leaveapplication);
+                UpdateLeaveApplication::dispatch($request, $leaveapplication);
+            });
 
             return redirect()->back()->with('success', __('The leaveapplication details are updated successfully.'));
         } else {
@@ -297,8 +304,10 @@ class LeaveApplicationController extends Controller
             if (!Auth::user()->hasRole('superadmin') && (int) $leaveapplication->created_by !== (int) creatorId()) {
                 return redirect()->route('hrm.leave-applications.index')->with('error', __('Permission denied'));
             }
-            DestroyLeaveApplication::dispatch($leaveapplication);
-            $leaveapplication->delete();
+            DB::transaction(function () use ($leaveapplication) {
+                DestroyLeaveApplication::dispatch($leaveapplication);
+                $leaveapplication->delete();
+            });
 
             return redirect()->back()->with('success', __('The leaveapplication has been deleted.'));
         } else {
@@ -317,16 +326,18 @@ class LeaveApplicationController extends Controller
                 'approver_comment' => 'nullable|string',
             ]);
 
-            $leaveapplication->status = $request->status;
-            $leaveapplication->approver_comment = $request->approver_comment;
+            DB::transaction(function () use ($request, $leaveapplication) {
+                $leaveapplication->status = $request->status;
+                $leaveapplication->approver_comment = $request->approver_comment;
 
-            if ($request->status === 'approved') {
-                $leaveapplication->approved_by = Auth::id();
-                $leaveapplication->approved_at = now();
-            }
+                if ($request->status === 'approved') {
+                    $leaveapplication->approved_by = Auth::id();
+                    $leaveapplication->approved_at = now();
+                }
 
-            $leaveapplication->save();
-            UpdateLeaveStatus::dispatch($request, $leaveapplication);
+                $leaveapplication->save();
+                UpdateLeaveStatus::dispatch($request, $leaveapplication);
+            });
 
             return redirect()->back()->with('success', __('Leave status updated successfully.'));
         } else {

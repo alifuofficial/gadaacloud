@@ -8,13 +8,18 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Workdo\EIMS\Models\EimsTenantSetting;
 use Workdo\EIMS\Models\EimsAuditLog;
 use Workdo\EIMS\Services\EimsClientService;
 use Workdo\EIMS\Services\EimsAuditLoggingService;
+use Workdo\EIMS\Traits\EimsControllerHelpers;
+use Workdo\EIMS\Traits\EimsDateHelpers;
 
 class EimsSettingsController extends Controller
 {
+    use EimsControllerHelpers, EimsDateHelpers;
+
     public function index(): Response
     {
         $tenantId = creatorId();
@@ -82,18 +87,22 @@ class EimsSettingsController extends Controller
             $data['api_secret'] = $validated['api_secret'];
         }
 
-        if ($setting) {
-            $setting->update($data);
-        } else {
-            $data['created_by'] = $tenantId;
-            $setting = EimsTenantSetting::create($data);
-        }
+        $setting = DB::transaction(function () use ($setting, $data, $tenantId, $audit) {
+            if ($setting) {
+                $setting->update($data);
+            } else {
+                $data['created_by'] = $tenantId;
+                $setting = EimsTenantSetting::create($data);
+            }
 
-        $audit->log('SETTINGS_UPDATE', [
-            'tin' => $setting->tin,
-            'branch_code' => $setting->branch_code,
-            'environment' => $setting->environment,
-        ], null, $tenantId);
+            $audit->log('SETTINGS_UPDATE', [
+                'tin' => $setting->tin,
+                'branch_code' => $setting->branch_code,
+                'environment' => $setting->environment,
+            ], null, $tenantId);
+
+            return $setting;
+        });
 
         return redirect()->back()->with('success', 'EIMS Ministry settings updated successfully.');
     }

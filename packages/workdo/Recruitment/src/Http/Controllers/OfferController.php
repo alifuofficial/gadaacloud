@@ -8,6 +8,7 @@ use Workdo\Recruitment\Http\Requests\StoreOfferRequest;
 use Workdo\Recruitment\Http\Requests\UpdateOfferRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Recruitment\Models\Candidate;
 use Workdo\Recruitment\Models\JobPosting;
@@ -190,34 +191,37 @@ class OfferController extends Controller
         if (Auth::user()->can('create-offers')) {
             $validated = $request->validated();
 
-            // Get job_id from candidate's job application
-            $candidate = Candidate::find($validated['candidate_id']);
+            DB::transaction(function () use ($request, $validated) {
+                // Get job_id from candidate's job application
+                $candidate = Candidate::find($validated['candidate_id']);
 
-            $offer = new Offer();
-            $offer->candidate_id = $validated['candidate_id'];
-            $offer->job_id = $candidate->job_id;
-            $offer->offer_date = $validated['offer_date'];
-            $offer->position = $validated['position'];
-            $offer->department_id = $validated['department_id'];
-            $offer->salary = $validated['salary'];
-            $offer->bonus = $validated['bonus'];
-            $offer->equity = $validated['equity'];
-            $offer->benefits = $validated['benefits'];
-            $offer->start_date = $validated['start_date'];
-            $offer->expiration_date = $validated['expiration_date'];
-            $offer->offer_letter_path = $validated['offer_letter_path'];
-            $offer->status = $validated['status'];
-            $offer->response_date = $validated['response_date'];
-            $offer->decline_reason = $validated['decline_reason'];
+                $offer = new Offer();
+                $offer->candidate_id = $validated['candidate_id'];
+                $offer->job_id = $candidate->job_id;
+                $offer->offer_date = $validated['offer_date'];
+                $offer->position = $validated['position'];
+                $offer->department_id = $validated['department_id'];
+                $offer->salary = $validated['salary'];
+                $offer->bonus = $validated['bonus'];
+                $offer->equity = $validated['equity'];
+                $offer->benefits = $validated['benefits'];
+                $offer->start_date = $validated['start_date'];
+                $offer->expiration_date = $validated['expiration_date'];
+                $offer->offer_letter_path = $validated['offer_letter_path'];
+                $offer->status = $validated['status'];
+                $offer->response_date = $validated['response_date'];
+                $offer->decline_reason = $validated['decline_reason'];
 
-            $offer->creator_id = Auth::id();
-            $offer->created_by = creatorId();
-            $offer->save();
+                $offer->creator_id = Auth::id();
+                $offer->created_by = creatorId();
+                $offer->save();
 
-            CreateOffer::dispatch($request, $offer);
+                CreateOffer::dispatch($request, $offer);
+            });
 
             return redirect()->route('recruitment.offers.index')->with('success', __('The offer has been created successfully.'));
-        } else {
+        }
+        else {
             return redirect()->route('recruitment.offers.index')->with('error', __('Permission denied'));
         }
     }
@@ -227,28 +231,30 @@ class OfferController extends Controller
         if (Auth::user()->can('edit-offers') && $this->assertBelongsToTenant($offer)) {
             $validated = $request->validated();
 
-            // Get job_id from candidate's job application
-            $candidate = Candidate::find($validated['candidate_id']);
+            DB::transaction(function () use ($request, $offer, $validated) {
+                // Get job_id from candidate's job application
+                $candidate = Candidate::find($validated['candidate_id']);
 
-            $offer->candidate_id = $validated['candidate_id'];
-            $offer->job_id = $candidate->job_id;
-            $offer->offer_date = $validated['offer_date'] ?? $offer->offer_date;
-            $offer->position = $validated['position'];
-            $offer->department_id = $validated['department_id'];
-            $offer->salary = $validated['salary'];
-            $offer->bonus = $validated['bonus'];
-            $offer->equity = $validated['equity'];
-            $offer->benefits = $validated['benefits'];
-            $offer->start_date = $validated['start_date'];
-            $offer->expiration_date = $validated['expiration_date'];
-            $offer->offer_letter_path = $validated['offer_letter_path'] ?? $offer->offer_letter_path;
-            $offer->status = $validated['status'] ?? $offer->status;
-            $offer->response_date = $validated['response_date'] ?? $offer->response_date;
-            $offer->decline_reason = $validated['decline_reason'] ?? $offer->decline_reason;
+                $offer->candidate_id = $validated['candidate_id'];
+                $offer->job_id = $candidate->job_id;
+                $offer->offer_date = $validated['offer_date'] ?? $offer->offer_date;
+                $offer->position = $validated['position'];
+                $offer->department_id = $validated['department_id'];
+                $offer->salary = $validated['salary'];
+                $offer->bonus = $validated['bonus'];
+                $offer->equity = $validated['equity'];
+                $offer->benefits = $validated['benefits'];
+                $offer->start_date = $validated['start_date'];
+                $offer->expiration_date = $validated['expiration_date'];
+                $offer->offer_letter_path = $validated['offer_letter_path'] ?? $offer->offer_letter_path;
+                $offer->status = $validated['status'] ?? $offer->status;
+                $offer->response_date = $validated['response_date'] ?? $offer->response_date;
+                $offer->decline_reason = $validated['decline_reason'] ?? $offer->decline_reason;
 
-            $offer->save();
+                $offer->save();
 
-            UpdateOffer::dispatch($request, $offer);
+                UpdateOffer::dispatch($request, $offer);
+            });
 
             return redirect()->back()->with('success', __('The offer details are updated successfully.'));
         } else {
@@ -261,19 +267,23 @@ class OfferController extends Controller
         if (Auth::user()->can('approve-offers') && $this->assertBelongsToTenant($offer)) {
             $action = $request->input('action');
 
-            if ($action === 'approve') {
-                $offer->approved_by = Auth::id();
-                $offer->approval_status = 'approved';
-                $message = __('The offer has been approved successfully.');
-            } else {
-                $offer->approved_by = null;
-                $offer->approval_status = 'rejected';
-                $message = __('The offer has been rejected successfully.');
-            }
+            $message = DB::transaction(function () use ($request, $offer, $action) {
+                if ($action === 'approve') {
+                    $offer->approved_by = Auth::id();
+                    $offer->approval_status = 'approved';
+                    $message = __('The offer has been approved successfully.');
+                } else {
+                    $offer->approved_by = null;
+                    $offer->approval_status = 'rejected';
+                    $message = __('The offer has been rejected successfully.');
+                }
 
-            $offer->save();
+                $offer->save();
 
-            UpdateOfferApprovalStatus::dispatch($request, $offer);
+                UpdateOfferApprovalStatus::dispatch($request, $offer);
+
+                return $message;
+            });
 
             return redirect()->back()->with('success', $message);
         } else {
@@ -284,9 +294,11 @@ class OfferController extends Controller
     public function destroy(Offer $offer)
     {
         if (Auth::user()->can('delete-offers') && $this->assertBelongsToTenant($offer)) {
-            DestroyOffer::dispatch($offer);
+            DB::transaction(function () use ($offer) {
+                DestroyOffer::dispatch($offer);
 
-            $offer->delete();
+                $offer->delete();
+            });
 
             return redirect()->back()->with('success', __('The offer has been deleted.'));
         } else {

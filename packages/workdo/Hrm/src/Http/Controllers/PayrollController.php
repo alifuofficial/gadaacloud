@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\Hrm\Events\CreatePayroll;
 use Workdo\Hrm\Events\DestroyPayroll;
@@ -155,34 +156,37 @@ class PayrollController extends Controller
     {
         if (Auth::user()->can('create-payrolls')) {
             $validated = $request->validated();
-            $payroll = new Payroll();
-            $payroll->title = $validated['title'];
-            $payroll->payroll_frequency = $validated['payroll_frequency'];
-            $payroll->pay_period_start = $validated['pay_period_start'];
-            $payroll->pay_period_end = $validated['pay_period_end'];
-            $payroll->pay_date = $validated['pay_date'];
-            $payroll->notes = $validated['notes'];
 
-            if (
-                function_exists('ethiopian_calendar_active')
-                && ethiopian_calendar_active()
-                && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
-            ) {
-                try {
-                    $eth = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)->toEthiopian($validated['pay_period_start']);
-                    if ($eth) {
-                        $payroll->ethiopian_period = $eth['month_name'] . ' ' . $eth['year'] . ' E.C.';
+            DB::transaction(function () use ($request, $validated) {
+                $payroll = new Payroll();
+                $payroll->title = $validated['title'];
+                $payroll->payroll_frequency = $validated['payroll_frequency'];
+                $payroll->pay_period_start = $validated['pay_period_start'];
+                $payroll->pay_period_end = $validated['pay_period_end'];
+                $payroll->pay_date = $validated['pay_date'];
+                $payroll->notes = $validated['notes'];
+
+                if (
+                    function_exists('ethiopian_calendar_active')
+                    && ethiopian_calendar_active()
+                    && class_exists(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)
+                ) {
+                    try {
+                        $eth = app(\Workdo\EthiopianCalendar\Services\EthiopianDateService::class)->toEthiopian($validated['pay_period_start']);
+                        if ($eth) {
+                            $payroll->ethiopian_period = $eth['month_name'] . ' ' . $eth['year'] . ' E.C.';
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore optional calendar label
                     }
-                } catch (\Throwable $e) {
-                    // ignore optional calendar label
                 }
-            }
 
-            $payroll->creator_id = Auth::id();
-            $payroll->created_by = creatorId();
-            $payroll->save();
+                $payroll->creator_id = Auth::id();
+                $payroll->created_by = creatorId();
+                $payroll->save();
 
-            CreatePayroll::dispatch($request, $payroll);
+                CreatePayroll::dispatch($request, $payroll);
+            });
 
             return redirect()->route('hrm.payrolls.index')->with('success', __('The payroll has been created successfully.'));
         }
@@ -198,17 +202,20 @@ class PayrollController extends Controller
             }
 
             $validated = $request->validated();
-            $payroll->title = $validated['title'];
-            $payroll->payroll_frequency = $validated['payroll_frequency'];
-            $payroll->pay_period_start = $validated['pay_period_start'];
-            $payroll->pay_period_end = $validated['pay_period_end'];
-            $payroll->pay_date = $validated['pay_date'];
-            $payroll->notes = $validated['notes'];
-            $payroll->status = $validated['status'];
-            $payroll->is_payroll_paid = $validated['is_payroll_paid'] ?? 'unpaid';
-            $payroll->save();
 
-            UpdatePayroll::dispatch($request, $payroll);
+            DB::transaction(function () use ($request, $payroll, $validated) {
+                $payroll->title = $validated['title'];
+                $payroll->payroll_frequency = $validated['payroll_frequency'];
+                $payroll->pay_period_start = $validated['pay_period_start'];
+                $payroll->pay_period_end = $validated['pay_period_end'];
+                $payroll->pay_date = $validated['pay_date'];
+                $payroll->notes = $validated['notes'];
+                $payroll->status = $validated['status'];
+                $payroll->is_payroll_paid = $validated['is_payroll_paid'] ?? 'unpaid';
+                $payroll->save();
+
+                UpdatePayroll::dispatch($request, $payroll);
+            });
 
             return redirect()->back()->with('success', __('The payroll details are updated successfully.'));
         }
@@ -248,8 +255,10 @@ class PayrollController extends Controller
                 return redirect()->route('hrm.payrolls.index')->with('error', __('Permission denied'));
             }
 
-            DestroyPayroll::dispatch($payroll);
-            $payroll->delete();
+            DB::transaction(function () use ($payroll) {
+                DestroyPayroll::dispatch($payroll);
+                $payroll->delete();
+            });
 
             return redirect()->back()->with('success', __('The payroll has been deleted.'));
         }
@@ -311,23 +320,27 @@ class PayrollController extends Controller
                     ->get();
 
                 $newEntriesCount = 0;
-                $existingEmployeeIds = $payroll->payrollEntries()->pluck('employee_id')->all();
+                $entries = DB::transaction(function () use ($payroll, $employees, $workingDaysCount, $startDate, $endDate, &$newEntriesCount) {
+                    $existingEmployeeIds = $payroll->payrollEntries()->pluck('employee_id')->all();
 
-                foreach ($employees as $employee) {
-                    if (!in_array($employee->user_id, $existingEmployeeIds, true)) {
-                        $this->processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $endDate);
-                        $newEntriesCount++;
+                    foreach ($employees as $employee) {
+                        if (!in_array($employee->user_id, $existingEmployeeIds, true)) {
+                            $this->processEmployeePayroll($payroll, $employee, $workingDaysCount, $startDate, $endDate);
+                            $newEntriesCount++;
+                        }
                     }
-                }
 
-                $entries = $payroll->payrollEntries()->get();
-                $payroll->update([
-                    'status' => 'completed',
-                    'total_gross_pay' => $entries->sum('gross_pay'),
-                    'total_deductions' => $entries->sum('total_deductions'),
-                    'total_net_pay' => $entries->sum('net_pay'),
-                    'employee_count' => $entries->count(),
-                ]);
+                    $entries = $payroll->payrollEntries()->get();
+                    $payroll->update([
+                        'status' => 'completed',
+                        'total_gross_pay' => $entries->sum('gross_pay'),
+                        'total_deductions' => $entries->sum('total_deductions'),
+                        'total_net_pay' => $entries->sum('net_pay'),
+                        'employee_count' => $entries->count(),
+                    ]);
+
+                    return $entries;
+                });
 
                 if ($newEntriesCount > 0) {
                     return redirect()->back()->with('success', __('Payroll processed successfully. New payslips created for :new employees. Total employees: :total', [

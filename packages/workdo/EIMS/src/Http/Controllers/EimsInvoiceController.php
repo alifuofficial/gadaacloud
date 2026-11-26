@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Workdo\EIMS\Models\EimsInvoice;
 use Workdo\EIMS\Models\EimsTenantSetting;
 use Workdo\EIMS\Services\EimsClientService;
@@ -16,15 +17,19 @@ use Workdo\EIMS\Services\EimsAuditLoggingService;
 use Workdo\EIMS\Services\EimsQrCodeService;
 use Workdo\EIMS\Services\EimsOfflineResiliencyService;
 use Workdo\EIMS\Services\EimsNetworkException;
+use Workdo\EIMS\Traits\EimsControllerHelpers;
+use Workdo\EIMS\Traits\EimsDateHelpers;
 use App\Models\SalesInvoice;
 use Carbon\Carbon;
 use Throwable;
 
 class EimsInvoiceController extends Controller
 {
+    use EimsControllerHelpers, EimsDateHelpers;
+
     public function index(Request $request): Response
     {
-        $query = EimsInvoice::query()->latest('id');
+        $query = EimsInvoice::query();
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -48,7 +53,16 @@ class EimsInvoiceController extends Controller
             });
         }
 
-        $invoices = $query->paginate(15)->withQueryString();
+        $this->applySafeSort(
+            $query,
+            ['id', 'invoice_number', 'buyer_name', 'total_amount', 'status', 'cleared_at', 'created_at'],
+            $request->sort,
+            $request->direction,
+            'id',
+            'desc'
+        );
+
+        $invoices = $query->paginate($this->safePerPage(15, 100))->withQueryString();
 
         return Inertia::render('eims/Invoices', [
             'invoices' => $invoices,
@@ -59,6 +73,9 @@ class EimsInvoiceController extends Controller
     public function show(int $id): Response
     {
         $invoice = EimsInvoice::with(['salesInvoice.items.product', 'auditLogs.user', 'offlineQueue'])->findOrFail($id);
+        if (!$this->assertBelongsToTenant($invoice)) {
+            abort(403, __('Permission denied'));
+        }
 
         return Inertia::render('eims/InvoiceDetail', [
             'invoice' => $invoice,
@@ -88,29 +105,31 @@ class EimsInvoiceController extends Controller
             $summary = $payload['summary'] ?? [];
             $payment = $payload['payment'] ?? [];
 
-            $eimsInvoice = EimsInvoice::updateOrCreate(
-                ['sales_invoice_id' => $salesInvoice->id],
-                [
-                    'created_by' => $tenantId,
-                    'invoice_number' => $salesInvoice->invoice_number,
-                    'document_type' => 'INV',
-                    'buyer_type' => $buyer['buyerType'] ?? 'B2C',
-                    'buyer_tin' => $buyer['tin'] ?? null,
-                    'buyer_name' => $buyer['legalName'] ?? 'Consumer',
-                    'buyer_id_type' => $buyer['idType'] ?? null,
-                    'buyer_id_number' => $buyer['idNumber'] ?? null,
-                    'currency' => $summary['currency'] ?? 'ETB',
-                    'pre_tax_amount' => $summary['preTaxAmount'] ?? 0,
-                    'tax_amount' => $summary['taxAmount'] ?? 0,
-                    'excise_tax_amount' => $summary['exciseTaxAmount'] ?? 0,
-                    'discount_amount' => $summary['discountAmount'] ?? 0,
-                    'total_amount' => $summary['totalAmount'] ?? 0,
-                    'payment_mode' => $payment['mode'] ?? 'CASH',
-                    'payment_term' => $payment['paymentTerm'] ?? 'IMMIDIATE',
-                    'status' => EimsInvoice::STATUS_PENDING,
-                    'eims_payload' => $payload,
-                ]
-            );
+            $eimsInvoice = DB::transaction(function () use ($salesInvoice, $tenantId, $buyer, $summary, $payment, $payload) {
+                return EimsInvoice::updateOrCreate(
+                    ['sales_invoice_id' => $salesInvoice->id],
+                    [
+                        'created_by' => $tenantId,
+                        'invoice_number' => $salesInvoice->invoice_number,
+                        'document_type' => 'INV',
+                        'buyer_type' => $buyer['buyerType'] ?? 'B2C',
+                        'buyer_tin' => $buyer['tin'] ?? null,
+                        'buyer_name' => $buyer['legalName'] ?? 'Consumer',
+                        'buyer_id_type' => $buyer['idType'] ?? null,
+                        'buyer_id_number' => $buyer['idNumber'] ?? null,
+                        'currency' => $summary['currency'] ?? 'ETB',
+                        'pre_tax_amount' => $summary['preTaxAmount'] ?? 0,
+                        'tax_amount' => $summary['taxAmount'] ?? 0,
+                        'excise_tax_amount' => $summary['exciseTaxAmount'] ?? 0,
+                        'discount_amount' => $summary['discountAmount'] ?? 0,
+                        'total_amount' => $summary['totalAmount'] ?? 0,
+                        'payment_mode' => $payment['mode'] ?? 'CASH',
+                        'payment_term' => $payment['paymentTerm'] ?? 'IMMIDIATE',
+                        'status' => EimsInvoice::STATUS_PENDING,
+                        'eims_payload' => $payload,
+                    ]
+                );
+            });
 
             try {
                 $clearance = $client->registerInvoice($payload, $setting);
@@ -118,30 +137,34 @@ class EimsInvoiceController extends Controller
                 if (!empty($clearance['success']) && ($clearance['status'] === 'CLEARED')) {
                     $qrCodeSvg = $qrService->generateSvg($clearance['qrCodeData'] ?? $clearance['irn']);
 
-                    $eimsInvoice->update([
-                        'status' => EimsInvoice::STATUS_CLEARED,
-                        'irn' => $clearance['irn'],
-                        'rrn' => $clearance['rrn'] ?? null,
-                        'qr_code_data' => $clearance['qrCodeData'] ?? null,
-                        'qr_code_image' => $qrCodeSvg,
-                        'cleared_at' => Carbon::now(),
-                        'eims_response' => $clearance,
-                        'error_message' => null,
-                    ]);
+                    DB::transaction(function () use ($eimsInvoice, $clearance, $qrCodeSvg, $audit, $payload, $tenantId) {
+                        $eimsInvoice->update([
+                            'status' => EimsInvoice::STATUS_CLEARED,
+                            'irn' => $clearance['irn'],
+                            'rrn' => $clearance['rrn'] ?? null,
+                            'qr_code_data' => $clearance['qrCodeData'] ?? null,
+                            'qr_code_image' => $qrCodeSvg,
+                            'cleared_at' => Carbon::now(),
+                            'eims_response' => $clearance,
+                            'error_message' => null,
+                        ]);
 
-                    $audit->log('REGISTER', $payload, $eimsInvoice->id, $tenantId, [
-                        'irn' => $clearance['irn'],
-                        'source' => 'manual_action',
-                    ]);
+                        $audit->log('REGISTER', $payload, $eimsInvoice->id, $tenantId, [
+                            'irn' => $clearance['irn'],
+                            'source' => 'manual_action',
+                        ]);
+                    });
 
                     return redirect()->back()->with('success', 'Invoice registered and cleared with MoR successfully! IRN: ' . substr($clearance['irn'], 0, 16) . '...');
                 }
 
-                $eimsInvoice->update([
-                    'status' => EimsInvoice::STATUS_FAILED,
-                    'error_message' => $clearance['error'] ?? 'Clearance rejected by gateway',
-                    'eims_response' => $clearance,
-                ]);
+                DB::transaction(function () use ($eimsInvoice, $clearance) {
+                    $eimsInvoice->update([
+                        'status' => EimsInvoice::STATUS_FAILED,
+                        'error_message' => $clearance['error'] ?? 'Clearance rejected by gateway',
+                        'eims_response' => $clearance,
+                    ]);
+                });
 
                 return redirect()->back()->with('error', 'MoR Clearance failed: ' . ($clearance['error'] ?? 'Unknown error'));
             } catch (EimsNetworkException $ne) {
@@ -168,6 +191,9 @@ class EimsInvoiceController extends Controller
         ]);
 
         $invoice = EimsInvoice::findOrFail($id);
+        if (!$this->assertBelongsToTenant($invoice)) {
+            return redirect()->back()->with('error', __('Permission denied'));
+        }
         $setting = EimsTenantSetting::getForTenant($invoice->created_by);
 
         if (!$setting) {
@@ -186,18 +212,20 @@ class EimsInvoiceController extends Controller
         );
 
         if (!empty($result['success'])) {
-            $invoice->update([
-                'status' => EimsInvoice::STATUS_CANCELLED,
-                'cancel_reason_code' => $validated['reason_code'],
-                'cancel_remark' => $validated['remark'] ?? null,
-                'cancelled_at' => Carbon::now(),
-            ]);
+            DB::transaction(function () use ($invoice, $validated, $audit) {
+                $invoice->update([
+                    'status' => EimsInvoice::STATUS_CANCELLED,
+                    'cancel_reason_code' => $validated['reason_code'],
+                    'cancel_remark' => $validated['remark'] ?? null,
+                    'cancelled_at' => Carbon::now(),
+                ]);
 
-            $audit->log('CANCEL', [
-                'irn' => $invoice->irn,
-                'reason_code' => $validated['reason_code'],
-                'remark' => $validated['remark'] ?? null,
-            ], $invoice->id, $invoice->created_by);
+                $audit->log('CANCEL', [
+                    'irn' => $invoice->irn,
+                    'reason_code' => $validated['reason_code'],
+                    'remark' => $validated['remark'] ?? null,
+                ], $invoice->id, $invoice->created_by);
+            });
 
             return redirect()->back()->with('success', 'Invoice ' . $invoice->invoice_number . ' cancelled successfully in EIMS.');
         }
