@@ -5,6 +5,7 @@ namespace Workdo\FormBuilder\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\FormBuilder\Models\Form;
 use Workdo\FormBuilder\Events\CreateForm;
@@ -16,9 +17,13 @@ use Workdo\FormBuilder\Http\Requests\UpdateFormRequest;
 use Workdo\FormBuilder\Http\Requests\FormFieldRequest;
 use Workdo\FormBuilder\Http\Requests\StoreFormConversionRequest;
 use Workdo\FormBuilder\Models\FormConversion;
+use Workdo\FormBuilder\Traits\FormBuilderControllerHelpers;
+use Workdo\FormBuilder\Traits\FormBuilderDateHelpers;
 
 class FormController extends Controller
 {
+    use FormBuilderControllerHelpers, FormBuilderDateHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-formbuilder')) {
@@ -35,8 +40,8 @@ class FormController extends Controller
                 ->withCount(['responses', 'fields'])
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('is_active') !== null, fn($q) => $q->where('is_active', request('is_active')))
-                ->orderBy(request('sort', 'created_at'), request('direction', 'desc'))
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'code', 'is_active', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('FormBuilder/Forms/Index', [
@@ -61,32 +66,40 @@ class FormController extends Controller
         if (Auth::user()->can('create-formbuilder-form')) {
 
             $validated = $request->validated();
-            $form = new Form();
-            $form->name = $validated['name'];
-            $form->code = Form::generateCode();
-            $form->is_active = $request->boolean('is_active', true);
-            $form->default_layout = $validated['default_layout'] ?? 'single';
-            $form->creator_id = Auth::id();
-            $form->created_by = creatorId();
-            $form->save();
+            $form = DB::transaction(function () use ($validated, $request) {
+                $form = new Form();
+                $form->name = $validated['name'];
+                $form->code = Form::generateCode();
+                $form->is_active = $request->boolean('is_active', true);
+                $form->default_layout = $validated['default_layout'] ?? 'single';
+                $form->creator_id = Auth::id();
+                $form->created_by = creatorId();
+                $form->save();
 
-            // Save form fields
-            if (isset($validated['fields']) && is_array($validated['fields'])) {
-                foreach ($validated['fields'] as $fieldData) {
-                    $form->fields()->create([
-                        'label' => $fieldData['label'],
-                        'type' => $fieldData['type'],
-                        'required' => $fieldData['required'] ?? false,
-                        'placeholder' => $fieldData['placeholder'] ?? null,
-                        'options' => isset($fieldData['options']) ? json_encode($fieldData['options']) : null,
-                        'order' => $fieldData['order'] ?? 0,
-                        'creator_id' => Auth::id(),
-                        'created_by' => creatorId(),
-                    ]);
+                // Save form fields
+                if (isset($validated['fields']) && is_array($validated['fields'])) {
+                    foreach ($validated['fields'] as $fieldData) {
+                        $form->fields()->create([
+                            'label' => $fieldData['label'],
+                            'type' => $fieldData['type'],
+                            'required' => $fieldData['required'] ?? false,
+                            'placeholder' => $fieldData['placeholder'] ?? null,
+                            'options' => isset($fieldData['options']) ? json_encode($fieldData['options']) : null,
+                            'order' => $fieldData['order'] ?? 0,
+                            'creator_id' => Auth::id(),
+                            'created_by' => creatorId(),
+                        ]);
+                    }
                 }
-            }
 
-            CreateForm::dispatch($request, $form);
+                return $form;
+            });
+
+            try {
+                CreateForm::dispatch($request, $form);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return redirect()->route('formbuilder.forms.index')->with('success', __('The form has been created successfully.'));
         } else {
@@ -113,34 +126,40 @@ class FormController extends Controller
 
             $validated = $request->validated();
 
-            $form->name = $validated['name'];
-            $form->is_active = $request->boolean('is_active', true);
-            $form->default_layout = $validated['default_layout'] ?? 'single';
-            $form->save();
+            DB::transaction(function () use ($form, $validated, $request) {
+                $form->name = $validated['name'];
+                $form->is_active = $request->boolean('is_active', true);
+                $form->default_layout = $validated['default_layout'] ?? 'single';
+                $form->save();
 
-            // Update form fields
-            if (isset($validated['fields']) && is_array($validated['fields'])) {
-                foreach ($validated['fields'] as $fieldData) {
-                    $form->fields()->updateOrInsert(
-                        [
-                            'form_id'   => $form->id,
-                            'id'        => $fieldData['id'] ?? null,
-                        ],
-                        [
-                            'label'         => $fieldData['label'],
-                            'type'          => $fieldData['type'],
-                            'required'      => $fieldData['required'] ?? false,
-                            'placeholder'   => $fieldData['placeholder'] ?? null,
-                            'options'       => isset($fieldData['options']) && is_array($fieldData['options']) ? json_encode($fieldData['options']) : null,
-                            'order'         => $fieldData['order'] ?? 0,
-                            'creator_id'    => Auth::id(),
-                            'created_by'    => creatorId(),
-                        ]
-                    );
+                // Update form fields
+                if (isset($validated['fields']) && is_array($validated['fields'])) {
+                    foreach ($validated['fields'] as $fieldData) {
+                        $form->fields()->updateOrInsert(
+                            [
+                                'form_id'   => $form->id,
+                                'id'        => $fieldData['id'] ?? null,
+                            ],
+                            [
+                                'label'         => $fieldData['label'],
+                                'type'          => $fieldData['type'],
+                                'required'      => $fieldData['required'] ?? false,
+                                'placeholder'   => $fieldData['placeholder'] ?? null,
+                                'options'       => isset($fieldData['options']) && is_array($fieldData['options']) ? json_encode($fieldData['options']) : null,
+                                'order'         => $fieldData['order'] ?? 0,
+                                'creator_id'    => Auth::id(),
+                                'created_by'    => creatorId(),
+                            ]
+                        );
+                    }
                 }
-            }
+            });
 
-            UpdateForm::dispatch($request, $form);
+            try {
+                UpdateForm::dispatch($request, $form);
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return redirect()->route('formbuilder.forms.index')->with('success', __('The form details are updated successfully.'));
         } else {
@@ -234,7 +253,7 @@ class FormController extends Controller
                     $q->where('response_data', 'like', '%' . $search . '%');
                 })
                 ->latest()
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('FormBuilder/Forms/Responses', [
