@@ -8,6 +8,7 @@ use App\Models\PurchaseReturnItemTax;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Traits\ControllerHelpers;
 use App\Events\ApprovePurchaseReturn;
 use App\Events\CompletePurchaseReturn;
 use App\Events\CreatePurchaseReturn;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseReturnController extends Controller
 {
+    use ControllerHelpers;
+
     private function checkReturnAccess(PurchaseReturn $return)
     {
         if(Auth::user()->can('manage-any-purchase-return-invoices')) {
@@ -73,18 +76,10 @@ class PurchaseReturnController extends Controller
         }
 
         // Apply sorting
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-
-        // Validate sort field to prevent SQL injection
         $allowedSortFields = ['return_number', 'return_date', 'total_amount', 'status', 'created_at'];
-        if (!in_array($sortField, $allowedSortFields) || empty($sortField)) {
-            $sortField = 'created_at';
-        }
+        $this->applySafeSort($query, $allowedSortFields, $request->get('sort'), $request->get('direction', 'desc'));
 
-        $query->orderBy($sortField, $sortDirection);
-
-        $perPage = $request->get('per_page', 10);
+        $perPage = $this->safePerPage(10, 100);
         $returns = $query->paginate($perPage);
 
         $vendors = User::where('type', 'vendor')->select('id', 'name', 'email')->where('created_by', creatorId())->get();

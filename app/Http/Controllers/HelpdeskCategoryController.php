@@ -8,12 +8,15 @@ use App\Events\DestroyHelpdeskCategory;
 use App\Http\Requests\StoreHelpdeskCategoryRequest;
 use App\Http\Requests\UpdateHelpdeskCategoryRequest;
 use App\Models\HelpdeskCategory;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class HelpdeskCategoryController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-helpdesk-categories')){
@@ -21,8 +24,8 @@ class HelpdeskCategoryController extends Controller
                 ->where('created_by', creatorId())
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('is_active') !== null, fn($q) => $q->where('is_active', request('is_active')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'is_active', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('helpdesk/categories/index', [

@@ -10,12 +10,15 @@ use App\Http\Requests\UpdateHelpdeskTicketRequest;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskCategory;
 use App\Models\User;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class HelpdeskTicketController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-helpdesk-tickets')){
@@ -38,8 +41,8 @@ class HelpdeskTicketController extends Controller
                 ->when(request('priority'), fn($q) => $q->where('priority', request('priority')))
                 ->when(request('category_id'), fn($q) => $q->where('category_id', request('category_id')))
                 ->when(request('company_id') && Auth::user()->type === 'superadmin', fn($q) => $q->where('created_by', request('company_id')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['ticket_id', 'title', 'status', 'priority', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $categories = HelpdeskCategory::where('is_active', true)

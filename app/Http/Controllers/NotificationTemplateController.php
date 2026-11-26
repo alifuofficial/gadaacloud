@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\NotificationTemplateLang;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class NotificationTemplateController extends Controller
 {
+    use ControllerHelpers;
+
     public function index(Request $request)
     {
         if(Auth::user()->can('manage-notification-templates'))
@@ -23,10 +26,9 @@ class NotificationTemplateController extends Controller
                 $query->where('action', 'like', '%' . $request->action . '%');
             }
 
-            $sortField = $request->get('sort') ?: 'id';
-            $query->orderBy($sortField, $request->get('direction', 'asc'));
+            $this->applySafeSort($query, ['id', 'action', 'type', 'module_name', 'created_at'], $request->get('sort'), $request->get('direction', 'asc'), 'id', 'asc');
 
-            $notificationTemplates = $query->paginate($request->get('per_page', 10))->withQueryString();
+            $notificationTemplates = $query->paginate($this->safePerPage(10, 100))->withQueryString();
 
             return Inertia::render('notification-templates/Index', [
                 'notificationTemplates' => $notificationTemplates,

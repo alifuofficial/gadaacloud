@@ -6,18 +6,21 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
+use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class RoleController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-roles')){
             $roles = Role::select('id', 'name', 'label','editable')
                 ->where('created_by', creatorId())
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'label', 'created_at']))
                 ->with(['users' => function($query) {
                     $query->select('id', 'name')->limit(5);
                 }])

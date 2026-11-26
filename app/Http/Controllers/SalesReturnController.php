@@ -8,6 +8,7 @@ use App\Models\SalesInvoiceReturnItemTax;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Traits\ControllerHelpers;
 use App\Events\ApproveSalesReturn;
 use App\Events\CompleteSalesReturn;
 use App\Events\CreateSalesReturn;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 
 class SalesReturnController extends Controller
 {
+    use ControllerHelpers;
+
     private function checkReturnAccess(SalesInvoiceReturn $salesReturn)
     {
         if(Auth::user()->can('manage-any-sales-return-invoices')) {
@@ -73,18 +76,10 @@ class SalesReturnController extends Controller
         }
 
         // Apply sorting
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-
-        // Validate sort field to prevent SQL injection
         $allowedSortFields = ['return_number', 'return_date', 'total_amount', 'status', 'created_at'];
-        if (!in_array($sortField, $allowedSortFields) || empty($sortField)) {
-            $sortField = 'created_at';
-        }
+        $this->applySafeSort($query, $allowedSortFields, $request->get('sort'), $request->get('direction', 'desc'));
 
-        $query->orderBy($sortField, $sortDirection);
-
-        $perPage = $request->get('per_page', 10);
+        $perPage = $this->safePerPage(10, 100);
         $returns = $query->paginate($perPage);
 
         $customers = User::where('type', 'client')->select('id', 'name', 'email')->where('created_by', creatorId())->get();

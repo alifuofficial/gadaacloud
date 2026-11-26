@@ -17,6 +17,7 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesInvoiceItemTax;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Traits\ControllerHelpers;
 use App\Http\Requests\StoreSalesProposalRequest;
 use App\Http\Requests\UpdateSalesProposalRequest;
 use Illuminate\Http\Request;
@@ -27,6 +28,8 @@ use Workdo\ProductService\Models\ProductServiceItem;
 
 class SalesProposalController extends Controller
 {
+    use ControllerHelpers;
+
     private function checkProposalAccess(SalesProposal $salesProposal)
     {
         if(Auth::user()->can('manage-any-sales-proposals')) {
@@ -80,16 +83,10 @@ class SalesProposalController extends Controller
                 }
             }
 
-            $sortField = $request->get('sort', 'created_at');
-            $sortDirection = $request->get('direction', 'desc');
             $allowedSortFields = ['proposal_number', 'proposal_date', 'due_date', 'subtotal', 'tax_amount', 'total_amount', 'status', 'created_at'];
-            if (!in_array($sortField, $allowedSortFields)) {
-                $sortField = 'created_at';
-            }
+            $this->applySafeSort($query, $allowedSortFields, $request->get('sort'), $request->get('direction', 'desc'));
 
-            $query->orderBy($sortField, $sortDirection);
-
-            $perPage = $request->get('per_page', 10);
+            $perPage = $this->safePerPage(10, 100);
             $proposals = $query->paginate($perPage);
             $customers = User::where('type', 'client')->select('id', 'name', 'email')->where('created_by', creatorId())->get();
 

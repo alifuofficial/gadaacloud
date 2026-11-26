@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Traits\ControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 use Workdo\ProductService\Models\WarehouseStock;
 
@@ -15,9 +16,9 @@ class StoreTransferRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'from_warehouse' => 'required|exists:warehouses,id',
-            'to_warehouse' => 'required|exists:warehouses,id|different:from_warehouse',
-            'product_id' => 'required|exists:product_service_items,id',
+            'from_warehouse' => ['required', ControllerHelpers::tenantExists('warehouses', 'id')],
+            'to_warehouse' => ['required', ControllerHelpers::tenantExists('warehouses', 'id'), 'different:from_warehouse'],
+            'product_id' => ['required', ControllerHelpers::tenantExists('product_service_items', 'id')],
             'quantity' => [
                 'required',
                 'integer',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Coupon;
 use App\Http\Requests\StoreCouponRequest;
 use App\Http\Requests\UpdateCouponRequest;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -12,6 +13,8 @@ use App\Models\UserCoupon;
 
 class CouponController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-coupons')){
@@ -21,8 +24,8 @@ class CouponController extends Controller
                 ->when(request('code'), fn($q) => $q->where('code', 'like', '%' . request('code') . '%'))
                 ->when(request('type'), fn($q) => $q->where('type', request('type')))
                 ->when(request('status') !== null, fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'code', 'discount', 'type', 'limit', 'expiry_date', 'status', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('coupons/index', [
@@ -122,8 +125,8 @@ class CouponController extends Controller
                 ->select('id', 'coupon_id', 'user_id', 'order_id', 'created_at')
                 ->when(request('user_name'), fn($q) => $q->whereHas('user', fn($query) => $query->where('name', 'like', '%' . request('user_name') . '%')))
                 ->when(request('order_id'), fn($q) => $q->where('order_id', 'like', '%' . request('order_id') . '%'))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['order_id', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('coupons/details', [

@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\EmailTemplate;
 use App\Models\EmailTemplateLang;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class EmailTemplateController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-email-templates')){
@@ -17,8 +20,8 @@ class EmailTemplateController extends Controller
                 ->with('templateLangs')
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('module_name'), fn($q) => $q->where('module_name', request('module_name')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name', 'module_name', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $allModules = EmailTemplate::distinct()->pluck('module_name')->filter()->sort()->values();

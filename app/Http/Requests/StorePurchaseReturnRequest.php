@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Traits\ControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePurchaseReturnRequest extends FormRequest
@@ -15,9 +16,9 @@ class StorePurchaseReturnRequest extends FormRequest
     {
         return [
             'return_date' => 'required|date',
-            'vendor_id' => 'required|integer|exists:users,id',
-            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
-            'original_invoice_id' => 'required|integer|exists:purchase_invoices,id',
+            'vendor_id' => ['required', 'integer', ControllerHelpers::tenantExists('users', 'id')],
+            'warehouse_id' => ['nullable', 'integer', ControllerHelpers::tenantExists('warehouses', 'id')],
+            'original_invoice_id' => ['required', 'integer', ControllerHelpers::tenantExists('purchase_invoices', 'id')],
             'reason' => 'required|in:defective,wrong_item,damaged,excess_quantity,other',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',

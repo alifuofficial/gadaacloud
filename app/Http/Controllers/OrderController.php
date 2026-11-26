@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Traits\ControllerHelpers;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-orders')){
@@ -28,8 +31,8 @@ class OrderController extends Controller
                     });
                 })
                 ->when(request('order_id'), fn($q) => $q->where('order_id', 'like', '%' . request('order_id') . '%'))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'desc')), fn($q) => $q->orderBy('id', 'desc'))
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['order_id', 'name', 'email', 'plan_name', 'price', 'payment_status', 'created_at'], null, request('direction', 'desc'), 'id', 'desc'))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('orders/index', [

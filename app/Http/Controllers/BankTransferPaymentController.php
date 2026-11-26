@@ -9,12 +9,15 @@ use App\Http\Requests\StoreBankTransferPaymentRequest;
 use App\Http\Requests\UpdateBankTransferPaymentRequest;
 use App\Models\Coupon;
 use App\Models\User;
+use App\Traits\ControllerHelpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class BankTransferPaymentController extends Controller
 {
+    use ControllerHelpers;
+
     public function store(StoreBankTransferPaymentRequest $request)
     {
         $validated = $request->validated();
@@ -154,8 +157,8 @@ class BankTransferPaymentController extends Controller
                 ->when(request('user_name'), fn($q) => $q->whereHas('user', fn($query) => $query->where('name', 'like', '%' . request('user_name') . '%')))
                 ->when(request('price_min'), fn($q) => $q->where('price', '>=', request('price_min')))
                 ->when(request('price_max'), fn($q) => $q->where('price', '<=', request('price_max')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['order_id', 'price', 'status', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Add plan data by parsing request JSON

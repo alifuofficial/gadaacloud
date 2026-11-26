@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Traits\ControllerHelpers;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePurchaseInvoiceRequest extends FormRequest
@@ -16,8 +17,8 @@ class UpdatePurchaseInvoiceRequest extends FormRequest
         return [
             'invoice_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:invoice_date',
-            'vendor_id' => 'required|exists:users,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'vendor_id' => ['required', ControllerHelpers::tenantExists('users', 'id')],
+            'warehouse_id' => ['required', ControllerHelpers::tenantExists('warehouses', 'id')],
             'payment_terms' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',

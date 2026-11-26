@@ -7,6 +7,7 @@ use App\Models\PurchaseInvoiceItem;
 use App\Models\PurchaseInvoiceItemTax;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Traits\ControllerHelpers;
 use App\Http\Requests\StorePurchaseInvoiceRequest;
 use App\Http\Requests\UpdatePurchaseInvoiceRequest;
 use Workdo\ProductService\Models\ProductServiceItem;
@@ -23,6 +24,8 @@ use App\Events\EditPurchaseInvoice;
 
 class PurchaseInvoiceController extends Controller
 {
+    use ControllerHelpers;
+
     private function checkInvoiceAccess(PurchaseInvoice $purchaseInvoice)
     {
         if(Auth::user()->can('manage-any-purchase-invoices')) {
@@ -82,18 +85,10 @@ class PurchaseInvoiceController extends Controller
             }
 
         // Apply sorting
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-
-        // Validate sort field to prevent SQL injection
         $allowedSortFields = ['invoice_number', 'invoice_date', 'due_date', 'subtotal', 'tax_amount', 'total_amount', 'balance_amount', 'status', 'created_at'];
-        if (!in_array($sortField, $allowedSortFields) || empty($sortField)) {
-            $sortField = 'created_at';
-        }
+        $this->applySafeSort($query, $allowedSortFields, $request->get('sort'), $request->get('direction', 'desc'));
 
-        $query->orderBy($sortField, $sortDirection);
-
-        $perPage = $request->get('per_page', 10);
+        $perPage = $this->safePerPage(10, 100);
         $invoices = $query->paginate($perPage);
         $vendors = User::where('type', 'vendor')->select('id', 'name', 'email')->where('created_by', creatorId())->get();
         $warehouses = Warehouse::where('is_active', true)->select('id', 'name')->where('created_by', creatorId())->get();

@@ -9,11 +9,14 @@ use Workdo\ProductService\Models\WarehouseStock;
 use App\Http\Requests\StoreTransferRequest;
 use App\Events\CreateTransfer;
 use App\Events\DestroyTransfer;
+use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class TransferController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-transfers')){
@@ -36,8 +39,8 @@ class TransferController extends Controller
                 ->when(request('from_warehouse'), function($q) {
                     $q->where('from_warehouse', request('from_warehouse'));
                 })
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['quantity', 'date', 'status', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $warehouses = Warehouse::where('created_by', creatorId())->where('is_active', true)->get(['id', 'name']);

@@ -11,12 +11,15 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Events\CreateUser;
 use App\Models\EmailTemplate;
+use App\Traits\ControllerHelpers;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Session;
 
 class UserController extends Controller
 {
+    use ControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-users')){
@@ -36,14 +39,14 @@ class UserController extends Controller
                     ->where('model_has_roles.role_id', request('role'))
                     ->where('model_has_roles.model_type', User::class))
                 ->when(request('is_enable_login') !== null, fn($q) => $q->where('is_enable_login', request('is_enable_login')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), function($q) {
+                ->when(request('sort'), fn($q) => $this->applySafeSort($q, ['name', 'email', 'type', 'is_enable_login', 'created_at']), function($q) {
                     if (config('app.is_demo', false) && Auth::user()->type === 'superadmin') {
                         return $q->orderBy('id', 'asc');
                     }
                     return $q->latest();
                 })
                 ->select('users.*')
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $roles = Role::where('created_by', creatorId())->pluck('label', 'id');
@@ -290,8 +293,8 @@ class UserController extends Controller
                 ->when(request('user_name'), fn($q) => $q->whereHas('user', fn($q) => $q->where('name', 'like', '%' . request('user_name') . '%')))
                 ->when(request('ip'), fn($q) => $q->where('ip', 'like', '%' . request('ip') . '%'))
                 ->when(request('role'), fn($q) => $q->whereHas('user', fn($q) => $q->where('type', request('role'))))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['ip', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $roles = Role::where('created_by', creatorId())->pluck('label', 'name');
