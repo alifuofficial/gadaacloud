@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class UpdateDealStageRequest extends FormRequest
 {
@@ -15,7 +16,7 @@ class UpdateDealStageRequest extends FormRequest
     {
         return [
             'name' => 'required|max:100',
-            'pipeline_id' => 'nullable|exists:pipelines,id'
+            'pipeline_id' => ['nullable', LeadControllerHelpers::tenantExists('pipelines', 'id')]
         ];
     }
 }

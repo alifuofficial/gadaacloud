@@ -11,10 +11,13 @@ use Inertia\Inertia;
 use Workdo\Recruitment\Events\CreateJobLocation;
 use Workdo\Recruitment\Events\UpdateJobLocation;
 use Workdo\Recruitment\Events\DestroyJobLocation;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 
 class JobLocationController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-job-locations')) {
@@ -40,8 +43,8 @@ class JobLocationController extends Controller
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status')))
                 ->when(request('remote_work') !== null && request('remote_work') !== '', fn($q) => $q->where('remote_work', request('remote_work')))
 
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name' => 'name', 'city' => 'city', 'country' => 'country', 'status' => 'status', 'remote_work' => 'remote_work', 'created_at' => 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/JobLocations/Index', [

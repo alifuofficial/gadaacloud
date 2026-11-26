@@ -17,9 +17,12 @@ use App\Models\User;
 use Workdo\Recruitment\Events\CreateInterview;
 use Workdo\Recruitment\Events\UpdateInterview;
 use Workdo\Recruitment\Events\DestroyInterview;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class InterviewController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-interviews')) {
@@ -76,13 +79,15 @@ class InterviewController extends Controller
                 ->when(request('interview_type_id') && request('interview_type_id') !== 'all', fn($q) => $q->where('interviews.interview_type_id', request('interview_type_id')))
                 ->when(request('sort'), function ($q) {
                     $sort = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+                    $allowedColumns = ['scheduled_date', 'scheduled_time', 'duration', 'status', 'location', 'created_at'];
 
                     switch ($sort) {
                         case 'candidate_name':
                             $q->leftJoin('candidates', 'interviews.candidate_id', '=', 'candidates.id')
-                                ->select('interviews.*', \DB::raw("CONCAT(candidates.first_name, ' ', candidates.last_name) as candidate_name"))
-                                ->orderBy('candidate_name', $direction);
+                                ->select('interviews.*')
+                                ->orderBy('candidates.first_name', $direction)
+                                ->orderBy('candidates.last_name', $direction);
                             break;
                         case 'round_name':
                             $q->leftJoin('interview_rounds', 'interviews.round_id', '=', 'interview_rounds.id')
@@ -98,10 +103,11 @@ class InterviewController extends Controller
                             $q->select('interviews.*')->orderBy('interviews.scheduled_date', $direction);
                             break;
                         default:
-                            $q->select('interviews.*')->orderBy('interviews.' . $sort, $direction);
+                            $col = in_array($sort, $allowedColumns, true) ? $sort : 'created_at';
+                            $q->select('interviews.*')->orderBy('interviews.' . $col, $direction);
                     }
                 }, fn($q) => $q->select('interviews.*')->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Process interviewer names for each interview

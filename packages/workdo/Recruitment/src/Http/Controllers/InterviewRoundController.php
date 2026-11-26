@@ -12,9 +12,12 @@ use Workdo\Recruitment\Models\JobPosting;
 use Workdo\Recruitment\Events\CreateInterviewRound;
 use Workdo\Recruitment\Events\UpdateInterviewRound;
 use Workdo\Recruitment\Events\DestroyInterviewRound;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class InterviewRoundController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-interview-rounds')) {
@@ -38,20 +41,21 @@ class InterviewRoundController extends Controller
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('interview_rounds.status', request('status')));
 
             // Handle sorting
-            if (request('sort') === 'job_posting.title') {
-                $direction = request('direction', 'asc');
+            $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+            $allowedSorts = ['name', 'sequence_number', 'status', 'created_at'];
+            $sort = request('sort');
+
+            if ($sort === 'job_posting.title') {
                 $query->join('job_postings', 'interview_rounds.job_id', '=', 'job_postings.id')
                     ->orderBy('job_postings.title', $direction)
                     ->select('interview_rounds.*');
-            } elseif (request('sort') === 'sequence_number') {
-                $query->orderBy('interview_rounds.sequence_number', request('direction', 'asc'));
-            } elseif (request('sort')) {
-                $query->orderBy('interview_rounds.' . request('sort'), request('direction', 'asc'));
+            } elseif ($sort && in_array($sort, $allowedSorts, true)) {
+                $query->orderBy('interview_rounds.' . $sort, $direction);
             } else {
                 $query->latest('interview_rounds.created_at');
             }
 
-            $interviewrounds = $query->paginate(request('per_page', 10))->withQueryString();
+            $interviewrounds = $query->paginate($this->safePerPage(10, 100))->withQueryString();
 
             // Load relationships after pagination
             $interviewrounds->load('job_posting');

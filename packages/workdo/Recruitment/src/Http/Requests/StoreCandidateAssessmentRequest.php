@@ -3,6 +3,7 @@
 namespace Workdo\Recruitment\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class StoreCandidateAssessmentRequest extends FormRequest
 {
@@ -14,12 +15,12 @@ class StoreCandidateAssessmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'candidate_id' => 'required|exists:candidates,id',
+            'candidate_id' => ['required', RecruitmentControllerHelpers::tenantExists('candidates', 'id')],
             'assessment_name' => 'required|string|max:255',
             'score' => 'nullable|integer|min:0',
             'max_score' => 'nullable|integer|min:1',
             'pass_fail_status' => 'required|in:0,1,2',
-            'conducted_by' => 'required|exists:users,id',
+            'conducted_by' => ['required', RecruitmentControllerHelpers::tenantExists('users', 'id')],
             'assessment_date' => 'required|date',
             'comments' => 'nullable|string'
         ];

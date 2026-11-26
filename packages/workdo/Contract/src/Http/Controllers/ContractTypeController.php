@@ -7,11 +7,16 @@ use Workdo\Contract\Http\Requests\StoreContractTypeRequest;
 use Workdo\Contract\Http\Requests\UpdateContractTypeRequest;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Workdo\Contract\Traits\ContractControllerHelpers;
+use Workdo\Contract\Traits\ContractDateHelpers;
 
 
 class ContractTypeController extends Controller
 {
+    use ContractControllerHelpers, ContractDateHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-contract-types')) {
@@ -47,8 +52,8 @@ class ContractTypeController extends Controller
                     });
                 })
                 ->when(request('is_active') !== null && request('is_active') !== '', fn($q) => $q->where('is_active', request('is_active') === '1' ? 1 : 0))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name' => 'name', 'is_active' => 'is_active', 'created_at' => 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Contract/ContractTypes/Index', [
@@ -84,7 +89,7 @@ class ContractTypeController extends Controller
     {
         $type = ContractType::find($id);
         
-        if (!$type) {
+        if (!$type || !$this->assertBelongsToTenant($type)) {
             return redirect()->route('contract-types.index')->with('error', __('Contract type not found.'));
         }
 
@@ -93,9 +98,11 @@ class ContractTypeController extends Controller
                 $validated = $request->validated();
                 $validated['is_active'] = $request->boolean('is_active', true);
 
-                $type->name = $validated['name'];
-                $type->is_active = $validated['is_active'];
-                $type->save();
+                DB::transaction(function () use ($type, $validated) {
+                    $type->name = $validated['name'];
+                    $type->is_active = $validated['is_active'];
+                    $type->save();
+                });
 
                 return back()->with('success', __('The contract type details are updated successfully.'));
             } catch (\Exception $e) {
@@ -111,7 +118,7 @@ class ContractTypeController extends Controller
         if (Auth::user()->can('delete-contract-types')) {
             $type = ContractType::find($id);
 
-            if (!$type) {
+            if (!$type || !$this->assertBelongsToTenant($type)) {
                 return redirect()->route('contract-types.index')->with('error', __('Contract type not found.'));
             }
 
@@ -122,7 +129,9 @@ class ContractTypeController extends Controller
                     return back()->with('error', __('Cannot delete contract type. It is being used by :count contract(s).', ['count' => $contractsCount]));
                 }
 
-                $type->delete();
+                DB::transaction(function () use ($type) {
+                    $type->delete();
+                });
                 return back()->with('success', __('The contract type has been deleted.'));
             } catch (\Exception $e) {
                 return back()->with('error', __('Failed to delete contract type: ') . $e->getMessage());

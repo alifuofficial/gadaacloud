@@ -14,9 +14,12 @@ use App\Models\User;
 use Workdo\Recruitment\Events\CreateCandidateOnboarding;
 use Workdo\Recruitment\Events\UpdateCandidateOnboarding;
 use Workdo\Recruitment\Events\DestroyCandidateOnboarding;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class CandidateOnboardingController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-candidate-onboardings')) {
@@ -61,7 +64,8 @@ class CandidateOnboardingController extends Controller
                 ->when(request('start_date_to'), fn($q) => $q->where('candidate_onboardings.start_date', '<=', request('start_date_to')))
                 ->when(request('sort'), function($q) {
                     $sortField = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+                    $allowedSorts = ['start_date', 'status', 'created_at'];
 
                     switch($sortField) {
                         case 'candidate.name':
@@ -76,11 +80,12 @@ class CandidateOnboardingController extends Controller
                               ->select('candidate_onboardings.*');
                             break;
                         default:
-                            $q->orderBy($sortField, $direction);
+                            $col = in_array($sortField, $allowedSorts, true) ? 'candidate_onboardings.' . $sortField : 'candidate_onboardings.created_at';
+                            $q->orderBy($col, $direction);
                             break;
                     }
                 }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/CandidateOnboardings/Index', [

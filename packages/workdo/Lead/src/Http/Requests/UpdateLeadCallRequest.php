@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class UpdateLeadCallRequest extends FormRequest
 {
@@ -17,7 +18,7 @@ class UpdateLeadCallRequest extends FormRequest
             'subject' => 'required|string|max:255',
             'call_type' => 'required|in:Outbound,Inbound',
             'duration' => 'required|string',
-            'assignee' => 'required|exists:users,id',
+            'assignee' => ['required', LeadControllerHelpers::tenantExists('users', 'id')],
             'description' => 'nullable|string',
             'call_result' => 'nullable|string',
         ];

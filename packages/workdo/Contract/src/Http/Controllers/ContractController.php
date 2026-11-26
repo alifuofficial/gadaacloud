@@ -60,7 +60,15 @@ class ContractController extends Controller
                 ->when(request('start_date') && request('start_date') !== '', fn($q) => $q->whereDate('start_date', '>=', request('start_date')))
                 ->when(request('end_date') && request('end_date') !== '', fn($q) => $q->whereDate('end_date', '<=', request('end_date')))
 
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), strtolower(request('direction', 'desc')) === 'asc' ? 'asc' : 'desc'), fn($q) => $q->latest())
+                ->tap(fn($q) => $this->applySafeSort($q, [
+                    'subject' => 'subject',
+                    'value' => 'value',
+                    'start_date' => 'start_date',
+                    'end_date' => 'end_date',
+                    'status' => 'status',
+                    'contract_number' => 'contract_number',
+                    'created_at' => 'created_at',
+                ]))
                 ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 

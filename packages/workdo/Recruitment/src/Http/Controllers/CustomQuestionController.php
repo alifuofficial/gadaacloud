@@ -11,10 +11,13 @@ use Inertia\Inertia;
 use Workdo\Recruitment\Events\CreateCustomQuestion;
 use Workdo\Recruitment\Events\UpdateCustomQuestion;
 use Workdo\Recruitment\Events\DestroyCustomQuestion;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 
 class CustomQuestionController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-custom-questions')){
@@ -37,8 +40,8 @@ class CustomQuestionController extends Controller
                 ->when(request('type') !== null && request('type') !== '', fn($q) => $q->where('type', request('type')))
                 ->when(request('is_active') !== null && request('is_active') !== '', fn($q) => $q->where('is_active', request('is_active')))
                 ->when(request('is_required') !== null && request('is_required') !== '', fn($q) => $q->where('is_required', request('is_required')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['question' => 'question', 'type' => 'type', 'is_active' => 'is_active', 'is_required' => 'is_required', 'created_at' => 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/CustomQuestions/Index', [

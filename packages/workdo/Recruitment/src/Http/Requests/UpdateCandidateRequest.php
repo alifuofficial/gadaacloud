@@ -5,6 +5,7 @@ namespace Workdo\Recruitment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Workdo\Recruitment\Models\CustomQuestion;
 use Workdo\Recruitment\Models\JobPosting;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class UpdateCandidateRequest extends FormRequest
 {
@@ -40,8 +41,8 @@ class UpdateCandidateRequest extends FormRequest
             'cover_letter' => 'nullable|file|max:10240',
             'application_date' => 'required|date',
             'custom_question' => 'nullable',
-            'job_id' => 'required|numeric|exists:job_postings,id',
-            'source_id' => 'required|numeric|exists:candidate_sources,id'
+            'job_id' => ['required', 'numeric', RecruitmentControllerHelpers::tenantExists('job_postings', 'id')],
+            'source_id' => ['required', 'numeric', RecruitmentControllerHelpers::tenantExists('candidate_sources', 'id')]
         ];
 
         // Add dynamic validation for custom question fields

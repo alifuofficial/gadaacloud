@@ -3,6 +3,7 @@
 namespace Workdo\Recruitment\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class StoreInterviewRoundRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class StoreInterviewRoundRequest extends FormRequest
             'sequence_number' => 'required|min:1',
             'description' => 'nullable',
             'status' => 'required',
-            'job_id' => 'required|exists:job_postings,id'
+            'job_id' => ['required', RecruitmentControllerHelpers::tenantExists('job_postings', 'id')]
         ];
     }
 }

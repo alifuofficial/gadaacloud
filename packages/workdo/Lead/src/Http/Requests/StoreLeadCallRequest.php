@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class StoreLeadCallRequest extends FormRequest
 {
@@ -14,11 +15,11 @@ class StoreLeadCallRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lead_id' => 'required|exists:leads,id',
+            'lead_id' => ['required', LeadControllerHelpers::tenantExists('leads', 'id')],
             'subject' => 'required|string|max:255',
             'call_type' => 'required|in:Outbound,Inbound',
             'duration' => 'required|string',
-            'assignee' => 'required|exists:users,id',
+            'assignee' => ['required', LeadControllerHelpers::tenantExists('users', 'id')],
             'description' => 'nullable|string',
             'call_result' => 'nullable|string',
         ];

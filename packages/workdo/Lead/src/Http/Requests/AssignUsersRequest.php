@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class AssignUsersRequest extends FormRequest
 {
@@ -15,7 +16,7 @@ class AssignUsersRequest extends FormRequest
     {
         return [
             'user_ids' => 'required|array|min:1',
-            'user_ids.*' => 'required|integer|exists:users,id'
+            'user_ids.*' => ['required', 'integer', LeadControllerHelpers::tenantExists('users', 'id')]
         ];
     }
 

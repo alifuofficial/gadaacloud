@@ -62,7 +62,8 @@ class OfferController extends Controller
                 ->when(request('offer_date'), fn($q) => $q->whereDate('offers.offer_date', request('offer_date')))
                 ->when(request('sort'), function ($q) {
                     $sort = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+                    $allowedSorts = ['offer_date', 'start_date', 'expiration_date', 'salary', 'position', 'status', 'approval_status', 'created_at'];
 
                     if ($sort === 'candidate_id') {
                         $q->join('candidates', 'offers.candidate_id', '=', 'candidates.id')
@@ -70,10 +71,11 @@ class OfferController extends Controller
                             ->orderBy('candidates.last_name', $direction)
                             ->select('offers.*');
                     } else {
-                        $q->orderBy($sort, $direction);
+                        $col = in_array($sort, $allowedSorts, true) ? $sort : 'created_at';
+                        $q->orderBy('offers.' . $col, $direction);
                     }
                 }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Add download URLs to offers

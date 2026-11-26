@@ -13,9 +13,12 @@ use App\Models\User;
 use Workdo\Recruitment\Events\CreateInterviewFeedback;
 use Workdo\Recruitment\Events\UpdateInterviewFeedback;
 use Workdo\Recruitment\Events\DestroyInterviewFeedback;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class InterviewFeedbackController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-interview-feedbacks')){
@@ -65,21 +68,25 @@ class InterviewFeedbackController extends Controller
                 ->when(request('recommendation') !== null && request('recommendation') !== '', fn($q) => $q->where('interview_feedbacks.recommendation', request('recommendation')));
 
             $sort = request('sort');
+            $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+            $allowedSorts = ['overall_rating', 'technical_rating', 'communication_rating', 'cultural_fit_rating', 'recommendation', 'created_at'];
+
             if ($sort === 'candidate') {
                 $query->join('interviews', 'interview_feedbacks.interview_id', '=', 'interviews.id')
                       ->join('candidates', 'interviews.candidate_id', '=', 'candidates.id')
                       ->select('interview_feedbacks.*')
-                      ->orderByRaw("CONCAT(candidates.first_name, ' ', candidates.last_name) " . request('direction', 'asc'));
+                      ->orderBy('candidates.first_name', $direction)
+                      ->orderBy('candidates.last_name', $direction);
             } elseif ($sort === 'interviewer_names') {
-                $query->orderBy('interviewer_ids', request('direction', 'asc'));
-            } elseif ($sort) {
-                $query->orderBy($sort, request('direction', 'asc'));
+                $query->orderBy('interviewer_ids', $direction);
+            } elseif ($sort && in_array($sort, $allowedSorts, true)) {
+                $query->orderBy('interview_feedbacks.' . $sort, $direction);
             } else {
                 $query->latest();
             }
 
             $interviewfeedbacks = $query
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             // Load interviewer names for each feedback

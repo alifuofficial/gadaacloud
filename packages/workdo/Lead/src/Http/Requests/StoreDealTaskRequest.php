@@ -3,6 +3,7 @@
 namespace Workdo\Lead\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class StoreDealTaskRequest extends FormRequest
 {
@@ -14,7 +15,7 @@ class StoreDealTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'deal_id' => 'required|exists:deals,id',
+            'deal_id' => ['required', LeadControllerHelpers::tenantExists('deals', 'id')],
             'name' => 'required|string|max:255',
             'date' => 'required|date',
             'time' => 'required',

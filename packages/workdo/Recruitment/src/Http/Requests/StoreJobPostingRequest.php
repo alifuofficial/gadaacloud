@@ -3,6 +3,7 @@
 namespace Workdo\Recruitment\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class StoreJobPostingRequest extends FormRequest
 {
@@ -19,7 +20,7 @@ class StoreJobPostingRequest extends FormRequest
             'priority' => 'required|in:0,1,2',
             'job_application' => 'required|in:existing,custom',
             'application_url' => 'required_if:job_application,custom|nullable|url',
-            'branch_id' => 'required|exists:branches,id',
+            'branch_id' => ['required', RecruitmentControllerHelpers::tenantExists('branches', 'id')],
             'applicant' => 'nullable|array',
             'applicant.*' => 'string|in:gender,date_of_birth,country',
             'visibility' => 'nullable|array',
@@ -38,10 +39,10 @@ class StoreJobPostingRequest extends FormRequest
             'publish_date' => 'nullable',
             'is_featured' => 'nullable',
             'status' => 'required',
-            'job_type_id' => 'required|exists:job_types,id',
-            'location_id' => 'required|exists:job_locations,id',
+            'job_type_id' => ['required', RecruitmentControllerHelpers::tenantExists('job_types', 'id')],
+            'location_id' => ['required', RecruitmentControllerHelpers::tenantExists('job_locations', 'id')],
             'custom_questions' => 'nullable|array',
-            'custom_questions.*' => 'integer|exists:custom_questions,id',
+            'custom_questions.*' => ['integer', RecruitmentControllerHelpers::tenantExists('custom_questions', 'id')],
             'skills' => 'required|array',
             'skills.*' => 'string|max:50'
         ];

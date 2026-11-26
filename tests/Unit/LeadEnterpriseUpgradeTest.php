@@ -69,4 +69,19 @@ class LeadEnterpriseUpgradeTest extends TestCase
         $this->assertStringStartsWith('2024-', $resolved['from_date']);
         $this->assertStringStartsWith('2025-', $resolved['to_date']);
     }
+
+    public function test_lead_form_requests_have_zero_unscoped_exists_rules(): void
+    {
+        $requestFiles = glob(base_path('packages/workdo/Lead/src/Http/Requests/*.php'));
+        $this->assertNotEmpty($requestFiles);
+
+        foreach ($requestFiles as $file) {
+            $content = file_get_contents($file);
+            $this->assertDoesNotMatchRegularExpression(
+                '/exists:[a-zA-Z0-9_]+,/',
+                $content,
+                basename($file) . ' still contains an unscoped exists: rule.'
+            );
+        }
+    }
 }

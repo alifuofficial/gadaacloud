@@ -12,9 +12,12 @@ use Workdo\Recruitment\Models\OnboardingChecklist;
 use Workdo\Recruitment\Events\CreateChecklistItem;
 use Workdo\Recruitment\Events\UpdateChecklistItem;
 use Workdo\Recruitment\Events\DestroyChecklistItem;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class ChecklistItemController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-checklist-items')){
@@ -43,14 +46,18 @@ class ChecklistItemController extends Controller
                 ->when(request('category') !== null && request('category') !== '', fn($q) => $q->where('category', request('category')))
                 ->when(request('status') !== null && request('status') !== '', fn($q) => $q->where('status', request('status') === '1' ? 1 : 0))
                 ->when(request('sort'), function($q) {
-                    if (request('sort') === 'checklist.name') {
+                    $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+                    $sort = request('sort');
+                    if ($sort === 'checklist.name') {
                         return $q->join('onboarding_checklists', 'checklist_items.checklist_id', '=', 'onboarding_checklists.id')
-                                 ->orderBy('onboarding_checklists.name', request('direction', 'asc'))
+                                 ->orderBy('onboarding_checklists.name', $direction)
                                  ->select('checklist_items.*');
                     }
-                    return $q->orderBy(request('sort'), request('direction', 'asc'));
+                    $allowedSorts = ['task_name', 'category', 'due_day', 'is_required', 'status', 'created_at'];
+                    $col = in_array($sort, $allowedSorts, true) ? $sort : 'created_at';
+                    return $q->orderBy('checklist_items.' . $col, $direction);
                 }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/ChecklistItems/Index', [

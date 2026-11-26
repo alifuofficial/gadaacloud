@@ -3,6 +3,7 @@
 namespace Workdo\Recruitment\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class StoreInterviewFeedbackRequest extends FormRequest
 {
@@ -22,9 +23,9 @@ class StoreInterviewFeedbackRequest extends FormRequest
             'weaknesses' => 'nullable',
             'comments' => 'nullable',
             'recommendation' => 'required',
-            'interview_id' => 'required|exists:interviews,id',
+            'interview_id' => ['required', RecruitmentControllerHelpers::tenantExists('interviews', 'id')],
             'interviewer_ids' => 'required|array|min:1',
-            'interviewer_ids.*' => 'exists:users,id'
+            'interviewer_ids.*' => [RecruitmentControllerHelpers::tenantExists('users', 'id')]
         ];
     }
 

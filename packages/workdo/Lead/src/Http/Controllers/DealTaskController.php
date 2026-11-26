@@ -17,9 +17,12 @@ use Workdo\Lead\Models\DealActivityLog;
 use Workdo\Lead\Events\CreateDealTask;
 use Workdo\Lead\Events\UpdateDealTask;
 use Workdo\Lead\Events\DestroyDealTask;
+use Workdo\Lead\Traits\LeadControllerHelpers;
 
 class DealTaskController extends Controller
 {
+    use LeadControllerHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-deal-tasks')){
@@ -43,8 +46,8 @@ class DealTaskController extends Controller
                 ->when(request('name'), fn($q) => $q->where('name', 'like', '%' . request('name') . '%'))
                 ->when(request('priority'), fn($q) => $q->where('priority', request('priority')))
                 ->when(request('status'), fn($q) => $q->where('status', request('status')))
-                ->when(request('sort'), fn($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn($q) => $this->applySafeSort($q, ['name' => 'name', 'date' => 'date', 'priority' => 'priority', 'status' => 'status', 'created_at' => 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Lead/DealTasks/Index', [

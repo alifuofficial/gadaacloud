@@ -13,9 +13,12 @@ use App\Models\User;
 use Workdo\Recruitment\Events\CreateCandidateAssessment;
 use Workdo\Recruitment\Events\UpdateCandidateAssessment;
 use Workdo\Recruitment\Events\DestroyCandidateAssessment;
+use Workdo\Recruitment\Traits\RecruitmentControllerHelpers;
 
 class CandidateAssessmentController extends Controller
 {
+    use RecruitmentControllerHelpers;
+
     public function index()
     {
         if (Auth::user()->can('manage-candidate-assessments')) {
@@ -59,7 +62,8 @@ class CandidateAssessmentController extends Controller
                 ->when(request('end_date'), fn($q) => $q->where('candidate_assessments.assessment_date', '<=', request('end_date')))
                 ->when(request('sort'), function($q) {
                     $sort = request('sort');
-                    $direction = request('direction', 'asc');
+                    $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+                    $allowedSorts = ['assessment_name', 'score', 'max_score', 'pass_fail_status', 'assessment_date', 'created_at'];
 
                     if ($sort === 'candidate_id') {
                         $q->join('candidates', 'candidate_assessments.candidate_id', '=', 'candidates.id')
@@ -71,10 +75,11 @@ class CandidateAssessmentController extends Controller
                           ->orderBy('users.name', $direction)
                           ->select('candidate_assessments.*');
                     } else {
-                        $q->orderBy('candidate_assessments.' . $sort, $direction);
+                        $col = in_array($sort, $allowedSorts, true) ? $sort : 'created_at';
+                        $q->orderBy('candidate_assessments.' . $col, $direction);
                     }
                 }, fn($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             return Inertia::render('Recruitment/CandidateAssessments/Index', [
