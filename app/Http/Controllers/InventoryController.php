@@ -373,18 +373,20 @@ class InventoryController extends Controller
             'preferred_vendor_id' => ['nullable', Rule::exists('users', 'id')->where('created_by', $companyId)],
         ]);
 
-        $rule = InventoryReorderRule::firstOrNew([
-            'created_by'   => $companyId,
-            'product_id'   => $request->product_id,
-            'warehouse_id' => $request->warehouse_id,
-        ]);
+        DB::transaction(function () use ($companyId, $request) {
+            $rule = InventoryReorderRule::firstOrNew([
+                'created_by'   => $companyId,
+                'product_id'   => $request->product_id,
+                'warehouse_id' => $request->warehouse_id,
+            ]);
 
-        $rule->created_by          = $companyId;
-        $rule->creator_id          = Auth::id();
-        $rule->min_stock_level     = $request->min_stock_level;
-        $rule->reorder_qty         = $request->reorder_qty ?? max(10, floatval($request->min_stock_level) * 2);
-        $rule->preferred_vendor_id = $request->preferred_vendor_id ?: null;
-        $rule->save();
+            $rule->created_by          = $companyId;
+            $rule->creator_id          = Auth::id();
+            $rule->min_stock_level     = $request->min_stock_level;
+            $rule->reorder_qty         = $request->reorder_qty ?? max(10, floatval($request->min_stock_level) * 2);
+            $rule->preferred_vendor_id = $request->preferred_vendor_id ?: null;
+            $rule->save();
+        });
 
         return redirect()->back()->with('success', __('Safety stock reorder threshold rule set successfully.'));
     }
@@ -526,24 +528,26 @@ class InventoryController extends Controller
         ]);
 
         try {
-            $product = ProductServiceItem::where('created_by', $companyId)->findOrFail($request->product_id);
-            $unitCost = floatval($request->unit_cost ?? 0) > 0
-                ? floatval($request->unit_cost)
-                : floatval($product->purchase_price ?? 0);
+            DB::transaction(function () use ($companyId, $request) {
+                $product = ProductServiceItem::where('created_by', $companyId)->findOrFail($request->product_id);
+                $unitCost = floatval($request->unit_cost ?? 0) > 0
+                    ? floatval($request->unit_cost)
+                    : floatval($product->purchase_price ?? 0);
 
-            InventoryService::receiveStock(
-                companyId: $companyId,
-                warehouseId: (int) $request->warehouse_id,
-                productId: (int) $request->product_id,
-                quantity: floatval($request->quantity),
-                unitCost: $unitCost,
-                actionType: 'batch_receipt',
-                referenceType: 'InventoryBatch',
-                referenceId: null,
-                notes: "Lot/Batch registered: {$request->batch_number}",
-                serials: [],
-                batchData: $request->only(['batch_number', 'lot_grade', 'origin', 'manufacture_date', 'expiry_date'])
-            );
+                InventoryService::receiveStock(
+                    companyId: $companyId,
+                    warehouseId: (int) $request->warehouse_id,
+                    productId: (int) $request->product_id,
+                    quantity: floatval($request->quantity),
+                    unitCost: $unitCost,
+                    actionType: 'batch_receipt',
+                    referenceType: 'InventoryBatch',
+                    referenceId: null,
+                    notes: "Lot/Batch registered: {$request->batch_number}",
+                    serials: [],
+                    batchData: $request->only(['batch_number', 'lot_grade', 'origin', 'manufacture_date', 'expiry_date'])
+                );
+            });
 
             return redirect()->back()->with('success', __('Batch / Lot registered and added to warehouse valuation.'));
         } catch (\Exception $e) {
@@ -567,8 +571,10 @@ class InventoryController extends Controller
             'status' => 'required|in:active,quarantined,expired',
         ]);
 
-        $batch->status = $request->status;
-        $batch->save();
+        DB::transaction(function () use ($batch, $request) {
+            $batch->status = $request->status;
+            $batch->save();
+        });
 
         return redirect()->back()->with('success', __('Batch status updated to :status.', ['status' => $request->status]));
     }
