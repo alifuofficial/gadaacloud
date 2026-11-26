@@ -2,17 +2,23 @@
 
 namespace Workdo\ProductService\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WarehouseStock extends Model
 {
+    use HasFactory, TenantScoped;
+
     protected $fillable = [
         'product_id',
         'warehouse_id',
         'quantity',
         'unit_cost',
         'total_value',
+        'creator_id',
+        'created_by',
     ];
 
     protected $casts = [

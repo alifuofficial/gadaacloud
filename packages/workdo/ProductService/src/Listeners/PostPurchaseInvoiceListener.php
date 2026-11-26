@@ -37,6 +37,8 @@ class PostPurchaseInvoiceListener
                         'warehouse_id' => $purchaseInvoice->warehouse_id,
                         'product_id'   => $item->product_id,
                         'quantity'     => $item->quantity,
+                        'created_by'   => $purchaseInvoice->created_by,
+                        'creator_id'   => $purchaseInvoice->creator_id ?? $purchaseInvoice->created_by,
                     ]);
                 }
             }

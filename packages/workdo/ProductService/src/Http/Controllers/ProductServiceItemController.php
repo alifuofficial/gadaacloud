@@ -20,9 +20,13 @@ use Workdo\ProductService\Models\ProductServiceItem;
 use Workdo\ProductService\Models\ProductServiceTax;
 use Workdo\ProductService\Models\ProductServiceUnit;
 use Workdo\ProductService\Models\WarehouseStock;
+use Workdo\ProductService\Traits\ProductServiceControllerHelpers;
+use Workdo\ProductService\Traits\ProductServiceDateHelpers;
 
 class ProductServiceItemController extends Controller
 {
+    use ProductServiceControllerHelpers, ProductServiceDateHelpers;
+
     private function isTenantOwner(ProductServiceItem $item): bool
     {
         return Auth::user()?->hasRole('superadmin') || (int) $item->created_by === (int) creatorId();
@@ -101,8 +105,8 @@ class ProductServiceItemController extends Controller
                 ->when(request('type'), fn ($q) => $q->where('type', request('type')))
                 ->when(request('category_id'), fn ($q) => $q->where('category_id', request('category_id')))
                 ->when(request('is_active') !== null && request('is_active') !== '', fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOLEAN)))
-                ->when(request('sort'), fn ($q) => $q->orderBy(request('sort'), request('direction', 'asc')), fn ($q) => $q->latest())
-                ->paginate(request('per_page', 10))
+                ->tap(fn ($q) => $this->applySafeSort($q, ['name', 'sku', 'barcode', 'sale_price', 'purchase_price', 'type', 'is_active', 'reorder_level', 'created_at']))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $items->getCollection()->transform(function ($item) {
@@ -180,53 +184,61 @@ class ProductServiceItemController extends Controller
                 $item->images = array_map('basename', $validated['images']);
             }
 
-            $item->save();
+            DB::transaction(function () use ($item, $validated, $request) {
+                $item->save();
 
-            // Create initial warehouse stock entry and sync optional reorder rule
-            $warehouseId = $this->nullableInt($validated['warehouse_id'] ?? null);
-            if ($item->type !== 'service' && $warehouseId && isset($validated['quantity'])) {
-                $qty = floatval($validated['quantity'] ?? 0);
-                $cost = floatval($item->purchase_price ?? 0);
+                // Create initial warehouse stock entry and sync optional reorder rule
+                $warehouseId = $this->nullableInt($validated['warehouse_id'] ?? null);
+                if ($item->type !== 'service' && $warehouseId && isset($validated['quantity'])) {
+                    $qty = floatval($validated['quantity'] ?? 0);
+                    $cost = floatval($item->purchase_price ?? 0);
 
-                if ($qty > 0 && class_exists(InventoryService::class)) {
-                    InventoryService::receiveStock(
-                        companyId: (int) creatorId(),
-                        warehouseId: $warehouseId,
-                        productId: (int) $item->id,
-                        quantity: $qty,
-                        unitCost: $cost,
-                        actionType: 'initial_stock',
-                        referenceType: 'ProductServiceItem',
-                        referenceId: (int) $item->id,
-                        notes: 'Initial item stock setup'
-                    );
-                } elseif ($qty > 0) {
-                    WarehouseStock::create([
-                        'product_id'   => $item->id,
-                        'warehouse_id' => $warehouseId,
-                        'quantity'     => $qty,
-                        'unit_cost'    => $cost,
-                        'total_value'  => round($qty * $cost, 4),
-                    ]);
-                }
-
-                if (floatval($item->reorder_level) > 0 && class_exists(\App\Models\InventoryReorderRule::class)) {
-                    \App\Models\InventoryReorderRule::updateOrCreate(
-                        [
-                            'created_by' => creatorId(),
-                            'product_id' => $item->id,
+                    if ($qty > 0 && class_exists(InventoryService::class)) {
+                        InventoryService::receiveStock(
+                            companyId: (int) creatorId(),
+                            warehouseId: $warehouseId,
+                            productId: (int) $item->id,
+                            quantity: $qty,
+                            unitCost: $cost,
+                            actionType: 'initial_stock',
+                            referenceType: 'ProductServiceItem',
+                            referenceId: (int) $item->id,
+                            notes: 'Initial item stock setup'
+                        );
+                    } elseif ($qty > 0) {
+                        WarehouseStock::create([
+                            'product_id'   => $item->id,
                             'warehouse_id' => $warehouseId,
-                        ],
-                        [
-                            'min_stock_level' => floatval($item->reorder_level),
-                            'reorder_quantity' => max(floatval($item->reorder_level) * 2, 1),
-                        ]
-                    );
-                }
-            }
+                            'quantity'     => $qty,
+                            'unit_cost'    => $cost,
+                            'total_value'  => round($qty * $cost, 4),
+                            'creator_id'   => Auth::id(),
+                            'created_by'   => creatorId(),
+                        ]);
+                    }
 
-            CreateProductServiceItem::dispatch($request, $item);
-            event(new \App\Events\CustomFieldSaved($item, $request->custom_fields ?? [], 'created'));
+                    if (floatval($item->reorder_level) > 0 && class_exists(\App\Models\InventoryReorderRule::class)) {
+                        \App\Models\InventoryReorderRule::updateOrCreate(
+                            [
+                                'created_by' => creatorId(),
+                                'product_id' => $item->id,
+                                'warehouse_id' => $warehouseId,
+                            ],
+                            [
+                                'min_stock_level' => floatval($item->reorder_level),
+                                'reorder_quantity' => max(floatval($item->reorder_level) * 2, 1),
+                            ]
+                        );
+                    }
+                }
+            });
+
+            try {
+                CreateProductServiceItem::dispatch($request, $item);
+                event(new \App\Events\CustomFieldSaved($item, $request->custom_fields ?? [], 'created'));
+            } catch (\Throwable $e) {
+                // Non-blocking event dispatch
+            }
 
             return redirect()->route('product-service.items.index')->with('success', __('The item has been created successfully.'));
         }
@@ -371,10 +383,16 @@ class ProductServiceItemController extends Controller
                 $item->images = !empty($validated['images']) ? array_map('basename', $validated['images']) : [];
             }
 
-            $item->save();
+            DB::transaction(function () use ($item) {
+                $item->save();
+            });
 
-            UpdateProductServiceItem::dispatch($request, $item);
-            event(new \App\Events\CustomFieldSaved($item, $request->custom_fields ?? [], 'updated'));
+            try {
+                UpdateProductServiceItem::dispatch($request, $item);
+                event(new \App\Events\CustomFieldSaved($item, $request->custom_fields ?? [], 'updated'));
+            } catch (\Throwable $e) {
+                // Non-blocking
+            }
 
             return redirect()->route('product-service.items.index')->with('success', __('The item details are updated successfully.'));
         }
@@ -408,21 +426,33 @@ class ProductServiceItemController extends Controller
                 && \App\Models\InventoryAuditLog::where('product_id', $item->id)->exists();
 
             if ($hasSales || $hasPurchases || $hasAuditLogs) {
-                $item->is_active = false;
-                $item->save();
-                $item->delete(); // Soft-delete preserves ERP financial & stock history
+                DB::transaction(function () use ($item) {
+                    $item->is_active = false;
+                    $item->save();
+                    $item->delete(); // Soft-delete preserves ERP financial & stock history
+                });
 
-                DestroyProductServiceItem::dispatch($item);
+                try {
+                    DestroyProductServiceItem::dispatch($item);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
                 return back()->with('success', __('Item archived to preserve historical invoice and inventory records.'));
             }
 
-            if ($item->image) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($item->image);
-            }
+            DB::transaction(function () use ($item) {
+                if ($item->image) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($item->image);
+                }
 
-            WarehouseStock::where('product_id', $item->id)->delete();
-            DestroyProductServiceItem::dispatch($item);
-            $item->forceDelete();
+                WarehouseStock::where('product_id', $item->id)->delete();
+                try {
+                    DestroyProductServiceItem::dispatch($item);
+                } catch (\Throwable $e) {
+                    // Non-blocking
+                }
+                $item->forceDelete();
+            });
 
             return back()->with('success', __('The item has been deleted.'));
         }
@@ -441,7 +471,7 @@ class ProductServiceItemController extends Controller
                     $sub->where('name', 'like', "%{$term}%")->orWhere('sku', 'like', "%{$term}%");
                 }))
                 ->latest()
-                ->paginate(request('per_page', 10))
+                ->paginate($this->safePerPage(10, 100))
                 ->withQueryString();
 
             $stocks->getCollection()->transform(function ($item) {
@@ -554,21 +584,26 @@ class ProductServiceItemController extends Controller
                     notes: 'Direct stock entry via Product Stock screen'
                 );
             } else {
-                $existingStock = WarehouseStock::where('product_id', $product->id)
-                    ->where('warehouse_id', $validated['warehouse_id'])
-                    ->first();
+                DB::transaction(function () use ($product, $validated, $qty, $cost, $tenantId) {
+                    $existingStock = WarehouseStock::where('product_id', $product->id)
+                        ->where('warehouse_id', $validated['warehouse_id'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($existingStock) {
-                    $existingStock->increment('quantity', $qty);
-                } else {
-                    WarehouseStock::create([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $validated['warehouse_id'],
-                        'quantity' => $qty,
-                        'unit_cost' => $cost,
-                        'total_value' => round($qty * $cost, 4),
-                    ]);
-                }
+                    if ($existingStock) {
+                        $existingStock->increment('quantity', $qty);
+                    } else {
+                        WarehouseStock::create([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $validated['warehouse_id'],
+                            'quantity' => $qty,
+                            'unit_cost' => $cost,
+                            'total_value' => round($qty * $cost, 4),
+                            'creator_id' => Auth::id() ?? $tenantId,
+                            'created_by' => $tenantId,
+                        ]);
+                    }
+                });
             }
 
             return back()->with('success', __('Stock entry created successfully.'));

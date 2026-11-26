@@ -89,6 +89,8 @@ class PosIntegrationTest extends TestCase
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('warehouse_id');
             $table->decimal('quantity', 15, 2)->default(0);
+            $table->unsignedBigInteger('creator_id')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
         });
 

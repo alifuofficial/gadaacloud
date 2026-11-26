@@ -5,14 +5,19 @@ namespace Workdo\ProductService\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\ProductService\Events\CreateProductServiceUnit;
 use Workdo\ProductService\Events\DestroyProductServiceUnit;
 use Workdo\ProductService\Events\UpdateProductServiceUnit;
 use Workdo\ProductService\Models\ProductServiceUnit;
+use Workdo\ProductService\Traits\ProductServiceControllerHelpers;
+use Workdo\ProductService\Traits\ProductServiceDateHelpers;
 
 class UnitController extends Controller
 {
+    use ProductServiceControllerHelpers, ProductServiceDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-product-service-units')){

@@ -5,14 +5,19 @@ namespace Workdo\ProductService\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\ProductService\Events\CreateProductServiceCategory;
 use Workdo\ProductService\Events\DestroyProductServiceCategory;
 use Workdo\ProductService\Events\UpdateProductServiceCategory;
 use Workdo\ProductService\Models\ProductServiceCategory;
+use Workdo\ProductService\Traits\ProductServiceControllerHelpers;
+use Workdo\ProductService\Traits\ProductServiceDateHelpers;
 
 class CategoryController extends Controller
 {
+    use ProductServiceControllerHelpers, ProductServiceDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-product-service-categories')){

@@ -37,6 +37,8 @@ class CompleteSalesReturnListener
                         'warehouse_id' => $salesReturn->warehouse_id,
                         'product_id'   => $item->product_id,
                         'quantity'     => $item->return_quantity,
+                        'created_by'   => $salesReturn->created_by,
+                        'creator_id'   => $salesReturn->creator_id ?? $salesReturn->created_by,
                     ]);
                 }
             }

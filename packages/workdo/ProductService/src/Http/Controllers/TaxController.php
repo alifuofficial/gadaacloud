@@ -5,14 +5,19 @@ namespace Workdo\ProductService\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Workdo\ProductService\Events\CreateProductServiceTax;
 use Workdo\ProductService\Events\DestroyProductServiceTax;
 use Workdo\ProductService\Events\UpdateProductServiceTax;
 use Workdo\ProductService\Models\ProductServiceTax;
+use Workdo\ProductService\Traits\ProductServiceControllerHelpers;
+use Workdo\ProductService\Traits\ProductServiceDateHelpers;
 
 class TaxController extends Controller
 {
+    use ProductServiceControllerHelpers, ProductServiceDateHelpers;
+
     public function index()
     {
         if(Auth::user()->can('manage-product-service-taxes')){

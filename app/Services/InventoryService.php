@@ -56,6 +56,8 @@ class InventoryService
                             'quantity'     => 0,
                             'unit_cost'    => 0,
                             'total_value'  => 0,
+                            'creator_id'   => Auth::id() ?? $companyId,
+                            'created_by'   => $companyId,
                         ]);
                     }
 
