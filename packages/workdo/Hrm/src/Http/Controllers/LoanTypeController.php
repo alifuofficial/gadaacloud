@@ -50,7 +50,7 @@ class LoanTypeController extends Controller
 
             $loantype = new LoanType();
             $loantype->name = $validated['name'];
-            $loantype->description = $validated['description'];
+            $loantype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $loantype->creator_id = Auth::id();
             $loantype->created_by = creatorId();
@@ -73,7 +73,7 @@ class LoanTypeController extends Controller
 
 
             $loantype->name = $validated['name'];
-            $loantype->description = $validated['description'];
+            $loantype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $loantype->save();
 

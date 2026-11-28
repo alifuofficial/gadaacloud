@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HardHat, Plus, Trash2, Edit, Calendar, Sun, Users, Wrench, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
 
 interface BoqItem {
     id: number;
@@ -100,6 +101,7 @@ export function ConstructionWorkspaceTab({ projectId, boqs, siteDiaries, currenc
 
     const handleCreateDiary = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRichTextEmpty(diaryForm.data.work_completed)) return;
         diaryForm.post(route('project.site-diaries.store', projectId), {
             onSuccess: () => {
                 diaryForm.reset();
@@ -440,14 +442,16 @@ export function ConstructionWorkspaceTab({ projectId, boqs, siteDiaries, currenc
                                     </div>
                                     <div>
                                         <Label className="text-xs">Work Accomplished Today</Label>
-                                        <Textarea
-                                            rows={2}
-                                            value={diaryForm.data.work_completed}
-                                            onChange={(e) => diaryForm.setData('work_completed', e.target.value)}
+                                        <RichTextEditor
+                                            variant="compact"
+                                            minHeight="100px"
+                                            content={diaryForm.data.work_completed}
+                                            onChange={(value) => diaryForm.setData('work_completed', value)}
                                             placeholder="Detailed summary of construction/site activities completed..."
-                                            required
-                                            className="text-xs"
                                         />
+                                        {diaryForm.errors.work_completed && (
+                                            <p className="text-xs text-red-500 mt-1">{diaryForm.errors.work_completed}</p>
+                                        )}
                                     </div>
                                     <div>
                                         <Label className="text-xs">Site Issues / Material Delays (Optional)</Label>
@@ -520,9 +524,7 @@ export function ConstructionWorkspaceTab({ projectId, boqs, siteDiaries, currenc
                                     <CardContent className="p-4 space-y-2 text-xs">
                                         <div>
                                             <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-0.5">Work Done:</span>
-                                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                                                {diary.work_completed}
-                                            </p>
+                                            <RichTextViewer content={diary.work_completed} compact />
                                         </div>
                                         {diary.challenges && (
                                             <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200">

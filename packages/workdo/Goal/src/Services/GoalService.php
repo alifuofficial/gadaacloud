@@ -163,7 +163,7 @@ class GoalService
             $contribution->reference_type = $contributionData['reference_type'] ?? 'manual';
             $contribution->reference_id = $contributionData['reference_id'] ?? null;
             $contribution->reversal_of_id = $contributionData['reversal_of_id'] ?? null;
-            $contribution->notes = $contributionData['notes'] ?? '';
+            $contribution->notes = \App\Support\HtmlSanitizer::sanitize($contributionData['notes'] ?? null) ?? '';
             $contribution->creator_id = Auth::id() ?? $goal->creator_id;
             $contribution->created_by = creatorId() ?? $goal->created_by;
             $contribution->save();

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { formatDate, formatTime,formatDateTime } from '@/utils/helpers';
+import { formatDate, formatTime, formatDateTime, stripHtml } from '@/utils/helpers';
 
 interface EmployeeDashboardProps {
     message: string;
@@ -650,7 +650,7 @@ export default function EmployeeDashboard({ message, stats }: EmployeeDashboardP
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="text-sm font-medium">{announcement.title}</p>
-                                                    <p className="text-xs text-gray-600">{announcement.description}</p>
+                                                    <p className="text-xs text-gray-600 line-clamp-2">{stripHtml(announcement.description || '')}</p>
                                                     <p className="text-xs text-gray-500">{timeAgo}</p>
                                                 </div>
                                             </div>

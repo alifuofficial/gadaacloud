@@ -45,7 +45,7 @@ class HelpdeskCategoryController extends Controller
 
             $category = new HelpdeskCategory();
             $category->name = $validated['name'];
-            $category->description = $validated['description'];
+            $category->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $category->color = $validated['color'] ?? '#3B82F6';
             $category->is_active = $validated['is_active'];
             $category->creator_id = Auth::id();
@@ -68,7 +68,7 @@ class HelpdeskCategoryController extends Controller
             $validated['is_active'] = $request->boolean('is_active', true);
 
             $helpdeskCategory->name = $validated['name'];
-            $helpdeskCategory->description = $validated['description'];
+            $helpdeskCategory->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $helpdeskCategory->color = $validated['color'] ?? '#3B82F6';
             $helpdeskCategory->is_active = $validated['is_active'];
             $helpdeskCategory->save();

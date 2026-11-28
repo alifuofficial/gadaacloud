@@ -4,7 +4,8 @@ import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CreditCard, TrendingUp, TrendingDown, Calendar, FileText, Hash, Building2 } from "lucide-react";
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, stripHtml } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -134,7 +135,7 @@ export default function Show() {
                             {chartofaccount.description && (
                                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                                     <p className="font-semibold text-blue-900 mb-1">{t('Description')}</p>
-                                    <p className="text-sm text-blue-800">{chartofaccount.description}</p>
+                                    <RichTextViewer content={chartofaccount.description} compact className="text-blue-900" />
                                 </div>
                             )}
                         </CardContent>
@@ -236,7 +237,7 @@ export default function Show() {
                                                 <span className="font-mono text-sm text-blue-700">{item.journal_entry.journal_number}</span>
                                             </TableCell>
                                             <TableCell>{formatDate(item.journal_entry.journal_date)}</TableCell>
-                                            <TableCell className="max-w-xs truncate">{item.description}</TableCell>
+                                            <TableCell className="max-w-xs truncate">{stripHtml(item.description)}</TableCell>
                                             <TableCell className="text-right">
                                                 {item.debit_amount > 0 ? (
                                                     <span className="text-red-600">{formatCurrency(item.debit_amount)}</span>

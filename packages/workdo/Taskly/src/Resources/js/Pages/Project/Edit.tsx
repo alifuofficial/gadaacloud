@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -146,11 +147,11 @@ export default function Edit({ item, users, onSuccess }: EditProps) {
                             {descriptionAI.map(field => <div key={field.id}>{field.component}</div>)}
                         </div>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                         id="description"
-                        rows={3}
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="full"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter project description')}
                         className={errors.description ? 'border-red-500' : ''}
                     />

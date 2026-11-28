@@ -2,8 +2,9 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Target, RefreshCw } from 'lucide-react';
 import { router } from '@inertiajs/react';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
 import { Button } from '@/components/ui/button';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ShowProps {
     goal: any;
@@ -116,10 +117,10 @@ export default function Show({ goal }: ShowProps) {
                     </div>
                 </div>
 
-                {goal?.description && (
+                {!isRichTextEmpty(goal?.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500">{t('Description')}</label>
-                        <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{goal.description}</p>
+                        <RichTextViewer content={goal.description} compact className="mt-1" />
                     </div>
                 )}
             </div>

@@ -60,9 +60,11 @@ class ConversationController extends Controller
             }
         }
 
+        $sanitizedDescription = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
+
         $conversationData = [
             'ticket_id' => $ticket->id,
-            'description' => $request->description,
+            'description' => $sanitizedDescription,
             'sender' => 'admin',
             'attachments' => !empty($attachments) ? json_encode($attachments) : null,
             'creator_id' => $user_id,
@@ -79,7 +81,7 @@ class ConversationController extends Controller
                 'ticket_name' => $ticket->name,
                 'ticket_id' => $ticket->ticket_id,
                 'email' => $ticket->email,
-                'reply_description' => $request->description,
+                'reply_description' => $sanitizedDescription,
             ];
             EmailTemplate::sendEmailTemplate('New Ticket Reply', [$ticket->email], $uArr, $user_id);
            
@@ -122,7 +124,7 @@ class ConversationController extends Controller
                 'ticket_name' => $ticket->name,
                 'ticket_id' => $ticket->ticket_id,
                 'email' => $ticket->email,
-                'reply_description' => $request->reply_description,
+                'reply_description' => \App\Support\HtmlSanitizer::sanitize($request->reply_description) ?? '',
             ];
 
             try {

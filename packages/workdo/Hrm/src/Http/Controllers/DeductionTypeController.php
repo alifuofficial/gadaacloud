@@ -50,7 +50,7 @@ class DeductionTypeController extends Controller
 
             $deductiontype = new DeductionType();
             $deductiontype->name = $validated['name'];
-            $deductiontype->description = $validated['description'];
+            $deductiontype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $deductiontype->creator_id = Auth::id();
             $deductiontype->created_by = creatorId();
@@ -70,7 +70,7 @@ class DeductionTypeController extends Controller
         if(Auth::user()->can('edit-deduction-types')){
             $validated = $request->validated();
             $deductiontype->name = $validated['name'];
-            $deductiontype->description = $validated['description'];
+            $deductiontype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $deductiontype->save();
 

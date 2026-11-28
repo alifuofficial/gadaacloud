@@ -109,14 +109,24 @@ class TicketField extends Model
     {
         if (!empty($data) && count($data) > 0) {
             $RecordId = $obj->id;
+            $textareaFieldIds = static::whereIn('id', array_keys($data))
+                ->where('type', 'textarea')
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+
             foreach ($data as $fieldId => $value) {
                 if (!empty($fieldId) && !empty($value)) {
+                    $cleanValue = in_array((string) $fieldId, $textareaFieldIds, true)
+                        ? (\App\Support\HtmlSanitizer::sanitize((string) $value) ?? '')
+                        : $value;
+
                     \DB::insert(
                         'insert into ticket_field_values (`record_id`, `field_id`,`value`,`created_at`,`updated_at`) values (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`),`updated_at` = VALUES(`updated_at`) ',
                         [
                             $RecordId,
                             $fieldId,
-                            $value,
+                            $cleanValue,
                             date('Y-m-d H:i:s'),
                             date('Y-m-d H:i:s'),
                         ]

@@ -18,7 +18,7 @@ import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { ListGridToggle } from '@/components/ui/list-grid-toggle';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, stripHtml } from '@/utils/helpers';
 import NoRecordsFound from '@/components/no-records-found';
 import Create from './Create';
 import View from './View';
@@ -417,7 +417,7 @@ export default function Index() {
                                                     {payment.notes && (
                                                         <div>
                                                             <p className="text-xs font-medium text-gray-600 mb-1">{t('Notes')}</p>
-                                                            <p className="text-xs text-gray-900 line-clamp-2">{payment.notes}</p>
+                                                            <p className="text-xs text-gray-900 line-clamp-2">{stripHtml(payment.notes)}</p>
                                                         </div>
                                                     )}
                                                 </div>

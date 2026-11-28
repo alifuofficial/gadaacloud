@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { BankTransfer } from './types';
 import { formatDate, formatCurrency } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     banktransfer: BankTransfer;
@@ -92,7 +93,9 @@ export default function View({ banktransfer }: ViewProps) {
 
                 <div>
                     <Label className="text-sm font-medium text-gray-500">{t('Description')}</Label>
-                    <div className="mt-1 p-3 bg-gray-50 rounded-md">{banktransfer.description}</div>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md">
+                        <RichTextViewer content={banktransfer.description} compact />
+                    </div>
                 </div>
 
                 <div>

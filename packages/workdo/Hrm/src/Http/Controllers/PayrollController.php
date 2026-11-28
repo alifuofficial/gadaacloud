@@ -164,7 +164,7 @@ class PayrollController extends Controller
                 $payroll->pay_period_start = $validated['pay_period_start'];
                 $payroll->pay_period_end = $validated['pay_period_end'];
                 $payroll->pay_date = $validated['pay_date'];
-                $payroll->notes = $validated['notes'];
+                $payroll->notes = isset($validated['notes']) ? (\App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null) ?? '') : null;
 
                 if (
                     function_exists('ethiopian_calendar_active')
@@ -209,7 +209,7 @@ class PayrollController extends Controller
                 $payroll->pay_period_start = $validated['pay_period_start'];
                 $payroll->pay_period_end = $validated['pay_period_end'];
                 $payroll->pay_date = $validated['pay_date'];
-                $payroll->notes = $validated['notes'];
+                $payroll->notes = isset($validated['notes']) ? (\App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null) ?? '') : null;
                 $payroll->status = $validated['status'];
                 $payroll->is_payroll_paid = $validated['is_payroll_paid'] ?? 'unpaid';
                 $payroll->save();

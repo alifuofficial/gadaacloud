@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Printer } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Contract } from './types';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import html2pdf from 'html2pdf.js';
 
 interface ContractPreviewProps {
@@ -196,12 +197,10 @@ export default function Preview() {
                             </div>
                         </div>
 
-                        {contract.description && (
+                        {!isRichTextEmpty(contract.description) && (
                             <div>
                                 <h3 className="text-lg font-semibold mb-4">{t('Description')}</h3>
-                                <div className="prose max-w-none">
-                                    <div dangerouslySetInnerHTML={{ __html: contract.description }} />
-                                </div>
+                                <RichTextViewer content={contract.description} />
                             </div>
                         )}
 

@@ -12,7 +12,7 @@ import { Check, Plus, Edit, Trash2, X, Package, MoreVertical, Clock } from 'luci
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SearchInput } from '@/components/ui/search-input';
-import { formatDate, formatAdminCurrency, formatStorage } from '@/utils/helpers';
+import { formatDate, formatAdminCurrency, formatStorage, stripHtml } from '@/utils/helpers';
 
 interface Plan {
     id: number;
@@ -261,7 +261,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
                                     <div className={`text-center space-y-4 pt-2 ${!plan.status ? 'grayscale-0 opacity-100' : ''}`}>
                                         <div className={`pt-2 transition-all duration-300 ${!plan.status ? 'grayscale opacity-50 contrast-75' : ''}`}>
                                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{plan.name}</h3>
-                                            <p className="text-xs text-gray-600 dark:text-gray-300">{plan.description}</p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-300">{stripHtml(plan.description)}</p>
                                         </div>
 
                                         <div className={`space-y-2 transition-all duration-300 ${!plan.status ? 'grayscale opacity-50' : ''}`}>
@@ -450,7 +450,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, bankTransf
                                     <div className="space-y-4">
                                         <div>
                                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{plan.description}</p>
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{stripHtml(plan.description)}</p>
                                         </div>
 
                                         <div className="py-2 border-y border-gray-100 dark:border-gray-700">

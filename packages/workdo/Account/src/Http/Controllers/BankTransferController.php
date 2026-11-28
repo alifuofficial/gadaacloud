@@ -109,7 +109,7 @@ class BankTransferController extends Controller
         $banktransfer->transfer_amount = $validated['transfer_amount'];
         $banktransfer->transfer_charges = $validated['transfer_charges'] ?? 0;
         $banktransfer->reference_number = $validated['reference_number'] ?? null;
-        $banktransfer->description = $validated['description'] ?? null;
+        $banktransfer->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
         $banktransfer->status = 'pending';
         $banktransfer->creator_id = Auth::id();
         $banktransfer->created_by = $companyId;
@@ -159,7 +159,7 @@ class BankTransferController extends Controller
         $banktransfer->transfer_amount = $validated['transfer_amount'];
         $banktransfer->transfer_charges = $validated['transfer_charges'] ?? 0;
         $banktransfer->reference_number = $validated['reference_number'] ?? null;
-        $banktransfer->description = $validated['description'] ?? null;
+        $banktransfer->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
         $banktransfer->save();
 
         UpdateBankTransfer::dispatch($request, $banktransfer);

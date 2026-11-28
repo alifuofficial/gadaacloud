@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import InputError from '@/components/ui/input-error';
 import { DatePicker } from '@/components/ui/date-picker';
 
@@ -131,12 +131,13 @@ export default function Create({ employeeId, loanTypes, onSuccess }: CreateLoanP
 
                 <div>
                     <Label htmlFor="reason">{t('Reason')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="reason"
-                        value={data.reason}
-                        onChange={(e) => setData('reason', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.reason}
+                        onChange={(value) => setData('reason', value)}
                         placeholder={t('Enter reason for loan')}
-                        rows={3}
                     />
                     <InputError message={errors.reason} />
                 </div>

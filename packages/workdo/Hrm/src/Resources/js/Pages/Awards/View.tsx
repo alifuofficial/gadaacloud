@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Tag, User, Calendar, FileText, FileImage } from 'lucide-react';
 import { Award } from './types';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewAwardProps {
     award: Award;
@@ -67,14 +68,14 @@ export default function View({ award }: ViewAwardProps) {
                     </div>
                 </div>
                 
-                {award.description && (
+                {!isRichTextEmpty(award.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{award.description}</p>
+                            <RichTextViewer content={award.description} compact />
                         </div>
                     </div>
                 )}

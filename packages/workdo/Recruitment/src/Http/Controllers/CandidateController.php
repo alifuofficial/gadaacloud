@@ -175,7 +175,7 @@ class CandidateController extends Controller
             $customAnswers = [];
             foreach ($validated as $key => $value) {
                 if (str_starts_with($key, 'custom_question_') && $value !== null) {
-                    $customAnswers[$key] = $value;
+                    $customAnswers[$key] = is_string($value) ? \App\Support\HtmlSanitizer::sanitize($value) : $value;
                 }
             }
 
@@ -197,8 +197,8 @@ class CandidateController extends Controller
             $candidate->current_salary = $validated['current_salary'];
             $candidate->expected_salary = $validated['expected_salary'];
             $candidate->notice_period = $validated['notice_period'];
-            $candidate->skills = $validated['skills'];
-            $candidate->education = $validated['education'];
+            $candidate->skills = \App\Support\HtmlSanitizer::sanitize($validated['skills'] ?? null);
+            $candidate->education = \App\Support\HtmlSanitizer::sanitize($validated['education'] ?? null);
             $candidate->portfolio_url = $validated['portfolio_url'];
             $candidate->linkedin_url = $validated['linkedin_url'];
             $candidate->profile_path = $profilePath;
@@ -262,7 +262,7 @@ class CandidateController extends Controller
             $customAnswers = [];
             foreach ($validated as $key => $value) {
                 if (str_starts_with($key, 'custom_question_') && $value !== null) {
-                    $customAnswers[$key] = $value;
+                    $customAnswers[$key] = is_string($value) ? \App\Support\HtmlSanitizer::sanitize($value) : $value;
                 }
             }
 
@@ -281,8 +281,8 @@ class CandidateController extends Controller
             $candidate->current_salary = $validated['current_salary'];
             $candidate->expected_salary = $validated['expected_salary'];
             $candidate->notice_period = $validated['notice_period'];
-            $candidate->skills = $validated['skills'];
-            $candidate->education = $validated['education'];
+            $candidate->skills = \App\Support\HtmlSanitizer::sanitize($validated['skills'] ?? null);
+            $candidate->education = \App\Support\HtmlSanitizer::sanitize($validated['education'] ?? null);
             $candidate->portfolio_url = $validated['portfolio_url'];
             $candidate->linkedin_url = $validated['linkedin_url'];
             $candidate->application_date = $validated['application_date'];

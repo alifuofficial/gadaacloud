@@ -6,14 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Trash2, User } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
 
 interface ViewBugProps {
     bug: { id: number };
@@ -84,10 +85,12 @@ export default function View({ bug }: ViewBugProps) {
 
                 </div>
 
-                {bugData.description && (
+                {!isRichTextEmpty(bugData.description) && (
                     <div>
                         <h4 className="text-sm font-medium text-gray-700 mb-2">{t('Description')}</h4>
-                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{bugData.description}</p>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                            <RichTextViewer content={bugData.description} compact />
+                        </div>
                     </div>
                 )}
 
@@ -193,7 +196,7 @@ function CommentsTab({ bugId, canManageComments, canCreateComments, canDeleteCom
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!comment.trim()) return;
+        if (isRichTextEmpty(comment)) return;
         setLoading(true);
         try {
             const response = await axios.post(route('project.bugs.comments.store', bugId), { comment });
@@ -215,15 +218,16 @@ function CommentsTab({ bugId, canManageComments, canCreateComments, canDeleteCom
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
                         <Label htmlFor="comment">{t('Add Comment')}</Label>
-                        <Textarea
+                        <RichTextEditor
                             id="comment"
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
+                            variant="compact"
+                            minHeight="110px"
+                            content={comment}
+                            onChange={setComment}
                             placeholder={t('Enter your comment...')}
-                            rows={3}
                         />
                     </div>
-                    <Button type="submit" disabled={loading || !comment.trim()}>
+                    <Button type="submit" disabled={loading || isRichTextEmpty(comment)}>
                         {loading ? t('Adding...') : t('Add Comment')}
                     </Button>
                 </form>
@@ -275,7 +279,7 @@ function CommentsTab({ bugId, canManageComments, canCreateComments, canDeleteCom
                                     </TooltipProvider>
                                 )}
                             </div>
-                            <p className="text-sm text-gray-700">{comment.comment}</p>
+                            <RichTextViewer content={comment.comment} compact />
                         </div>
                     ))}
                 </div>

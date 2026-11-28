@@ -11,12 +11,13 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelectEnhanced } from '@/components/ui/multi-select-enhanced';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCurrency, formatDate, downloadFile } from '@/utils/helpers';
+import { formatCurrency, formatDate, downloadFile, stripHtml, isRichTextEmpty } from '@/utils/helpers';
 import { getImagePath } from '@/utils/helpers';
 import { 
     Plus, Trash2, Edit, FolderKanban, Kanban, List, Bug, CheckSquare, 
@@ -617,10 +618,10 @@ export default function Show() {
                                     project.end_date && new Date(project.end_date) < new Date() ? 'text-red-600' : 'text-gray-900'
                                 }`}>{project.end_date ? formatDate(project.end_date) : '-'}</span>
                             </div>
-                            {project.description && (
+                            {!isRichTextEmpty(project.description) && (
                                 <div className="pt-2 border-t border-gray-100">
                                     <span className="text-sm font-medium text-gray-600 block mb-2">{t('Description')}</span>
-                                    <p className="text-sm text-gray-900 leading-relaxed">{project.description}</p>
+                                    <RichTextViewer content={project.description} />
                                 </div>
                             )}
                         </div>
@@ -807,11 +808,11 @@ export default function Show() {
                                     </span>
                                 </div>
                             )}
-                            {projectStats.business_case && (
+                            {projectStats.business_case && stripHtml(projectStats.business_case) && (
                                 <div>
                                     <span className="text-[11px] text-slate-500 font-medium block">{t('Business Objective')}</span>
                                     <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
-                                        {projectStats.business_case}
+                                        {stripHtml(projectStats.business_case)}
                                     </p>
                                 </div>
                             )}
@@ -1473,11 +1474,12 @@ export default function Show() {
                                     {milestoneCreateSummaryAI.map(field => <div key={field.id}>{field.component}</div>)}
                                 </div>
                             </div>
-                            <Textarea
+                            <RichTextEditor
                                 id="summary"
-                                rows={3}
-                                value={milestoneData.summary}
-                                onChange={(e) => setMilestoneData('summary', e.target.value)}
+                                variant="compact"
+                                minHeight="110px"
+                                content={milestoneData.summary}
+                                onChange={(value) => setMilestoneData('summary', value)}
                                 placeholder={t('Enter summary')}
                                 className={milestoneErrors.summary ? 'border-red-500' : ''}
                             />
@@ -1586,11 +1588,12 @@ export default function Show() {
                                     {milestoneEditSummaryAI.map(field => <div key={field.id}>{field.component}</div>)}
                                 </div>
                             </div>
-                            <Textarea
+                            <RichTextEditor
                                 id="edit-summary"
-                                rows={3}
-                                value={editMilestoneData.summary}
-                                onChange={(e) => setEditMilestoneData('summary', e.target.value)}
+                                variant="compact"
+                                minHeight="110px"
+                                content={editMilestoneData.summary}
+                                onChange={(value) => setEditMilestoneData('summary', value)}
                                 placeholder={t('Enter summary')}
                                 className={editMilestoneErrors.summary ? 'border-red-500' : ''}
                             />
@@ -1739,11 +1742,12 @@ export default function Show() {
 
                             <div>
                                 <Label htmlFor="edit_project_description">{t('Description')}</Label>
-                                <Textarea
+                                <RichTextEditor
                                     id="edit_project_description"
-                                    rows={3}
-                                    value={editProjectData.description}
-                                    onChange={(e) => setEditProjectData('description', e.target.value)}
+                                    variant="full"
+                                    minHeight="160px"
+                                    content={editProjectData.description}
+                                    onChange={(value) => setEditProjectData('description', value)}
                                     placeholder={t('Enter project description')}
                                     className={editProjectErrors.description ? 'border-red-500' : ''}
                                 />

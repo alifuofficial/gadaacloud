@@ -64,7 +64,7 @@ class ResignationController extends Controller
             $resignation->employee_id = $validated['employee_id'];
             $resignation->last_working_date = $validated['last_working_date'];
             $resignation->reason = $validated['reason'];
-            $resignation->description = $validated['description'];
+            $resignation->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $resignation->document = $validated['document'];
 
             $resignation->creator_id = Auth::id();
@@ -87,7 +87,7 @@ class ResignationController extends Controller
             $resignation->employee_id = $validated['employee_id'];
             $resignation->last_working_date = $validated['last_working_date'];
             $resignation->reason = $validated['reason'];
-            $resignation->description = $validated['description'];
+            $resignation->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $resignation->document = $validated['document'];
 
             $resignation->save();

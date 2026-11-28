@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Switch } from '@/components/ui/switch';
 import { EditCategoryProps, EditCategoryFormData } from './types';
 
@@ -61,12 +61,13 @@ export default function EditCategory({ category, onSuccess }: EditCategoryProps)
 
                 <div>
                     <Label htmlFor="description">{t('Description')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="description"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter Description')}
-                        rows={3}
                     />
                     <InputError message={errors.description} />
                 </div>

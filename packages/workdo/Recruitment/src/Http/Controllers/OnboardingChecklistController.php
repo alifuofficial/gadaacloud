@@ -52,7 +52,7 @@ class OnboardingChecklistController extends Controller
 
             $onboardingchecklist = new OnboardingChecklist();
             $onboardingchecklist->name = $validated['name'];
-            $onboardingchecklist->description = $validated['description'];
+            $onboardingchecklist->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $onboardingchecklist->is_default = $validated['is_default'];
             $onboardingchecklist->status = $validated['status'];
 
@@ -78,7 +78,7 @@ class OnboardingChecklistController extends Controller
             $validated['status'] = $request->boolean('status', true);
 
             $onboardingchecklist->name = $validated['name'];
-            $onboardingchecklist->description = $validated['description'];
+            $onboardingchecklist->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $onboardingchecklist->is_default = $validated['is_default'];
             $onboardingchecklist->status = $validated['status'];
 

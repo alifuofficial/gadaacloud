@@ -129,7 +129,7 @@ class SalesProposalController extends Controller
                     $proposal->customer_id = $request->customer_id;
                     $proposal->warehouse_id = $request->warehouse_id;
                     $proposal->payment_terms = $request->payment_terms;
-                    $proposal->notes = $request->notes;
+                    $proposal->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                     $proposal->subtotal = $totals['subtotal'];
                     $proposal->tax_amount = $totals['tax_amount'];
                     $proposal->discount_amount = $totals['discount_amount'];
@@ -212,7 +212,7 @@ class SalesProposalController extends Controller
                 $salesProposal->customer_id = $request->customer_id;
                 $salesProposal->warehouse_id = $request->warehouse_id;
                 $salesProposal->payment_terms = $request->payment_terms;
-                $salesProposal->notes = $request->notes;
+                $salesProposal->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $salesProposal->subtotal = $totals['subtotal'];
                 $salesProposal->tax_amount = $totals['tax_amount'];
                 $salesProposal->discount_amount = $totals['discount_amount'];
@@ -275,7 +275,7 @@ class SalesProposalController extends Controller
                 $invoice->balance_amount = $salesProposal->total_amount;
                 $invoice->paid_amount = 0;
                 $invoice->payment_terms = $salesProposal->payment_terms;
-                $invoice->notes = $salesProposal->notes;
+                $invoice->notes = \App\Support\HtmlSanitizer::sanitize($salesProposal->notes);
                 $invoice->status = 'draft';
                 $invoice->creator_id = Auth::id();
                 $invoice->created_by = creatorId();

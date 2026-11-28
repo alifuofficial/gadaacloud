@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Plus, Edit as EditIcon, Trash2, Tag } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { stripHtml } from '@/utils/helpers';
 import { SearchInput } from "@/components/ui/search-input";
 import { PerPageSelector } from "@/components/ui/per-page-selector";
 import { DataTable } from "@/components/ui/data-table";
@@ -92,7 +93,8 @@ export default function Index() {
         },
         {
             key: 'description',
-            header: t('Description')
+            header: t('Description'),
+            render: (value: string) => stripHtml(value) || '-'
         },
         {
             key: 'color',

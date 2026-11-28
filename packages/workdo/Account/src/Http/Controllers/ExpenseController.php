@@ -134,7 +134,7 @@ class ExpenseController extends Controller
         $expense->bank_account_id = $validated['bank_account_id'];
         $expense->chart_of_account_id = $validated['chart_of_account_id'];
         $expense->amount = $validated['amount'];
-        $expense->description = $validated['description'] ?? null;
+        $expense->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $expense->reference_number = $validated['reference_number'] ?? null;
         $expense->status = 'draft';
         $expense->creator_id = Auth::id();
@@ -171,7 +171,7 @@ class ExpenseController extends Controller
         $expense->bank_account_id = $validated['bank_account_id'];
         $expense->chart_of_account_id = $validated['chart_of_account_id'];
         $expense->amount = $validated['amount'];
-        $expense->description = $validated['description'] ?? null;
+        $expense->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $expense->reference_number = $validated['reference_number'] ?? null;
         $expense->save();
 

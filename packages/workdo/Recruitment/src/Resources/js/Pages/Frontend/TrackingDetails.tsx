@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, MapPin, DollarSign, Briefcase, Mail, Phone, Copy, Check, Video, ExternalLink, Calendar, Star } from 'lucide-react';
 import FrontendLayout from '../../Components/Frontend/FrontendLayout';
-import { formatDate, formatTime, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatTime, formatCurrency, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { useFormFields } from '@/hooks/useFormFields';
 
 
@@ -390,10 +391,10 @@ export default function TrackingDetails({ trackingId, jobDetails, candidateDetai
                                                                 <Clock className="h-4 w-4 mr-2" />
                                                                 <span>{t('Expires')}: {formatDate(step.details.expiration_date)}</span>
                                                             </div>
-                                                            {step.details.benefits && (
+                                                            {!isRichTextEmpty(step.details.benefits) && (
                                                                 <div className="mt-2">
-                                                                    <span className="font-medium">{t('Benefits')}:</span>
-                                                                    <p className="text-xs mt-1">{step.details.benefits}</p>
+                                                                    <span className="font-medium block mb-1">{t('Benefits')}:</span>
+                                                                    <RichTextViewer content={step.details.benefits} compact />
                                                                 </div>
                                                             )}
                                                         </div>

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -243,12 +243,13 @@ export default function Create({ users, projects, hasHRM, hasTaskly, onSuccess }
 
                 <div>
                     <Label htmlFor="notes">{t('Notes')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="notes"
-                        value={data.notes}
-                        onChange={(e) => setData('notes', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.notes}
+                        onChange={(value) => setData('notes', value)}
                         placeholder={t('Enter notes')}
-                        rows={3}
                     />
                     <InputError message={errors.notes} />
                 </div>

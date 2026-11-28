@@ -3,7 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
 import { usePageButtons } from '@/hooks/usePageButtons';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, stripHtml } from '@/utils/helpers';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
@@ -404,7 +404,7 @@ export default function Index() {
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <h3 className="font-semibold text-sm text-gray-900">{indicator.name}</h3>
-                                                            <p className="text-xs text-gray-500 truncate">{indicator.description}</p>
+                                                            <p className="text-xs text-gray-500 truncate">{stripHtml(indicator.description || '')}</p>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -85,7 +85,7 @@ class EventController extends Controller
             $event->start_time = $validated['start_time'];
             $event->end_time = $validated['end_time'];
             $event->location = $validated['location'];
-            $event->description = $validated['description'];
+            $event->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $event->color = $validated['color'] ?? null;
             $event->status = 'pending';
             $event->creator_id = Auth::id();
@@ -126,7 +126,7 @@ class EventController extends Controller
             $event->start_time = $validated['start_time'];
             $event->end_time = $validated['end_time'];
             $event->location = $validated['location'];
-            $event->description = $validated['description'];
+            $event->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $event->color = $validated['color'] ?? null;
             $event->save();
 

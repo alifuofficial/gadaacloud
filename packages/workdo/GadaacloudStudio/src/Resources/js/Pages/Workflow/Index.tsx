@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import NoRecordsFound from '@/components/no-records-found';
 import { Settings, Plus, Edit2, Trash2, GitBranch, Shield, User, ArrowRight, Activity, Play, Pause } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { stripHtml } from '@/utils/helpers';
 
 interface WorkflowStep {
     id: number;
@@ -43,7 +44,7 @@ export default function Index({ workflows }: IndexProps) {
         const query = search.trim().toLowerCase();
         return workflows.filter(w =>
             w.name.toLowerCase().includes(query) ||
-            (w.description && w.description.toLowerCase().includes(query)) ||
+            (w.description && stripHtml(w.description).toLowerCase().includes(query)) ||
             w.target_model.toLowerCase().includes(query)
         );
     }, [workflows, search]);
@@ -149,7 +150,7 @@ export default function Index({ workflows }: IndexProps) {
                                             <td className="p-4 pl-6">
                                                 <div className="font-semibold text-gray-900">{w.name}</div>
                                                 {w.description && (
-                                                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1 max-w-xs">{w.description}</div>
+                                                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1 max-w-xs">{stripHtml(w.description)}</div>
                                                 )}
                                             </td>
                                             <td className="p-4">

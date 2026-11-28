@@ -158,7 +158,7 @@ class ProjectBugController extends Controller
                 $bug->priority = $validated['priority'];
                 $bug->assigned_to =  is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to'];
                 $bug->stage_id = $validated['stage_id'];
-                $bug->description = $validated['description'];
+                $bug->description = \App\Support\HtmlSanitizer::sanitize($validated['description']);
                 $bug->creator_id = Auth::id();
                 $bug->created_by = creatorId();
                 $bug->save();
@@ -228,7 +228,7 @@ class ProjectBugController extends Controller
                     'priority' => $validated['priority'],
                     'assigned_to' => isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null,
                     'stage_id' => $validated['stage_id'],
-                    'description' => $validated['description'],
+                    'description' => \App\Support\HtmlSanitizer::sanitize($validated['description']),
                 ]);
 
                 UpdateProjectBug::dispatch($request, $bug);
@@ -370,10 +370,15 @@ class ProjectBugController extends Controller
                 'comment' => 'required|string'
             ]);
 
+            $cleanComment = \App\Support\HtmlSanitizer::sanitize($validated['comment']);
+            if ($cleanComment === null) {
+                return response()->json(['error' => __('The comment field is required.')], 422);
+            }
+
             $comment = BugComment::create([
                 'bug_id' => $bug->id,
                 'user_id' => Auth::id(),
-                'comment' => $validated['comment'],
+                'comment' => $cleanComment,
             ]);
 
             CreateBugComment::dispatch($request, $comment);

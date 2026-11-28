@@ -95,7 +95,7 @@ class GoalController extends Controller
         DB::transaction(function () use ($request, $validated) {
             $goal = new Goal();
             $goal->goal_name = $validated['goal_name'];
-            $goal->goal_description = $validated['goal_description'] ?? null;
+            $goal->goal_description = \App\Support\HtmlSanitizer::sanitize($validated['goal_description'] ?? null);
             $goal->category_id = $validated['category_id'];
             $goal->goal_type = $validated['goal_type'];
             $goal->target_amount = $validated['target_amount'];
@@ -132,7 +132,7 @@ class GoalController extends Controller
 
         DB::transaction(function () use ($request, $goal, $validated) {
             $goal->goal_name = $validated['goal_name'];
-            $goal->goal_description = $validated['goal_description'] ?? null;
+            $goal->goal_description = \App\Support\HtmlSanitizer::sanitize($validated['goal_description'] ?? null);
             $goal->category_id = $validated['category_id'];
             $goal->goal_type = $validated['goal_type'];
             $goal->target_amount = $validated['target_amount'];

@@ -11,6 +11,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Plus, Edit, Trash2, Target } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NoRecordsFound from '@/components/no-records-found';
+import { stripHtml } from '@/utils/helpers';
 import SystemSetupSidebar from '../SystemSetupSidebar';
 import Create from './Create';
 import EditGoalType from './Edit';
@@ -66,7 +67,7 @@ export default function Index() {
         {
             key: 'description',
             header: t('Description'),
-            render: (value: string) => value || '-'
+            render: (value: string) => stripHtml(value || '') || '-'
         },
         {
             key: 'status',

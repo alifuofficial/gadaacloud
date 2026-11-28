@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { RotateCcw } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface EmployeeReview {
     id: number;
@@ -95,10 +96,10 @@ export default function Show({ reviewCycle }: ShowProps) {
                     </div>
                 </div>
 
-                {reviewCycle.description && (
+                {!isRichTextEmpty(reviewCycle.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500">{t('Description')}</label>
-                        <p className="mt-1 text-sm text-gray-900">{reviewCycle.description}</p>
+                        <RichTextViewer content={reviewCycle.description} compact className="mt-1" />
                     </div>
                 )}
 

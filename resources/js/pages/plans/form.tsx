@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InputError } from '@/components/ui/input-error';
@@ -193,7 +193,13 @@ function PlanForm({ plan, activeModules, isEdit = false, userSubscriptionInfo }:
                             </div>
                             <div>
                                 <Label>{t('Description')}</Label>
-                                <Textarea placeholder={t('Enter plan description')} value={data.description} onChange={(e) => setData('description', e.target.value)} rows={3} />
+                                <RichTextEditor
+                                    variant="compact"
+                                    minHeight="110px"
+                                    content={data.description}
+                                    onChange={(value) => setData('description', value)}
+                                    placeholder={t('Enter plan description')}
+                                />
                                 <InputError message={errors.description} />
                             </div>
                         </CardContent>

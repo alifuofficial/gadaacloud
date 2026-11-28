@@ -1,7 +1,8 @@
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from 'react-i18next';
 import { User, Calendar, FileText, AlertOctagon, CheckCircle } from 'lucide-react';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface WarningViewProps {
     warning: any;
@@ -106,26 +107,26 @@ export default function WarningView({ warning, onClose }: WarningViewProps) {
                     </div>
                 )}
                 
-                {warning.description && (
+                {!isRichTextEmpty(warning.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{warning.description}</p>
+                            <RichTextViewer content={warning.description} compact />
                         </div>
                     </div>
                 )}
                 
-                {warning.employee_response && (
+                {!isRichTextEmpty(warning.employee_response) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <User className="h-4 w-4" />
                             {t('Employee Response')}
                         </label>
                         <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm">{warning.employee_response}</p>
+                            <RichTextViewer content={warning.employee_response} compact />
                         </div>
                     </div>
                 )}

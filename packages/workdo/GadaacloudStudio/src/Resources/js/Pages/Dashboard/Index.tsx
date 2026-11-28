@@ -261,7 +261,7 @@ export default function Dashboard({ stats, workflowHealth, recentActivity }: Das
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-0.5 truncate">{entry.workflow_name}</p>
                                                 {entry.comment && (
-                                                    <p className="text-[11px] text-gray-400 italic mt-0.5 line-clamp-1">"{entry.comment}"</p>
+                                                    <p className="text-[11px] text-gray-400 italic mt-0.5 line-clamp-1">"{stripHtml(entry.comment)}"</p>
                                                 )}
                                                 <p className="text-[10px] text-gray-300 mt-1">{entry.date}</p>
                                             </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import InputError from '@/components/ui/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -76,6 +77,10 @@ export default function Index() {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRichTextEmpty(form.data.content)) {
+            form.setError('content', t('Feedback content is required.'));
+            return;
+        }
         form.transform((f) => ({
             ...f,
             review_cycle_id: f.review_cycle_id === 'none' ? '' : f.review_cycle_id,
@@ -198,7 +203,16 @@ export default function Index() {
                         </div>
                         <div>
                             <Label required>{t('Feedback')}</Label>
-                            <Textarea value={form.data.content} onChange={(e) => form.setData('content', e.target.value)} rows={3} required />
+                            <RichTextEditor
+                                variant="compact"
+                                minHeight="110px"
+                                content={form.data.content}
+                                onChange={(value) => {
+                                    form.setData('content', value);
+                                    if (!isRichTextEmpty(value)) form.clearErrors('content');
+                                }}
+                            />
+                            <InputError message={form.errors.content} />
                         </div>
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
                             <Checkbox checked={form.data.is_anonymous} onCheckedChange={(v) => form.setData('is_anonymous', Boolean(v))} />

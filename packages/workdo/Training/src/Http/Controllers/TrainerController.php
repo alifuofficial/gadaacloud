@@ -69,8 +69,8 @@ class TrainerController extends Controller
                 $trainer->experience    = $validated['experience'];
                 $trainer->branch_id     = $validated['branch_id'];
                 $trainer->department_id = $validated['department_id'];
-                $trainer->expertise     = $validated['expertise'] ?? null;
-                $trainer->qualification = $validated['qualification'] ?? null;
+                $trainer->expertise     = \App\Support\HtmlSanitizer::sanitize($validated['expertise'] ?? null);
+                $trainer->qualification = \App\Support\HtmlSanitizer::sanitize($validated['qualification'] ?? null);
                 $trainer->creator_id    = Auth::id();
                 $trainer->created_by    = creatorId();
                 $trainer->save();
@@ -102,8 +102,8 @@ class TrainerController extends Controller
                 $trainer->experience    = $validated['experience'];
                 $trainer->branch_id     = $validated['branch_id'];
                 $trainer->department_id = $validated['department_id'];
-                $trainer->expertise     = $validated['expertise'] ?? null;
-                $trainer->qualification = $validated['qualification'] ?? null;
+                $trainer->expertise     = \App\Support\HtmlSanitizer::sanitize($validated['expertise'] ?? null);
+                $trainer->qualification = \App\Support\HtmlSanitizer::sanitize($validated['qualification'] ?? null);
                 $trainer->save();
             });
 

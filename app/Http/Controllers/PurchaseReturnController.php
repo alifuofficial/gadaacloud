@@ -145,7 +145,7 @@ class PurchaseReturnController extends Controller
                     $return->warehouse_id = $request->warehouse_id ?? null;
                     $return->original_invoice_id = $request->original_invoice_id;
                     $return->reason = $request->reason;
-                    $return->notes = $request->notes;
+                    $return->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                     $return->subtotal = $totals['subtotal'];
                     $return->tax_amount = $totals['tax_amount'];
                     $return->discount_amount = $totals['discount_amount'];

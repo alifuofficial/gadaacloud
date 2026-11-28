@@ -382,7 +382,7 @@ class LeadController extends Controller
                 $lead->stage_id    = $validated['stage_id'] ?? $lead->stage_id;
                 $lead->sources     = array_key_exists('sources', $validated) ? (is_array($validated['sources']) ? (empty($validated['sources']) ? null : implode(',', array_filter($validated['sources']))) : ($validated['sources'] ?? $lead->sources)) : $lead->sources;
                 $lead->products    = array_key_exists('products', $validated) ? (is_array($validated['products']) ? (empty($validated['products']) ? null : implode(',', array_filter($validated['products']))) : ($validated['products'] ?? $lead->products)) : $lead->products;
-                $lead->notes       = $validated['notes'] ?? $lead->notes;
+                $lead->notes       = array_key_exists('notes', $validated) ? \App\Support\HtmlSanitizer::sanitize($validated['notes']) : $lead->notes;
                 $lead->labels      = $request->input('labels', $lead->labels);
                 $lead->save();
 
@@ -641,12 +641,13 @@ class LeadController extends Controller
     {
         if (Auth::user()->can('edit-leads')) {
             $validated = $request->validated();
+            $sanitizedDescription = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
 
             $lead_email = LeadEmail::create([
                 'lead_id' => $lead->id,
                 'to' => $validated['to'],
                 'subject' => $validated['subject'],
-                'description' => $validated['description'],
+                'description' => $sanitizedDescription,
             ]);
             LeadAddEmail::dispatch($request, $lead, $lead_email);
             LeadActivityLog::create(
@@ -662,7 +663,7 @@ class LeadController extends Controller
                 $emailData = [
                     'lead_name' => $lead->name,
                     'lead_email_subject' => $request->subject,
-                    'lead_email_description' => $request->description,
+                    'lead_email_description' => $sanitizedDescription,
                 ];
 
                 // Send Email
@@ -686,7 +687,7 @@ class LeadController extends Controller
 
             LeadDiscussion::create([
                 'lead_id' => $lead->id,
-                'comment' => $validated['message'],
+                'comment' => \App\Support\HtmlSanitizer::sanitize($validated['message']) ?? '',
                 'creator_id' => Auth::id(),
                 'created_by' => creatorId(),
             ]);
@@ -756,7 +757,7 @@ class LeadController extends Controller
             $call->call_type   = $request->call_type;
             $call->duration    = $request->duration;
             $call->user_id     = $request->assignee;
-            $call->description = $request->description;
+            $call->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $call->call_result = $request->call_result;
             $call->save();
             LeadAddCall::dispatch($request, $lead);
@@ -785,7 +786,7 @@ class LeadController extends Controller
             $call->call_type   = $request->call_type;
             $call->duration    = $request->duration;
             $call->user_id     = $request->assignee;
-            $call->description = $request->description;
+            $call->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $call->call_result = $request->call_result;
             $call->save();
             LeadCallUpdate::dispatch($request, $call);

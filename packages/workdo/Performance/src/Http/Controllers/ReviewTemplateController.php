@@ -54,7 +54,7 @@ class ReviewTemplateController extends Controller
         DB::transaction(function () use ($validated) {
             $template = ReviewTemplate::create([
                 'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
+                'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
                 'branch_id' => $validated['branch_id'] ?? null,
                 'department_id' => $validated['department_id'] ?? null,
                 'designation_id' => $validated['designation_id'] ?? null,
@@ -87,7 +87,7 @@ class ReviewTemplateController extends Controller
         DB::transaction(function () use ($reviewTemplate, $validated) {
             $reviewTemplate->update([
                 'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
+                'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
                 'branch_id' => $validated['branch_id'] ?? null,
                 'department_id' => $validated['department_id'] ?? null,
                 'designation_id' => $validated['designation_id'] ?? null,

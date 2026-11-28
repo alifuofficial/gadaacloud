@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { isRichTextEmpty } from '@/utils/helpers';
 
 interface NoteProps {
     open: boolean;
@@ -15,13 +16,18 @@ interface NoteProps {
 export default function Note({ open, onOpenChange, balanceSheetId }: NoteProps) {
     const { t } = useTranslation();
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, setError, clearErrors, reset } = useForm({
         note_title: '',
         note_content: ''
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRichTextEmpty(data.note_content)) {
+            setError('note_content', t('The note content field is required.'));
+            return;
+        }
+        clearErrors('note_content');
         post(route('double-entry.balance-sheets.add-note', balanceSheetId), {
             onSuccess: () => {
                 reset();
@@ -37,7 +43,7 @@ export default function Note({ open, onOpenChange, balanceSheetId }: NoteProps) 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{t('Add Note')}</DialogTitle>
                 </DialogHeader>
@@ -55,15 +61,17 @@ export default function Note({ open, onOpenChange, balanceSheetId }: NoteProps) 
                         {errors.note_title && <p className="text-red-500 text-sm">{errors.note_title}</p>}
                     </div>
                     <div>
-                        <Label htmlFor="note_content">{t('Note Content')}</Label>
-                        <Textarea
+                        <Label htmlFor="note_content" required>{t('Note Content')}</Label>
+                        <RichTextEditor
                             id="note_content"
-                            value={data.note_content}
-                            onChange={(e) => setData('note_content', e.target.value)}
-                            className={errors.note_content ? 'border-red-500' : ''}
+                            variant="compact"
+                            minHeight="120px"
+                            content={data.note_content}
+                            onChange={(value) => {
+                                clearErrors('note_content');
+                                setData('note_content', value);
+                            }}
                             placeholder={t('Enter note content')}
-                            rows={4}
-                            required
                         />
                         {errors.note_content && <p className="text-red-500 text-sm">{errors.note_content}</p>}
                     </div>

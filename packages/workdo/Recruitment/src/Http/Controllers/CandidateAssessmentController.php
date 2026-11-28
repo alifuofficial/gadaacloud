@@ -128,7 +128,7 @@ class CandidateAssessmentController extends Controller
             $candidateassessment->score = $validated['score'];
             $candidateassessment->max_score = $validated['max_score'];
             $candidateassessment->pass_fail_status = $validated['pass_fail_status'];
-            $candidateassessment->comments = $validated['comments'];
+            $candidateassessment->comments = isset($validated['comments']) ? (\App\Support\HtmlSanitizer::sanitize($validated['comments']) ?? '') : null;
             $candidateassessment->assessment_date = $validated['assessment_date'];
             $candidateassessment->candidate_id = $validated['candidate_id'];
             $candidateassessment->conducted_by = $validated['conducted_by'];
@@ -174,7 +174,7 @@ class CandidateAssessmentController extends Controller
             $candidateassessment->score = $validated['score'];
             $candidateassessment->max_score = $validated['max_score'];
             $candidateassessment->pass_fail_status = $validated['pass_fail_status'];
-            $candidateassessment->comments = $validated['comments'];
+            $candidateassessment->comments = isset($validated['comments']) ? (\App\Support\HtmlSanitizer::sanitize($validated['comments']) ?? '') : null;
             $candidateassessment->assessment_date = $validated['assessment_date'];
             $candidateassessment->candidate_id = $validated['candidate_id'];
             $candidateassessment->conducted_by = $validated['conducted_by'];

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { Plus, Edit, Trash2, Award } from 'lucide-react';
@@ -205,7 +205,12 @@ export default function Index() {
                         )}
                         <div>
                             <Label>{t('Description')}</Label>
-                            <Textarea value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} rows={2} />
+                            <RichTextEditor
+                                variant="compact"
+                                minHeight="100px"
+                                content={form.data.description}
+                                onChange={(value) => form.setData('description', value)}
+                            />
                         </div>
                         <div>
                             <Label>{t('Status')}</Label>

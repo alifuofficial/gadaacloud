@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Megaphone, FileText, Calendar, AlertCircle, CheckCircle, Building2, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Announcement } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     announcement: Announcement;
@@ -129,14 +130,14 @@ export default function View({ announcement }: ViewProps) {
                     </div>
                 </div>
                 
-                {announcement.description && (
+                {!isRichTextEmpty(announcement.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{announcement.description}</p>
+                            <RichTextViewer content={announcement.description} />
                         </div>
                     </div>
                 )}

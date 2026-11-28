@@ -196,7 +196,7 @@ class VendorPaymentController extends Controller
             $payment->foreign_amount = $foreignAmount;
             $payment->fx_gain_loss = $fxGainLoss;
             $payment->status = 'pending';
-            $payment->notes = $request->notes;
+            $payment->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
             $payment->creator_id = Auth::id();
             $payment->created_by = $companyId;
             $payment->save();

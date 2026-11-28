@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, Star, User, Calendar } from 'lucide-react';
 import { InterviewFeedback } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     interviewfeedback: InterviewFeedback;
@@ -134,13 +135,21 @@ export default function View({ interviewfeedback }: ViewProps) {
                     <div>
                         <h4 className="font-medium text-green-700 mb-2">{t('Strengths')}</h4>
                         <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-h-[200px] overflow-y-auto">
-                            <p className="text-gray-900 whitespace-pre-wrap">{interviewfeedback.strengths || 'No strengths mentioned'}</p>
+                            {!isRichTextEmpty(interviewfeedback.strengths) ? (
+                                <RichTextViewer content={interviewfeedback.strengths} compact />
+                            ) : (
+                                <p className="text-gray-500 text-sm">{t('No strengths mentioned')}</p>
+                            )}
                         </div>
                     </div>
                     <div>
                         <h4 className="font-medium text-red-700 mb-2">{t('Weaknesses')}</h4>
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-[200px] overflow-y-auto">
-                            <p className="text-gray-900 whitespace-pre-wrap">{interviewfeedback.weaknesses || 'No weaknesses mentioned'}</p>
+                            {!isRichTextEmpty(interviewfeedback.weaknesses) ? (
+                                <RichTextViewer content={interviewfeedback.weaknesses} compact />
+                            ) : (
+                                <p className="text-gray-500 text-sm">{t('No weaknesses mentioned')}</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -149,7 +158,11 @@ export default function View({ interviewfeedback }: ViewProps) {
                 <div>
                     <h4 className="font-medium text-blue-700 mb-2">{t('Additional Comments')}</h4>
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-[200px] overflow-y-auto">
-                        <p className="text-gray-900 whitespace-pre-wrap">{interviewfeedback.comments || 'No additional comments'}</p>
+                        {!isRichTextEmpty(interviewfeedback.comments) ? (
+                            <RichTextViewer content={interviewfeedback.comments} compact />
+                        ) : (
+                            <p className="text-gray-500 text-sm">{t('No additional comments')}</p>
+                        )}
                     </div>
                 </div>
             </div>

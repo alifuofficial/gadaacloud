@@ -21,7 +21,7 @@ class UpdateBankTransferRequest extends FormRequest
             'transfer_amount' => 'required|numeric|min:0.01',
             'transfer_charges' => 'nullable|numeric|min:0',
             'reference_number' => 'nullable|string|max:255',
-            'description' => 'required|string|max:500'
+            'description' => 'required|string|max:20000'
         ];
     }
 

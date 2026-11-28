@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { getImagePath } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface Candidate {
     id: number;
@@ -126,10 +127,7 @@ export default function OfferLetterPdf() {
                         </div>
 
                         {/* Offer Letter Content */}
-                        <div
-                            className="prose max-w-none"
-                            dangerouslySetInnerHTML={{ __html: templateContent }}
-                        />
+                        <RichTextViewer content={templateContent} />
 
                         {/* Footer */}
                         <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">

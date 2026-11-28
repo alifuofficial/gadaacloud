@@ -71,6 +71,7 @@ class CustomPageController extends Controller
             if (empty($validated['slug'])) {
                 $validated['slug'] = Str::slug($validated['title']);
             }
+            $validated['content'] = \App\Support\HtmlSanitizer::sanitize($validated['content']) ?? '';
 
                 DB::transaction(function () use ($validated) {
                     CustomPage::create($validated);
@@ -108,6 +109,8 @@ class CustomPageController extends Controller
                 'meta_description' => 'nullable|string',
                 'is_active' => 'boolean'
             ]);
+
+            $validated['content'] = \App\Support\HtmlSanitizer::sanitize($validated['content']) ?? '';
 
             DB::transaction(function () use ($customPage, $validated) {
                 $customPage->update($validated);

@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Goal } from './types';
 
 interface ViewGoalProps {
@@ -98,10 +99,12 @@ export default function View({ goal }: ViewGoalProps) {
                                 <p className="mt-1 text-muted-foreground">{formatDate(goal?.target_date)}</p>
                             </div>
                         </div>
-                        {goal?.goal_description && (
+                        {!isRichTextEmpty(goal?.goal_description) && (
                             <div className="text-sm mt-4">
                                 <span className="font-semibold">{t('Description')}</span>
-                                <p className="mt-1 p-3 bg-muted/40 rounded text-sm">{goal.goal_description}</p>
+                                <div className="mt-1 p-3 bg-muted/40 rounded">
+                                    <RichTextViewer content={goal?.goal_description} compact />
+                                </div>
                             </div>
                         )}
                     </CardContent>

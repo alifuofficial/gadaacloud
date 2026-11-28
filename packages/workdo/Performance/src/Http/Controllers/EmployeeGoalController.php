@@ -96,7 +96,7 @@ class EmployeeGoalController extends Controller
         $employeeGoal->goal_type_id = $validated['goal_type_id'];
         $employeeGoal->review_cycle_id = $validated['review_cycle_id'] ?? null;
         $employeeGoal->title = $validated['title'];
-        $employeeGoal->description = $validated['description'];
+        $employeeGoal->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
         $employeeGoal->start_date = $validated['start_date'];
         $employeeGoal->end_date = $validated['end_date'];
         $employeeGoal->target = $validated['target'];
@@ -144,7 +144,7 @@ class EmployeeGoalController extends Controller
         $employeeGoal->goal_type_id = $validated['goal_type_id'];
         $employeeGoal->review_cycle_id = $validated['review_cycle_id'] ?? null;
         $employeeGoal->title = $validated['title'];
-        $employeeGoal->description = $validated['description'];
+        $employeeGoal->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
         $employeeGoal->start_date = $validated['start_date'];
         $employeeGoal->end_date = $validated['end_date'];
         $employeeGoal->target = $validated['target'];

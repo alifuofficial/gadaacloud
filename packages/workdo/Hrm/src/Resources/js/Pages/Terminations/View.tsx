@@ -4,7 +4,8 @@ import { User, Calendar, FileText, UserX, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Termination } from './types';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     termination: Termination;
@@ -99,14 +100,14 @@ export default function View({ termination }: ViewProps) {
                     </div>
                 )}
                 
-                {termination.description && (
+                {!isRichTextEmpty(termination.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{termination.description}</p>
+                            <RichTextViewer content={termination.description} compact />
                         </div>
                     </div>
                 )}

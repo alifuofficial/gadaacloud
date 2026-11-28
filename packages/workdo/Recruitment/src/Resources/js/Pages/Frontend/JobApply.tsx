@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,7 +15,7 @@ import FrontendLayout from '../../Components/Frontend/FrontendLayout';
 import { PhoneInputComponent } from '@/components/ui/phone-input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useFormFields } from '@/hooks/useFormFields';
-import { formatCurrency } from '@/utils/helpers';
+import { formatCurrency, isRichTextEmpty } from '@/utils/helpers';
 import InputError from '@/components/ui/input-error';
 
 interface Job {
@@ -145,8 +145,10 @@ export default function JobApply({ job, applicationTips, storageSettings, custom
                 const value = customAnswers[fieldName];
                 if (Array.isArray(value)) {
                     return value.length > 0;
+                } else if (question.type === 'textarea') {
+                    return !isRichTextEmpty(value ? value.toString() : '');
                 } else {
-                    return value && value.toString().trim() !== '';
+                    return Boolean(value && value.toString().trim() !== '');
                 }
             }
             return true;
@@ -498,12 +500,14 @@ export default function JobApply({ job, applicationTips, storageSettings, custom
                                                 <Label htmlFor="skills" className="text-sm font-medium text-gray-700 mb-2 block">
                                                     {t('Skills')}
                                                 </Label>
-                                                <Textarea
+                                                <RichTextEditor
                                                     id="skills"
-                                                    value={formData.skills}
-                                                    onChange={(e) => handleInputChange('skills', e.target.value)}
+                                                    variant="compact"
+                                                    minHeight="100px"
+                                                    enableMediaLibrary={false}
+                                                    content={formData.skills}
+                                                    onChange={(value) => handleInputChange('skills', value)}
                                                     placeholder={t('Enter skills')}
-                                                    rows={3}
                                                 />
                                             </div>
 
@@ -512,12 +516,14 @@ export default function JobApply({ job, applicationTips, storageSettings, custom
                                                 <Label htmlFor="education" className="text-sm font-medium text-gray-700 mb-2 block">
                                                     {t('Education')}
                                                 </Label>
-                                                <Textarea
+                                                <RichTextEditor
                                                     id="education"
-                                                    value={formData.education}
-                                                    onChange={(e) => handleInputChange('education', e.target.value)}
+                                                    variant="compact"
+                                                    minHeight="100px"
+                                                    enableMediaLibrary={false}
+                                                    content={formData.education}
+                                                    onChange={(value) => handleInputChange('education', value)}
                                                     placeholder={t('Enter education')}
-                                                    rows={3}
                                                 />
                                             </div>
 
@@ -761,11 +767,12 @@ export default function JobApply({ job, applicationTips, storageSettings, custom
                                                                 />
                                                             )}
                                                             {question.type === 'textarea' && (
-                                                                <Textarea
-                                                                    value={customAnswers[fieldName] || ''}
-                                                                    onChange={(e) => setCustomAnswers(prev => ({ ...prev, [fieldName]: e.target.value }))}
-                                                                    rows={3}
-                                                                    required={question.is_required}
+                                                                <RichTextEditor
+                                                                    variant="minimal"
+                                                                    minHeight="90px"
+                                                                    enableMediaLibrary={false}
+                                                                    content={customAnswers[fieldName] || ''}
+                                                                    onChange={(value) => setCustomAnswers(prev => ({ ...prev, [fieldName]: value }))}
                                                                 />
                                                             )}
                                                             {question.type === 'select' && (

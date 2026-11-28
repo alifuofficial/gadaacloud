@@ -60,4 +60,20 @@ trait ControllerHelpers
 
         return $query->orderBy($col, $dir);
     }
+
+    /**
+     * Sanitize untrusted rich-text HTML consistently across controllers.
+     */
+    protected function sanitizeRichText(?string $html): ?string
+    {
+        return \App\Support\HtmlSanitizer::sanitize($html);
+    }
+
+    /**
+     * Extract clean plain text from stored rich-text HTML for previews and exports.
+     */
+    protected function richTextToPlainText(?string $html, ?int $maxLength = null): string
+    {
+        return \App\Support\HtmlSanitizer::toPlainText($html, $maxLength);
+    }
 }

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from "lucide-react";
 import { formatCurrency } from '@/utils/helpers';
@@ -174,12 +174,13 @@ export default function Create() {
 
                             <div>
                                 <Label htmlFor="notes">{t('Notes')}</Label>
-                                <Textarea
+                                <RichTextEditor
                                     id="notes"
-                                    value={data.notes}
-                                    onChange={(e) => setData('notes', e.target.value)}
+                                    variant="compact"
+                                    minHeight="110px"
+                                    content={data.notes}
+                                    onChange={(value) => setData('notes', value)}
                                     placeholder={t('Additional notes')}
-                                    rows={3}
                                 />
                             </div>
                         </CardContent>

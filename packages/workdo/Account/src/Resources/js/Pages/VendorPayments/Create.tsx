@@ -5,7 +5,7 @@ import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -468,11 +468,12 @@ export default function Create({ vendors, bankAccounts, onSuccess }: CreateVendo
 
                 <div>
                     <Label htmlFor="notes">{t('Notes')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="notes"
-                        value={data.notes}
-                        onChange={(e) => setData('notes', e.target.value)}
-                        rows={3}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.notes}
+                        onChange={(value) => setData('notes', value)}
                         placeholder={t('Enter notes')}
                     />
                     <InputError message={errors.notes} />

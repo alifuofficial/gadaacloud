@@ -93,7 +93,7 @@ class ZoomMeetingController extends Controller
 
                 $zoommeeting = new ZoomMeeting();
                 $zoommeeting->title = $validated['title'];
-                $zoommeeting->description = $validated['description'];
+                $zoommeeting->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $zoommeeting->meeting_id = $zoomResponse['id'];
                 $zoommeeting->meeting_password = $validated['meeting_password'];
                 $zoommeeting->start_url = $zoomResponse['start_url'] ?? null;
@@ -160,7 +160,7 @@ class ZoomMeetingController extends Controller
                 }
 
                 $zoommeeting->title = $validated['title'];
-                $zoommeeting->description = $validated['description'];
+                $zoommeeting->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $zoommeeting->meeting_password = $validated['meeting_password'];
                 $zoommeeting->start_time = $validated['start_time'];
                 $zoommeeting->duration = $validated['duration'];

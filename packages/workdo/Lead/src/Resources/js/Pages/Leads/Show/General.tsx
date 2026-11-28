@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Lead } from '../types';
 import { formatDate, formatDateTime } from '@/utils/helpers';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { InputError } from '@/components/ui/input-error';
-import { Textarea } from '@/components/ui/textarea';
 import { useForm, usePage } from '@inertiajs/react';
 import { Plus, Mail, Phone, Calendar, User, GitBranch, Layers, CheckSquare, Globe, Package } from 'lucide-react';
 import { useFormFields } from '@/hooks/useFormFields';
@@ -215,10 +215,7 @@ export default function General({ lead }: GeneralProps) {
             {lead.description && (
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('Description')}</h3>
-                    <div
-                        className="prose prose-sm max-w-none text-gray-700"
-                        dangerouslySetInnerHTML={{ __html: lead.description }}
-                    />
+                    <RichTextViewer content={lead.description} />
                 </div>
             )}
 
@@ -265,43 +262,27 @@ export default function General({ lead }: GeneralProps) {
                     </div>
                     <div className="space-y-3 max-h-[400px] overflow-y-auto">
                         {lead.emails && lead.emails.length > 0 ? (
-                            lead.emails.map((email: any, index: number) => {
-                                const stripHtmlAndDecode = (html: string) => {
-                                    if (!html) return '';
-                                    return html
-                                        .replace(/<[^>]*>/g, '')
-                                        .replace(/&amp;/g, '&')
-                                        .replace(/&lt;/g, '<')
-                                        .replace(/&gt;/g, '>')
-                                        .replace(/&quot;/g, '"')
-                                        .replace(/&#39;/g, "'")
-                                        .replace(/&nbsp;/g, ' ');
-                                };
-                                const cleanText = stripHtmlAndDecode(email.description);
-                                return (
-                                    <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="bg-gray-100 p-1 rounded-full">
-                                                    <svg className="h-3 w-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm text-gray-900">{email.to}</p>
-                                                    <p className="text-xs text-gray-500">{formatDateTime(email.created_at)}</p>
-                                                </div>
+                            lead.emails.map((email: any, index: number) => (
+                                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="bg-gray-100 p-1 rounded-full">
+                                                <svg className="h-3 w-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
                                             </div>
-                                        </div>
-                                        <div className="bg-white rounded-lg p-3 border border-gray-100">
-                                            <h4 className="font-semibold text-gray-800 mb-2 text-sm">{email.subject}</h4>
-                                            <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                {cleanText}
+                                            <div>
+                                                <p className="font-medium text-sm text-gray-900">{email.to}</p>
+                                                <p className="text-xs text-gray-500">{formatDateTime(email.created_at)}</p>
                                             </div>
                                         </div>
                                     </div>
-                                );
-                            })
+                                    <div className="bg-white rounded-lg p-3 border border-gray-100">
+                                        <h4 className="font-semibold text-gray-800 mb-2 text-sm">{email.subject}</h4>
+                                        <RichTextViewer content={email.description} compact />
+                                    </div>
+                                </div>
+                            ))
                         ) : (
                             <p className="text-gray-500 text-sm text-center py-4">{t('No emails found')}</p>
                         )}
@@ -333,7 +314,7 @@ export default function General({ lead }: GeneralProps) {
                                         <span className="font-medium text-sm text-gray-900">{discussion.creator?.name || t('Unknown')}</span>
                                         <span className="text-xs text-gray-400 ml-auto">{formatDateTime(discussion.created_at)}</span>
                                     </div>
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">{discussion.comment}</p>
+                                    <RichTextViewer content={discussion.comment} compact />
                                 </div>
                             ))
                         ) : (
@@ -410,12 +391,13 @@ export default function General({ lead }: GeneralProps) {
                     <form onSubmit={handleDiscussionSubmit} className="space-y-4">
                         <div>
                             <Label htmlFor="message" required>{t('Message')}</Label>
-                            <Textarea
+                            <RichTextEditor
                                 id="message"
-                                value={discussionForm.message}
-                                onChange={(e) => setDiscussionData('message', e.target.value)}
+                                variant="minimal"
+                                minHeight="100px"
+                                content={discussionForm.message}
+                                onChange={(content) => setDiscussionData('message', content)}
                                 placeholder={t('Enter your message')}
-                                rows={3}
                             />
                             <InputError message={discussionErrors.message} />
                         </div>

@@ -95,7 +95,7 @@ class ReviewCycleController extends Controller
         $reviewCycle->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
         $reviewCycle->branch_id = $validated['branch_id'] ?? null;
         $reviewCycle->department_id = $validated['department_id'] ?? null;
-        $reviewCycle->description = $validated['description'] ?? null;
+        $reviewCycle->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $reviewCycle->status = $validated['status'] ?? 'active';
         $reviewCycle->creator_id = Auth::id();
         $reviewCycle->created_by = creatorId();
@@ -129,7 +129,7 @@ class ReviewCycleController extends Controller
         $reviewCycle->ethiopian_quarter = $validated['ethiopian_quarter'] ?? null;
         $reviewCycle->branch_id = $validated['branch_id'] ?? null;
         $reviewCycle->department_id = $validated['department_id'] ?? null;
-        $reviewCycle->description = $validated['description'] ?? null;
+        $reviewCycle->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $reviewCycle->status = $validated['status'] ?? 'active';
         $reviewCycle->save();
 

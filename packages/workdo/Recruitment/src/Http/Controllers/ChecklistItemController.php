@@ -81,7 +81,7 @@ class ChecklistItemController extends Controller
             $checklistitem = new ChecklistItem();
             $checklistitem->checklist_id = $validated['checklist_id'];
             $checklistitem->task_name = $validated['task_name'];
-            $checklistitem->description = $validated['description'];
+            $checklistitem->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $checklistitem->category = $validated['category'];
             $checklistitem->assigned_to_role = $validated['assigned_to_role'];
             $checklistitem->due_day = $validated['due_day'];
@@ -111,7 +111,7 @@ class ChecklistItemController extends Controller
 
             $checklistitem->checklist_id = $validated['checklist_id'];
             $checklistitem->task_name = $validated['task_name'];
-            $checklistitem->description = $validated['description'];
+            $checklistitem->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $checklistitem->category = $validated['category'];
             $checklistitem->assigned_to_role = $validated['assigned_to_role'];
             $checklistitem->due_day = $validated['due_day'];

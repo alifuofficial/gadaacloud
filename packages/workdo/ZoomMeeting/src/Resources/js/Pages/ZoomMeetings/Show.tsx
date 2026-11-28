@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, Users, Play, X } from 'lucide-react';
-import { formatDateTime, getImagePath } from '@/utils/helpers';
+import { formatDateTime, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { ZoomMeeting } from './types';
 import { toast } from 'sonner';
 
@@ -106,7 +107,13 @@ export default function Show({ isOpen, onClose, zoommeeting, users }: ShowModalP
 
                     <div>
                         <label className="text-sm font-medium text-gray-700">{t('Description')}</label>
-                        <p className="mt-1 text-sm text-gray-900">{zoommeeting.description || '-'}</p>
+                        {!isRichTextEmpty(zoommeeting.description) ? (
+                            <div className="mt-1">
+                                <RichTextViewer content={zoommeeting.description} compact />
+                            </div>
+                        ) : (
+                            <p className="mt-1 text-sm text-gray-900">-</p>
+                        )}
                     </div>
 
                     <div>

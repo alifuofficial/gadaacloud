@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { ClipboardCheck } from 'lucide-react';
 import { CandidateAssessment } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     candidateassessment: CandidateAssessment;
@@ -104,11 +105,11 @@ export default function View({ candidateassessment }: ViewProps) {
                 </div>
 
                 {/* Comments */}
-                {candidateassessment.comments && (
+                {!isRichTextEmpty(candidateassessment.comments) && (
                     <div>
                         <label className="text-sm font-medium text-gray-600 block mb-2">{t('Comments')}</label>
                         <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-gray-700 whitespace-pre-wrap">{candidateassessment.comments}</p>
+                            <RichTextViewer content={candidateassessment.comments} compact />
                         </div>
                     </div>
                 )}

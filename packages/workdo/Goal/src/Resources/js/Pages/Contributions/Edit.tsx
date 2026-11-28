@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -102,12 +102,13 @@ export default function Edit({ contribution, onSuccess }: EditContributionProps)
 
                 <div>
                     <Label htmlFor="notes">{t('Notes')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="notes"
-                        value={data.notes}
-                        onChange={(e) => setData('notes', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.notes}
+                        onChange={(value) => setData('notes', value)}
                         placeholder={t('Enter notes')}
-                        rows={3}
                     />
                     {errors.notes && <p className="text-sm text-destructive">{errors.notes}</p>}
                 </div>

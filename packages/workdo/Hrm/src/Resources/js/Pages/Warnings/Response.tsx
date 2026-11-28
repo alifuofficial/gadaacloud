@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface WarningResponseProps {
     warning: any;
@@ -56,12 +56,13 @@ export default function WarningResponse({ warning, onSuccess }: WarningResponseP
                 
                 <div>
                     <Label htmlFor="employee_response">{t('Response')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="employee_response"
-                        value={data.employee_response}
-                        onChange={(e) => setData('employee_response', e.target.value)}
+                        variant="compact"
+                        minHeight="120px"
+                        content={data.employee_response}
+                        onChange={(value) => setData('employee_response', value)}
                         placeholder={t('Enter Response')}
-                        rows={4}
                     />
                     <InputError message={errors.employee_response} />
                 </div>

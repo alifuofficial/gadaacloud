@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InputError from "@/components/ui/input-error";
 
@@ -55,10 +55,12 @@ export default function Create({ onSuccess }: CreateProps) {
                 
                 <div>
                     <Label htmlFor="description">{t('Description')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="description"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter category description')}
                     />
                     <InputError message={errors.description} />

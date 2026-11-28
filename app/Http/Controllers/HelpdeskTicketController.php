@@ -74,7 +74,7 @@ class HelpdeskTicketController extends Controller
             $ticket = DB::transaction(function () use ($validated) {
                 $ticket = new HelpdeskTicket();
                 $ticket->title = $validated['title'];
-                $ticket->description = $validated['description'];
+                $ticket->description = \App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '';
                 $ticket->priority = $validated['priority'];
                 $ticket->category_id = $validated['category_id'];
 
@@ -122,7 +122,7 @@ class HelpdeskTicketController extends Controller
 
             DB::transaction(function () use ($helpdeskTicket, $validated) {
                 $helpdeskTicket->title = $validated['title'];
-                $helpdeskTicket->description = $validated['description'];
+                $helpdeskTicket->description = \App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '';
                 $helpdeskTicket->status = $validated['status'];
                 $helpdeskTicket->priority = $validated['priority'];
                 $helpdeskTicket->category_id = $validated['category_id'];

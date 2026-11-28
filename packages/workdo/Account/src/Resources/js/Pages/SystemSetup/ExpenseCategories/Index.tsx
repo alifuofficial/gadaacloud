@@ -16,7 +16,7 @@ import EditExpenseCategories from './Edit';
 import NoRecordsFound from '@/components/no-records-found';
 import { ExpenseCategories, ExpenseCategoriesIndexProps, ExpenseCategoriesModalState } from './types';
 import SystemSetupSidebar from "../SystemSetupSidebar";
-import { url } from 'inspector';
+import { stripHtml } from '@/utils/helpers';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -61,7 +61,8 @@ export default function Index() {
         {
             key: 'description',
             header: t('Description'),
-            sortable: false
+            sortable: false,
+            render: (value: string) => stripHtml(value) || '-'
         },
         {
             key: 'is_active',

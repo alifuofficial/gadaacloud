@@ -18,13 +18,18 @@ class ContractCommentController extends Controller
     {
         if (Auth::user()->can('create-contract-comments') && $this->assertBelongsToTenant($contract)) {
             $request->validate([
-                'comment' => 'required|string|max:1000',
+                'comment' => 'required|string|max:20000',
             ]);
 
-            DB::transaction(function () use ($contract, $request) {
+            $cleanComment = \App\Support\HtmlSanitizer::sanitize($request->comment);
+            if ($cleanComment === null) {
+                return back()->withErrors(['comment' => __('The comment field is required.')]);
+            }
+
+            DB::transaction(function () use ($contract, $cleanComment) {
                 ContractComment::create([
                     'contract_id' => $contract->id,
-                    'comment' => $request->comment,
+                    'comment' => $cleanComment,
                     'user_id' => Auth::id(),
                     'creator_id' => Auth::id(),
                     'created_by' => creatorId(),
@@ -41,12 +46,17 @@ class ContractCommentController extends Controller
     {
         if (Auth::user()->can('edit-contract-comments') && $this->assertBelongsToTenant($comment)) {
             $request->validate([
-                'comment' => 'required|string|max:1000',
+                'comment' => 'required|string|max:20000',
             ]);
 
-            DB::transaction(function () use ($comment, $request) {
+            $cleanComment = \App\Support\HtmlSanitizer::sanitize($request->comment);
+            if ($cleanComment === null) {
+                return back()->withErrors(['comment' => __('The comment field is required.')]);
+            }
+
+            DB::transaction(function () use ($comment, $cleanComment) {
                 $comment->update([
-                    'comment' => $request->comment,
+                    'comment' => $cleanComment,
                     'is_edited' => true,
                 ]);
             });

@@ -64,7 +64,7 @@ class TrainingTypeController extends Controller
             $trainingType = DB::transaction(function () use ($validated) {
                 $trainingType                = new TrainingType();
                 $trainingType->name          = $validated['name'];
-                $trainingType->description   = $validated['description'] ?? null;
+                $trainingType->description   = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $trainingType->branch_id     = $validated['branch_id'];
                 $trainingType->department_id = $validated['department_id'] ?? [];
                 $trainingType->creator_id    = Auth::id();
@@ -93,7 +93,7 @@ class TrainingTypeController extends Controller
 
             DB::transaction(function () use ($trainingType, $validated) {
                 $trainingType->name          = $validated['name'];
-                $trainingType->description   = $validated['description'] ?? null;
+                $trainingType->description   = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $trainingType->branch_id     = $validated['branch_id'];
                 $trainingType->department_id = $validated['department_id'] ?? [];
                 $trainingType->save();

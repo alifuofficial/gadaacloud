@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import InputError from '@/components/ui/input-error';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelectEnhanced } from '@/components/ui/multi-select-enhanced';
 import { Rating } from '@/components/ui/rating';
@@ -185,36 +185,39 @@ export default function EditInterviewFeedback({ interviewfeedback, onSuccess }: 
 
                 <div>
                     <Label htmlFor="strengths">{t('Strengths')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="strengths"
-                        value={data.strengths}
-                        onChange={(e) => setData('strengths', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.strengths}
+                        onChange={(value) => setData('strengths', value)}
                         placeholder={t('Enter Strengths')}
-                        rows={3}
                     />
                     <InputError message={errors.strengths} />
                 </div>
 
                 <div>
                     <Label htmlFor="weaknesses">{t('Weaknesses')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="weaknesses"
-                        value={data.weaknesses}
-                        onChange={(e) => setData('weaknesses', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.weaknesses}
+                        onChange={(value) => setData('weaknesses', value)}
                         placeholder={t('Enter Weaknesses')}
-                        rows={3}
                     />
                     <InputError message={errors.weaknesses} />
                 </div>
 
                 <div>
                     <Label htmlFor="comments">{t('Comments')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="comments"
-                        value={data.comments}
-                        onChange={(e) => setData('comments', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.comments}
+                        onChange={(value) => setData('comments', value)}
                         placeholder={t('Enter Comments')}
-                        rows={3}
                     />
                     <InputError message={errors.comments} />
                 </div>

@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { isRichTextEmpty } from "@/utils/helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import SupportTicketLayout from './Layouts/SupportTicketLayout';
 import { useTranslation } from 'react-i18next';
@@ -213,14 +214,14 @@ export default function Contact({ settings, brandSettings, titleSections, contac
                             {/* Message */}
                             <div>
                                 <Label htmlFor="message">{t('Message')}</Label>
-                                <Textarea
+                                <RichTextEditor
                                     id="message"
-                                    rows={5}
-                                    value={data.message}
-                                    onChange={(e) => setData('message', e.target.value)}
-                                    placeholder="Please describe your issue or question in detail..."
-                                    className="resize-none"
-                                    required
+                                    variant="minimal"
+                                    minHeight="130px"
+                                    enableMediaLibrary={false}
+                                    content={data.message}
+                                    onChange={(value) => setData('message', value)}
+                                    placeholder={t('Please describe your issue or question in detail...')}
                                 />
                                 {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
                             </div>

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle, Calendar, User, Tag, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ChecklistItem } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 
 interface ViewProps {
     checklistitem: ChecklistItem;
@@ -121,13 +123,13 @@ export default function View({ checklistitem }: ViewProps) {
                 </div>
 
                 {/* Description */}
-                {checklistitem.description && (
+                {!isRichTextEmpty(checklistitem.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 mb-2 block">
                             {t('Description')}
                         </label>
                         <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-base leading-relaxed whitespace-pre-wrap">{checklistitem.description}</p>
+                            <RichTextViewer content={checklistitem.description} compact />
                         </div>
                     </div>
                 )}

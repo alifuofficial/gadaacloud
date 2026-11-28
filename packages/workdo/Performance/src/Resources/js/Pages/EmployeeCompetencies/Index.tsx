@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Pagination } from '@/components/ui/pagination';
@@ -161,7 +161,12 @@ export default function Index() {
                         </div>
                         <div>
                             <Label>{t('Assessor Comments')}</Label>
-                            <Textarea value={form.data.comments} onChange={(e) => form.setData('comments', e.target.value)} rows={3} />
+                            <RichTextEditor
+                                variant="compact"
+                                minHeight="100px"
+                                content={form.data.comments}
+                                onChange={(value) => form.setData('comments', value)}
+                            />
                         </div>
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{t('Cancel')}</Button>

@@ -7,7 +7,7 @@ import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { CreatePayrollProps, CreatePayrollFormData } from './types';
 import { usePage } from '@inertiajs/react';
@@ -179,12 +179,13 @@ export default function Create({ onSuccess }: CreatePayrollProps) {
 
                 <div>
                     <Label htmlFor="notes">{t('Notes')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="notes"
-                        value={data.notes}
-                        onChange={(e) => setData('notes', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.notes}
+                        onChange={(value) => setData('notes', value)}
                         placeholder={t('Enter Notes')}
-                        rows={3}
                     />
                     <InputError message={errors.notes} />
                 </div>

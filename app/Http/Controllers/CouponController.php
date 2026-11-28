@@ -44,7 +44,7 @@ class CouponController extends Controller
 
             $coupon = new Coupon();
             $coupon->name = $validated['name'] ?? '';
-            $coupon->description = $validated['description'] ?? null;
+            $coupon->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $coupon->code = $validated['code'] ?? '';
             $coupon->discount = $validated['discount'] ?? 0;
             $coupon->limit = $validated['limit'] ?? null;
@@ -76,7 +76,7 @@ class CouponController extends Controller
             $validated = $request->validated();
 
             $coupon->name = $validated['name'] ?? '';
-            $coupon->description = $validated['description'] ?? null;
+            $coupon->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $coupon->code = $validated['code'] ?? '';
             $coupon->discount = $validated['discount'] ?? 0;
             $coupon->limit = $validated['limit'] ?? null;

@@ -17,7 +17,7 @@ import EditLoanType from './Edit';
 import NoRecordsFound from '@/components/no-records-found';
 import { LoanType, LoanTypesIndexProps, LoanTypeModalState } from './types';
 import SystemSetupSidebar from "../SystemSetupSidebar";
-import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath } from '@/utils/helpers';
+import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath, stripHtml } from '@/utils/helpers';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -52,7 +52,8 @@ export default function Index() {
         {
             key: 'description',
             header: t('Description'),
-            sortable: false
+            sortable: false,
+            render: (value: string) => stripHtml(value || '') || '-'
         },
         ...(auth.user?.permissions?.some((p: string) => ['edit-loan-types', 'delete-loan-types'].includes(p)) ? [{
             key: 'actions',

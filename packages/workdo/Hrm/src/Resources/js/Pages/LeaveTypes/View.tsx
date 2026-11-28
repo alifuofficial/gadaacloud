@@ -2,6 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Calendar, FileText, Palette, DollarSign, Hash } from 'lucide-react';
 import { LeaveType } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 
 interface ViewProps {
     leavetype: LeaveType;
@@ -81,14 +83,14 @@ export default function View({ leavetype }: ViewProps) {
                     </div>
                 </div>
                 
-                {leavetype.description && (
+                {!isRichTextEmpty(leavetype.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{leavetype.description}</p>
+                            <RichTextViewer content={leavetype.description} compact />
                         </div>
                     </div>
                 )}

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -273,12 +273,13 @@ export default function Create({ onSuccess, trainingTypes, trainers, branches, d
                             {descriptionAI.map(field => <div key={field.id}>{field.component}</div>)}
                         </div>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                         id="description"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="full"
+                        minHeight="150px"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter training description')}
-                        rows={3}
                     />
                     <InputError message={errors.description} />
                 </div>

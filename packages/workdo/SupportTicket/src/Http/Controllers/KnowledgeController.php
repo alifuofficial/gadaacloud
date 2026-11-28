@@ -78,7 +78,7 @@ class KnowledgeController extends Controller
         if (Auth::user()->can('create-knowledge-base')) {
             $knowledgeBase = new KnowledgeBase();
             $knowledgeBase->title = $request->title;
-            $knowledgeBase->description = $request->description;
+            $knowledgeBase->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $knowledgeBase->category = $request->category;
             $knowledgeBase->creator_id = Auth::id();
             $knowledgeBase->created_by = creatorId();
@@ -96,7 +96,7 @@ class KnowledgeController extends Controller
     {
         if (Auth::user()->can('edit-knowledge-base')) {
             $supportTicketKnowledge->title = $request->title;
-            $supportTicketKnowledge->description = $request->description;
+            $supportTicketKnowledge->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $supportTicketKnowledge->category = $request->category;
             $supportTicketKnowledge->save();
 

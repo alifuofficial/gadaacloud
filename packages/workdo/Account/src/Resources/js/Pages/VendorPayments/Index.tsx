@@ -22,6 +22,7 @@ import Create from './Create';
 import View from './View';
 import NoRecordsFound from '@/components/no-records-found';
 import { VendorPayment, VendorPaymentsIndexProps, VendorPaymentModalState } from './types';
+import { stripHtml } from '@/utils/helpers';
 
 interface VendorPaymentFilters {
     vendor_id: string;
@@ -457,7 +458,7 @@ export default function Index() {
                                                     {payment.notes && (
                                                         <div>
                                                             <p className="text-xs font-medium text-gray-600 mb-1">{t('Notes')}</p>
-                                                            <p className="text-xs text-gray-900 line-clamp-2">{payment.notes}</p>
+                                                            <p className="text-xs text-gray-900 line-clamp-2">{stripHtml(payment.notes)}</p>
                                                         </div>
                                                     )}
                                                 </div>

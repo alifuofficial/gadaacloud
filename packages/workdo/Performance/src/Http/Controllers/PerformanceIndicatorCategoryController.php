@@ -48,7 +48,7 @@ class PerformanceIndicatorCategoryController extends Controller
         $validated = $request->validated();
         $indicatorCategory = new PerformanceIndicatorCategory();
         $indicatorCategory->name = $validated['name'];
-        $indicatorCategory->description = $validated['description'] ?? null;
+        $indicatorCategory->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $indicatorCategory->status = $validated['status'] ?? 'active';
         $indicatorCategory->creator_id = Auth::id();
         $indicatorCategory->created_by = creatorId();
@@ -67,7 +67,7 @@ class PerformanceIndicatorCategoryController extends Controller
 
         $validated = $request->validated();
         $indicatorCategory->name = $validated['name'];
-        $indicatorCategory->description = $validated['description'] ?? null;
+        $indicatorCategory->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $indicatorCategory->status = $validated['status'] ?? 'active';
         $indicatorCategory->save();
 

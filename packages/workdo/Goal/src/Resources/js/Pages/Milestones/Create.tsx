@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -94,12 +94,13 @@ export default function Create({ goals, onSuccess }: CreateMilestoneProps) {
 
                 <div>
                     <Label htmlFor="milestone_description">{t('Description')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="milestone_description"
-                        value={data.milestone_description}
-                        onChange={(e) => setData('milestone_description', e.target.value)}
+                        variant="compact"
+                        minHeight="120px"
+                        content={data.milestone_description}
+                        onChange={(value) => setData('milestone_description', value)}
                         placeholder={t('Enter Description')}
-                        rows={3}
                     />
                     <InputError message={errors.milestone_description} />
                 </div>

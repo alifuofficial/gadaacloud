@@ -58,7 +58,7 @@ class HrmDocumentController extends Controller
 
             $document = new HrmDocument();
             $document->title = $validated['title'];
-            $document->description = $validated['description'];
+            $document->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $document->document_category_id = $validated['document_category_id'];
             $document->document = $validated['document'];
             $document->uploaded_by  = Auth::id();
@@ -81,7 +81,7 @@ class HrmDocumentController extends Controller
             $validated = $request->validated();
 
             $hrmDocument->title = $validated['title'];
-            $hrmDocument->description = $validated['description'];
+            $hrmDocument->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $hrmDocument->document_category_id = $validated['document_category_id'];
             $hrmDocument->document = $validated['document'];
             $hrmDocument->save();

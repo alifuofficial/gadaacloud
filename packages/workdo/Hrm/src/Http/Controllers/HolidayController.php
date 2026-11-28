@@ -70,7 +70,7 @@ class HolidayController extends Controller
             $holiday->start_date = $validated['start_date'];
             $holiday->end_date = $validated['end_date'];
             $holiday->holiday_type_id = $validated['holiday_type_id'];
-            $holiday->description = $validated['description'];
+            $holiday->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $holiday->is_paid = $validated['is_paid'];
             $holiday->is_sync_google_calendar = $validated['is_sync_google_calendar'];
             $holiday->is_sync_outlook_calendar = $validated['is_sync_outlook_calendar'];
@@ -101,7 +101,7 @@ class HolidayController extends Controller
             $holiday->start_date = $validated['start_date'];
             $holiday->end_date = $validated['end_date'];
             $holiday->holiday_type_id = $validated['holiday_type_id'];
-            $holiday->description = $validated['description'];
+            $holiday->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $holiday->is_paid = $validated['is_paid'];
             $holiday->is_sync_google_calendar = $validated['is_sync_google_calendar'];
             $holiday->is_sync_outlook_calendar = $validated['is_sync_outlook_calendar'];

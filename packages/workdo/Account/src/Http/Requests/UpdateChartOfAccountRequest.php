@@ -24,7 +24,7 @@ class UpdateChartOfAccountRequest extends FormRequest
             'opening_balance' => 'nullable|numeric|min:0',
             'current_balance' => 'nullable|numeric|min:0',
             'is_active' => 'boolean',
-            'description' => 'nullable|string|max:1000',
+            'description' => 'nullable|string|max:20000',
             'account_type_id' => ['nullable', AccountControllerHelpers::tenantExists('account_types', 'id')],
             'parent_account_id' => ['nullable', AccountControllerHelpers::tenantExists('chart_of_accounts', 'id')]
         ];

@@ -79,7 +79,7 @@ class GoalMilestoneController extends Controller
             $milestone = new GoalMilestone();
             $milestone->goal_id = $validated['goal_id'];
             $milestone->milestone_name = $validated['milestone_name'];
-            $milestone->milestone_description = $validated['milestone_description'] ?? null;
+            $milestone->milestone_description = \App\Support\HtmlSanitizer::sanitize($validated['milestone_description'] ?? null);
             $milestone->target_amount = $validated['target_amount'];
             $milestone->target_date = $validated['target_date'];
             $milestone->achieved_amount = 0.0;
@@ -108,7 +108,7 @@ class GoalMilestoneController extends Controller
                 $milestone->goal_id = $validated['goal_id'];
             }
             $milestone->milestone_name = $validated['milestone_name'];
-            $milestone->milestone_description = $validated['milestone_description'] ?? null;
+            $milestone->milestone_description = \App\Support\HtmlSanitizer::sanitize($validated['milestone_description'] ?? null);
             $milestone->target_amount = $validated['target_amount'];
             $milestone->target_date = $validated['target_date'];
             if (isset($validated['achieved_amount'])) {

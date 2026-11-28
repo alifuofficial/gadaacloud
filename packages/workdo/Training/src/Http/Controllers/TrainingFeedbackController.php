@@ -61,7 +61,7 @@ class TrainingFeedbackController extends Controller
                 $feedback->training_task_id = $task->id;
                 $feedback->user_id          = $user;
                 $feedback->rating           = $validated['rating'];
-                $feedback->comments         = $validated['comments'] ?? null;
+                $feedback->comments         = \App\Support\HtmlSanitizer::sanitize($validated['comments'] ?? null);
                 $feedback->creator_id       = Auth::id();
                 $feedback->created_by       = creatorId();
                 $feedback->save();

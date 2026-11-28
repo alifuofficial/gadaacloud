@@ -78,7 +78,7 @@ class CustomerController extends Controller
             $customer->billing_address = $validated['billing_address'];
             $customer->shipping_address = $validated['same_as_billing'] ? $validated['billing_address'] : $validated['shipping_address'];
             $customer->same_as_billing = $validated['same_as_billing'] ?? false;
-            $customer->notes = $validated['notes'] ?? null;
+            $customer->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null);
             $customer->creator_id = Auth::id();
             $customer->created_by = creatorId();
             $customer->save();
@@ -104,7 +104,7 @@ class CustomerController extends Controller
             $customer->billing_address = $validated['billing_address'];
             $customer->shipping_address = $validated['same_as_billing'] ? $validated['billing_address'] : $validated['shipping_address'];
             $customer->same_as_billing = $validated['same_as_billing'] ?? false;
-            $customer->notes = $validated['notes'] ?? null;
+            $customer->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null);
             $customer->save();
 
             UpdateCustomer::dispatch($request, $customer);

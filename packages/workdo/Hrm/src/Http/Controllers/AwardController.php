@@ -62,7 +62,7 @@ class AwardController extends Controller
             $award->employee_id = $validated['employee_id'];
             $award->award_type_id = $validated['award_type_id'];
             $award->award_date = $validated['award_date'];
-            $award->description = $validated['description'];
+            $award->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $award->certificate = $validated['certificate'];
 
             $award->creator_id = Auth::id();
@@ -87,7 +87,7 @@ class AwardController extends Controller
             $award->employee_id = $validated['employee_id'];
             $award->award_type_id = $validated['award_type_id'];
             $award->award_date = $validated['award_date'];
-            $award->description = $validated['description'];
+            $award->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $award->certificate = $validated['certificate'];
 
             $award->save();

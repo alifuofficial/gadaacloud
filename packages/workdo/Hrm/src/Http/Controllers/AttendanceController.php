@@ -347,7 +347,7 @@ class AttendanceController extends Controller
             $attendance->overtime_hours = $calculatedData['overtime_hours'];
             $attendance->overtime_amount = $calculatedData['overtime_amount'];
             $attendance->status = $calculatedData['status'];
-            $attendance->notes = $validated['notes'];
+            $attendance->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null);
             $attendance->creator_id = Auth::id();
             $attendance->created_by = creatorId();
 
@@ -437,7 +437,7 @@ class AttendanceController extends Controller
                 'overtime_hours' => $calculatedData['overtime_hours'],
                 'overtime_amount' => $calculatedData['overtime_amount'],
                 'status' => $calculatedData['status'],
-                'notes' => $validated['notes'],
+                'notes' => \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null),
             ]);
 
             UpdateAttendance::dispatch($request, $attendance);

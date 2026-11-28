@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 
 import { CalendarDays, Target, TrendingUp, Clock, DollarSign } from "lucide-react";
 import { GoalTracking } from './types';
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     tracking: GoalTracking;
@@ -193,10 +194,10 @@ export default function View() {
                                     <p className="font-medium">{formatDate(tracking.goal.target_date)}</p>
                                 </div>
                             </div>
-                            {tracking.goal.goal_description && (
+                            {!isRichTextEmpty(tracking.goal.goal_description) && (
                                 <div>
                                     <p className="text-sm text-gray-600 mb-1">{t('Description')}</p>
-                                    <p className="text-sm">{tracking.goal.goal_description}</p>
+                                    <RichTextViewer content={tracking.goal.goal_description} compact />
                                 </div>
                             )}
                         </CardContent>

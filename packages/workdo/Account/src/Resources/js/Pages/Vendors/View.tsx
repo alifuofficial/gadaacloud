@@ -2,6 +2,7 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Building2 } from 'lucide-react';
 import { Vendor } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     vendor: Vendor;
@@ -101,7 +102,9 @@ export default function View({ vendor }: ViewProps) {
                 {vendor.notes && (
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">{t('Notes')}</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{vendor.notes}</p>
+                        <div className="bg-gray-50 p-3 rounded">
+                            <RichTextViewer content={vendor.notes} compact />
+                        </div>
                     </div>
                 )}
             </div>

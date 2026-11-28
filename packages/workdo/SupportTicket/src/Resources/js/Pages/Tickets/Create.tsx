@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import MediaPicker from '@/components/MediaPicker';
@@ -375,13 +374,13 @@ export default function Create({ categories, staff, clients, vendors, allFields,
                     return (
                       <div key={field.id} className={colSpan}>
                         <Label htmlFor={`field-${field.id}`} required={field.is_required}>{t(field.name)}</Label>
-                        <Textarea
+                        <RichTextEditor
                           id={`field-${field.id}`}
-                          value={data.fields[field.id] || ''}
-                          onChange={(e) => setData('fields', {...data.fields, [field.id]: e.target.value})}
+                          variant="compact"
+                          minHeight="110px"
+                          content={data.fields[field.id] || ''}
+                          onChange={(value) => setData('fields', {...data.fields, [field.id]: value})}
                           placeholder={t(field.placeholder)}
-                          required={field.is_required}
-                          rows={3}
                         />
                       </div>
                     );

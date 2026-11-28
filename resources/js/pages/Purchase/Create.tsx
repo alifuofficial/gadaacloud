@@ -10,7 +10,7 @@ import { formatCurrency } from '@/utils/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InputError } from '@/components/ui/input-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -184,11 +184,12 @@ export default function Create() {
                                     <Label htmlFor="notes">
                                         {t('Notes')}
                                     </Label>
-                                    <Textarea
+                                    <RichTextEditor
                                         id="notes"
-                                        value={data.notes}
-                                        onChange={(e) => setData('notes', e.target.value)}
-                                        rows={2}
+                                        variant="compact"
+                                        minHeight="100px"
+                                        content={data.notes}
+                                        onChange={(value) => setData('notes', value)}
                                         placeholder={t('Additional notes...')}
                                     />
                                 </div>

@@ -3,6 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { formatCurrency, formatDate } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Download } from 'lucide-react';
@@ -160,8 +161,8 @@ function View() {
 
                         {debitNote.notes && (
                             <div className="mt-4 pt-4 border-t">
-                                <span className="font-medium text-sm">{t('Notes')}:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{debitNote.notes}</span>
+                                <span className="font-medium text-sm block mb-1">{t('Notes')}:</span>
+                                <RichTextViewer content={debitNote.notes} compact />
                             </div>
                         )}
                     </CardContent>
@@ -196,7 +197,9 @@ function View() {
                                                     <div className="text-sm text-muted-foreground">SKU: {item.product.sku}</div>
                                                 )}
                                                 {item.product?.description && (
-                                                    <div className="text-sm text-muted-foreground mt-1">{item.product.description}</div>
+                                                    <div className="mt-1">
+                                                        <RichTextViewer content={item.product.description} compact />
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-right">{item.quantity}</td>

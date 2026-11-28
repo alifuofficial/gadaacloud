@@ -156,8 +156,8 @@ class ProductServiceItemController extends Controller
             $item->excise_rate = $validated['excise_rate'] ?? 0;
             $item->is_tax_inclusive = (bool) ($validated['is_tax_inclusive'] ?? false);
             $item->category_id = $this->nullableInt($validated['category_id'] ?? null);
-            $item->description = $validated['description'] ?? null;
-            $item->long_description = $validated['long_description'] ?? null;
+            $item->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
+            $item->long_description = \App\Support\HtmlSanitizer::sanitize($validated['long_description'] ?? null);
             $item->sale_price = $validated['sale_price'];
             $item->min_sale_price = $validated['min_sale_price'] ?? null;
             $item->wholesale_price = $validated['wholesale_price'] ?? null;
@@ -355,8 +355,8 @@ class ProductServiceItemController extends Controller
             $item->excise_rate = $validated['excise_rate'] ?? 0;
             $item->is_tax_inclusive = (bool) ($validated['is_tax_inclusive'] ?? false);
             $item->category_id = $this->nullableInt($validated['category_id'] ?? null);
-            $item->description = $validated['description'] ?? null;
-            $item->long_description = $validated['long_description'] ?? null;
+            $item->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
+            $item->long_description = \App\Support\HtmlSanitizer::sanitize($validated['long_description'] ?? null);
             $item->sale_price = $validated['sale_price'];
             $item->min_sale_price = $validated['min_sale_price'] ?? null;
             $item->wholesale_price = $validated['wholesale_price'] ?? null;

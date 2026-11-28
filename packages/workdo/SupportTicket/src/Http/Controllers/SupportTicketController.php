@@ -253,7 +253,13 @@ class SupportTicketController extends Controller
     {
         if (Auth::user()->can('create-support-tickets')) {
             $validated = $request->validated();
-            
+            if (array_key_exists('description', $validated)) {
+                $validated['description'] = \App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '';
+            }
+            if (array_key_exists('note', $validated)) {
+                $validated['note'] = \App\Support\HtmlSanitizer::sanitize($validated['note']);
+            }
+
             $validated['ticket_id'] = time();
             $validated['creator_id'] = Auth::id();
             $validated['created_by'] = creatorId();
@@ -475,6 +481,13 @@ class SupportTicketController extends Controller
                     }
                 }
 
+                if (array_key_exists('description', $validated)) {
+                    $validated['description'] = \App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '';
+                }
+                if (array_key_exists('note', $validated)) {
+                    $validated['note'] = \App\Support\HtmlSanitizer::sanitize($validated['note']);
+                }
+
                 DB::transaction(function () use ($ticket, $validated, $request) {
                     $ticket->update($validated);
 
@@ -627,7 +640,7 @@ class SupportTicketController extends Controller
 
             $conversion = new Conversion();
             $conversion->ticket_id = $ticket->id;
-            $conversion->description = $request->description;
+            $conversion->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $conversion->sender = Auth::id();
             $conversion->attachments = json_encode($attachments);
             $conversion->creator_id = Auth::id();
@@ -647,7 +660,7 @@ class SupportTicketController extends Controller
                     'ticket_name' => $ticket->name,
                     'ticket_id' => $ticket->ticket_id,
                     'email' => $ticket->email,
-                    'reply_description' => $request->description,
+                    'reply_description' => $conversion->description,
                 ];
                 try {
                     EmailTemplate::sendEmailTemplate('New Ticket Reply', [$ticket->email], $uArr);

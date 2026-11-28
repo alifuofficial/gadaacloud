@@ -133,7 +133,7 @@ class RevenueController extends Controller
         $revenue->bank_account_id = $validated['bank_account_id'];
         $revenue->chart_of_account_id = $validated['chart_of_account_id'] ?? null;
         $revenue->amount = $validated['amount'];
-        $revenue->description = $validated['description'] ?? null;
+        $revenue->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $revenue->reference_number = $validated['reference_number'] ?? null;
         $revenue->status = 'draft';
         $revenue->creator_id = Auth::id();
@@ -170,7 +170,7 @@ class RevenueController extends Controller
         $revenue->bank_account_id = $validated['bank_account_id'];
         $revenue->chart_of_account_id = $validated['chart_of_account_id'] ?? null;
         $revenue->amount = $validated['amount'];
-        $revenue->description = $validated['description'] ?? null;
+        $revenue->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $revenue->reference_number = $validated['reference_number'] ?? null;
         $revenue->save();
 

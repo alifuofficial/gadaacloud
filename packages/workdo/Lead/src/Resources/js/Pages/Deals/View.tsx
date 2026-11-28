@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Info, DollarSign } from "lucide-react";
 import { Deal } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     deal: Deal;
@@ -58,7 +59,9 @@ export default function View({ deal }: ViewProps) {
             {deal.notes && (
                 <div>
                     <h3 className="text-sm font-medium text-gray-500">{t('Notes')}</h3>
-                    <div className="mt-1 text-sm text-gray-900" dangerouslySetInnerHTML={{ __html: deal.notes }} />
+                    <div className="mt-1">
+                        <RichTextViewer content={deal.notes} compact />
+                    </div>
                 </div>
             )}
         </div>

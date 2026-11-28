@@ -59,7 +59,7 @@ class AccountTypeController extends Controller
         $accounttype->name = $validated['name'];
         $accounttype->code = $validated['code'];
         $accounttype->normal_balance = $validated['normal_balance'] === '1' ? 'credit' : 'debit';
-        $accounttype->description = $validated['description'] ?? null;
+        $accounttype->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $accounttype->is_active = $request->boolean('is_active', false);
         $accounttype->creator_id = Auth::id();
         $accounttype->created_by = $companyId;
@@ -87,7 +87,7 @@ class AccountTypeController extends Controller
         $accounttype->name = $validated['name'];
         $accounttype->code = $validated['code'];
         $accounttype->normal_balance = $validated['normal_balance'] === '1' ? 'credit' : 'debit';
-        $accounttype->description = $validated['description'] ?? null;
+        $accounttype->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $accounttype->is_active = $request->boolean('is_active', false);
         $accounttype->save();
 

@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import InputError from "@/components/ui/input-error";
+import { isRichTextEmpty } from "@/utils/helpers";
 
 interface CreateProps {
     onSuccess: () => void;
@@ -26,7 +27,7 @@ export default function Create({
     kpiSources = [{ value: 'manual', label: 'Manual Tracking' }],
 }: CreateProps) {
     const { t } = useTranslation();
-    const { data, setData, post, processing, errors, transform } = useForm({
+    const { data, setData, post, processing, errors, transform, setError, clearErrors } = useForm({
         employee_id: '',
         goal_type_id: '',
         review_cycle_id: 'none',
@@ -47,6 +48,10 @@ export default function Create({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRichTextEmpty(data.description)) {
+            setError('description', t('The description field is required.'));
+            return;
+        }
         transform((form) => ({
             ...form,
             review_cycle_id: form.review_cycle_id === 'none' ? '' : form.review_cycle_id,
@@ -112,7 +117,17 @@ export default function Create({
 
                 <div>
                     <Label htmlFor="description" required>{t('Description')}</Label>
-                    <Textarea id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} placeholder={t('Enter goal description')} rows={2} required />
+                    <RichTextEditor
+                        id="description"
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.description}
+                        onChange={(value) => {
+                            setData('description', value);
+                            if (!isRichTextEmpty(value)) clearErrors('description');
+                        }}
+                        placeholder={t('Enter goal description')}
+                    />
                     <InputError message={errors.description} />
                 </div>
 

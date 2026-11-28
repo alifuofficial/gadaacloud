@@ -36,7 +36,7 @@ class CompetencyCategoryController extends Controller
         $validated = $request->validated();
         CompetencyCategory::create([
             'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
+            'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
             'status' => $validated['status'] ?? 'active',
             'creator_id' => Auth::id(),
             'created_by' => creatorId(),
@@ -56,7 +56,7 @@ class CompetencyCategoryController extends Controller
         $validated = $request->validated();
         $competencyCategory->update([
             'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
+            'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
             'status' => $validated['status'] ?? 'active',
         ]);
 

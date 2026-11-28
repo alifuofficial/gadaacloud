@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { stripHtml } from '@/utils/helpers';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Clock, Calendar, CheckSquare, FileText, ArrowRight, ShieldCheck, Download, AlertCircle } from 'lucide-react';
@@ -113,9 +115,10 @@ export default function PublicTrackView({ project, milestones, tasks, files, met
                                 {project.name}
                             </h1>
                             {project.description && (
-                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {project.description}
-                                </p>
+                                <RichTextViewer
+                                    content={project.description}
+                                    className="text-slate-600 dark:text-slate-300"
+                                />
                             )}
                         </div>
 
@@ -185,9 +188,9 @@ export default function PublicTrackView({ project, milestones, tasks, files, met
                                                 {milestone.approval_status === 'approved' ? 'Client Approved' : milestone.status}
                                             </Badge>
                                         </div>
-                                        {milestone.summary && (
+                                        {milestone.summary && stripHtml(milestone.summary) && (
                                             <CardDescription className="text-xs text-slate-500 line-clamp-2">
-                                                {milestone.summary}
+                                                {stripHtml(milestone.summary)}
                                             </CardDescription>
                                         )}
                                     </CardHeader>

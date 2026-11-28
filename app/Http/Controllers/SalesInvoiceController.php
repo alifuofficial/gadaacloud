@@ -137,7 +137,7 @@ class SalesInvoiceController extends Controller
                     $invoice->warehouse_id = $request->type === 'product' ? $request->warehouse_id : null;
                     $invoice->type = $request->type ?? 'product';
                     $invoice->payment_terms = $request->payment_terms;
-                    $invoice->notes = $request->notes;
+                    $invoice->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                     $invoice->subtotal = $totals['subtotal'];
                     $invoice->tax_amount = $totals['tax_amount'];
                     $invoice->discount_amount = $totals['discount_amount'];
@@ -228,7 +228,7 @@ class SalesInvoiceController extends Controller
                 $salesInvoice->customer_id = $request->customer_id;
                 $salesInvoice->warehouse_id = $salesInvoice->type === 'product' ? $request->warehouse_id : null;
                 $salesInvoice->payment_terms = $request->payment_terms;
-                $salesInvoice->notes = $request->notes;
+                $salesInvoice->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $salesInvoice->subtotal = $totals['subtotal'];
                 $salesInvoice->tax_amount = $totals['tax_amount'];
                 $salesInvoice->discount_amount = $totals['discount_amount'];

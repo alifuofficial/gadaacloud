@@ -15,7 +15,7 @@ class StoreEmployeeDocumentTypeRequest extends FormRequest
     {
         return [
             'document_name' => 'required|max:100',
-            'description' => 'nullable|max:500',
+            'description' => 'nullable|max:20000',
             'is_required' => 'boolean'
         ];
     }

@@ -8,7 +8,9 @@ import { getImagePath } from '@/utils/helpers';
 import { User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
+import { isRichTextEmpty } from '@/utils/helpers';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -96,10 +98,12 @@ export default function View({ task, project, milestones, teamMembers, taskStage
                 </div>
 
                 {/* Description */}
-                {taskData.description && (
+                {!isRichTextEmpty(taskData.description) && (
                     <div>
                         <h4 className="text-sm font-medium text-gray-700 mb-2">{t('Description')}</h4>
-                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{taskData.description}</p>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                            <RichTextViewer content={taskData.description} />
+                        </div>
                     </div>
                 )}
 
@@ -256,7 +260,7 @@ function CommentsTab({ taskId }: { taskId: number }) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!comment.trim()) return;
+        if (isRichTextEmpty(comment)) return;
 
         setLoading(true);
         try {
@@ -279,16 +283,16 @@ function CommentsTab({ taskId }: { taskId: number }) {
         <div className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                    <Label htmlFor="comment">{t('Add Comment')}</Label>
-                    <Textarea
+                    <Label htmlFor="comment" className="mb-1.5 block">{t('Add Comment')}</Label>
+                    <RichTextEditor
                         id="comment"
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
+                        variant="compact"
+                        content={comment}
+                        onChange={(value) => setComment(value)}
                         placeholder={t('Enter your comment...')}
-                        rows={3}
                     />
                 </div>
-                <Button type="submit" disabled={loading || !comment.trim()}>
+                <Button type="submit" disabled={loading || isRichTextEmpty(comment)}>
                     {loading ? t('Adding...') : t('Add Comment')}
                 </Button>
             </form>
@@ -339,7 +343,7 @@ function CommentsTab({ taskId }: { taskId: number }) {
                                     </TooltipProvider>
                                 )}
                             </div>
-                            <p className="text-sm text-gray-700">{comment.comment}</p>
+                            <RichTextViewer content={comment.comment} compact className="text-gray-700" />
                         </div>
                     ))}
                 </div>

@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -149,7 +152,7 @@ export default function ChatterWidget({
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!messageText.trim() && selectedFiles.length === 0) return;
+        if (isRichTextEmpty(messageText) && selectedFiles.length === 0) return;
 
         try {
             setIsPosting(true);
@@ -401,12 +404,11 @@ export default function ChatterWidget({
                             </button>
                         </div>
 
-                        <Textarea
-                            value={messageText}
-                            onChange={(e) => setMessageText(e.target.value)}
+                        <RichTextEditor
+                            variant="compact"
+                            content={messageText}
+                            onChange={(val) => setMessageText(val)}
                             placeholder={activeTab === 'message' ? t('Type message to notify followers... (@mention available)') : t('Write an internal note for staff review...')}
-                            rows={3}
-                            className="text-sm bg-gray-50/50"
                         />
 
                         {/* File preview */}
@@ -510,8 +512,8 @@ export default function ChatterWidget({
                                         </span>
                                     </div>
 
-                                    <div className="mt-1 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                        {msg.message}
+                                    <div className="mt-1">
+                                        <RichTextViewer content={msg.message} compact className="text-xs text-gray-700" />
                                     </div>
 
                                     {/* Attachments */}
@@ -608,12 +610,11 @@ export default function ChatterWidget({
 
                         <div className="space-y-1.5">
                             <Label className="text-xs">{t('Notes (Optional)')}</Label>
-                            <Textarea
-                                value={actNotes}
-                                onChange={(e) => setActNotes(e.target.value)}
+                            <RichTextEditor
+                                variant="minimal"
+                                content={actNotes}
+                                onChange={(val) => setActNotes(val)}
                                 placeholder={t('Add background or special instructions...')}
-                                rows={2}
-                                className="text-xs"
                             />
                         </div>
 
@@ -641,12 +642,11 @@ export default function ChatterWidget({
 
                     <div className="space-y-3 py-2">
                         <Label className="text-xs">{t('Feedback / Outcome Note')}</Label>
-                        <Textarea
-                            value={activityFeedback}
-                            onChange={(e) => setActivityFeedback(e.target.value)}
+                        <RichTextEditor
+                            variant="minimal"
+                            content={activityFeedback}
+                            onChange={(val) => setActivityFeedback(val)}
                             placeholder={t('e.g., Customer confirmed payment via Telebirr receipt #TRX8921...')}
-                            rows={3}
-                            className="text-xs"
                         />
                     </div>
 

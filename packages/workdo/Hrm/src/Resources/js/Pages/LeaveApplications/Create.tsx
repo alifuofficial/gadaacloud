@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import MediaPicker from '@/components/MediaPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormFields } from '@/hooks/useFormFields';
@@ -161,13 +161,13 @@ export default function Create({ onSuccess }: CreateLeaveApplicationProps) {
                             {reasonAI.map(field => <div key={field.id}>{field.component}</div>)}
                         </div>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                         id="reason"
-                        value={data.reason}
-                        onChange={(e) => setData('reason', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.reason}
+                        onChange={(value) => setData('reason', value)}
                         placeholder={t('Enter Reason')}
-                        rows={3}
-                        required
                     />
                     <InputError message={errors.reason} />
                 </div>

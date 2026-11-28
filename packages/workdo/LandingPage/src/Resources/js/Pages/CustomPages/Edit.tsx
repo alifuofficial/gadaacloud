@@ -150,10 +150,7 @@ export default function Edit({ page }: EditProps) {
                                 </TabsContent>
                                 <TabsContent value="preview" className="mt-4">
                                     <div className="border rounded-md p-4 min-h-[300px] bg-white">
-                                        <div
-                                            className="prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1 [&_a]:text-blue-600 [&_a]:underline [&_a]:cursor-pointer hover:[&_a]:text-blue-800"
-                                            dangerouslySetInnerHTML={{ __html: data.content }}
-                                        />
+                                        <RichTextViewer content={data.content} />
                                     </div>
                                 </TabsContent>
                             </Tabs>

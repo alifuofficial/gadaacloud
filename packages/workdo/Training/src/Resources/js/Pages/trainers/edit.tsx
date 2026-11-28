@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -154,24 +154,26 @@ export default function EditTrainer({ data: initialData, trainer, onSuccess, bra
 
                 <div>
                     <Label htmlFor="expertise">{t('Expertise')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="expertise"
-                        value={data.expertise}
-                        onChange={(e) => setData('expertise', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.expertise}
+                        onChange={(value) => setData('expertise', value)}
                         placeholder={t('Enter areas of expertise')}
-                        rows={2}
                     />
                     <InputError message={errors.expertise} />
                 </div>
 
                 <div>
                     <Label htmlFor="qualification">{t('Qualification')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="qualification"
-                        value={data.qualification}
-                        onChange={(e) => setData('qualification', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.qualification}
+                        onChange={(value) => setData('qualification', value)}
                         placeholder={t('Enter educational qualifications')}
-                        rows={2}
                     />
                     <InputError message={errors.qualification} />
                 </div>             

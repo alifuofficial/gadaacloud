@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { MultiSelectEnhanced } from "@/components/ui/multi-select-enhanced";
 import InputError from "@/components/ui/input-error";
 import { useFormFields } from '@/hooks/useFormFields';
@@ -177,13 +178,12 @@ export default function Edit({ onSuccess, bug, teamMembers, bugStages }: EditBug
                             {descriptionAI.map(field => <div key={field.id}>{field.component}</div>)}
                         </div>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                         id="edit_description"
-                        value={data.description}
-                        onChange={(e) => updateData('description', e.target.value)}
+                        variant="full"
+                        content={data.description}
+                        onChange={(value) => updateData('description', value)}
                         placeholder={t('Enter bug description')}
-                        rows={3}
-                        required
                     />
                     <InputError message={errors.description?.[0]} />
                 </div>

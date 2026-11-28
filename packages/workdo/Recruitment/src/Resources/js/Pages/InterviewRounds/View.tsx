@@ -2,6 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { MessageCircle } from 'lucide-react';
 import { InterviewRound } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 
 interface ViewProps {
     interviewround: InterviewRound;
@@ -64,10 +66,10 @@ export default function View({ interviewround }: ViewProps) {
                 </div>
 
                 {/* Description - Full Width */}
-                {interviewround.description && (
+                {!isRichTextEmpty(interviewround.description) && (
                     <div>
-                        <label className="font-medium text-gray-700">{t('Description')}:</label>
-                        <p className="text-gray-900">{interviewround.description}</p>
+                        <label className="font-medium text-gray-700 block mb-1">{t('Description')}:</label>
+                        <RichTextViewer content={interviewround.description} compact />
                     </div>
                 )}
             </div>

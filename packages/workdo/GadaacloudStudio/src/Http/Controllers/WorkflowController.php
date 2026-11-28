@@ -285,7 +285,7 @@ class WorkflowController extends Controller
             $workflow = Workflow::create([
                 'name'         => $request->name,
                 'target_model' => $request->target_model,
-                'description'  => $request->description,
+                'description'  => \App\Support\HtmlSanitizer::sanitize($request->description),
                 'is_active'    => true,
                 'created_by'   => creatorId(),
             ]);
@@ -365,7 +365,7 @@ class WorkflowController extends Controller
             $workflow->update([
                 'name'         => $request->name,
                 'target_model' => $request->target_model,
-                'description'  => $request->description,
+                'description'  => \App\Support\HtmlSanitizer::sanitize($request->description),
             ]);
 
             $existingStepIds = $workflow->steps->pluck('id')->toArray();

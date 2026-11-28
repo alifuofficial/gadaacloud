@@ -27,7 +27,7 @@ import {
     MoreHorizontal,
     User as UserIcon
 } from 'lucide-react';
-import { getImagePath,formatDate, formatTime,formatDateTime } from '@/utils/helpers';
+import { getImagePath, formatDate, formatTime, formatDateTime, stripHtml } from '@/utils/helpers';
 
 interface HrmProps {
     message: string;
@@ -592,7 +592,7 @@ export default function HrmIndex({ message, stats }: HrmProps) {
                                                     </div>
                                                     <div className="flex-1">
                                                         <p className="text-sm font-medium">{announcement.title}</p>
-                                                        <p className="text-xs text-gray-600">{announcement.description}</p>
+                                                        <p className="text-xs text-gray-600 line-clamp-2">{stripHtml(announcement.description || '')}</p>
                                                         <p className="text-xs text-gray-500">{timeAgo}</p>
                                                     </div>
                                                 </div>

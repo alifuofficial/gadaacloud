@@ -5,6 +5,7 @@ import { Trash2, Paperclip, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChatMessageProps } from './types';
 import { formatDateTime, getImagePath } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { isImageFile } from '@/utils/fileHelpers';
 import { usePage } from '@inertiajs/react';
 
@@ -72,9 +73,14 @@ export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }
                         )}
                     </div>
 
-                    <div
-                        className="text-sm whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: reply.message }}
+                    <RichTextViewer
+                        content={reply.message}
+                        compact
+                        className={
+                            isOwnMessage && !reply.is_internal
+                                ? 'prose-invert text-white [&_p]:text-white [&_strong]:text-white [&_li]:text-white [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_h4]:text-white [&_a]:text-blue-100'
+                                : ''
+                        }
                     />
 
                     {(() => {

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LeaveApplication } from './types';
 
@@ -57,12 +57,13 @@ export default function StatusUpdate({ leaveapplication, onSuccess }: StatusUpda
                 
                 <div>
                     <Label htmlFor="approver_comment">{t('Comment')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="approver_comment"
-                        value={data.approver_comment}
-                        onChange={(e) => setData('approver_comment', e.target.value)}
+                        variant="compact"
+                        minHeight="120px"
+                        content={data.approver_comment}
+                        onChange={(value) => setData('approver_comment', value)}
                         placeholder={t('Enter your comment...')}
-                        rows={4}
                     />
                     <InputError message={errors.approver_comment} />
                 </div>

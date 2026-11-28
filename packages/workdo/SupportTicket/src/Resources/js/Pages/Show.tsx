@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Paperclip, Send, Ticket, ThumbsUp } from 'lucide-react';
 
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { route } from 'ziggy-js';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '@/utils/helpers';
@@ -196,7 +197,7 @@ export default function Show({ ticket, workspace, settings, brandSettings, slug 
                                     </div>
                                 </div>
                                 <div className="bg-blue-50 border-l-4 border-blue-400 rounded-xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                                    <div dangerouslySetInnerHTML={{ __html: ticket.description }} />
+                                    <RichTextViewer content={ticket.description} />
                                     
                                     {/* Attachments */}
                                     {ticket.attachments && Array.isArray(ticket.attachments) && ticket.attachments.length > 0 && (
@@ -254,7 +255,7 @@ export default function Show({ ticket, workspace, settings, brandSettings, slug 
                                     <div className={`rounded-xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
                                         conversion.sender === 'admin' ? 'bg-green-50 border-l-4 border-green-400' : 'bg-blue-50 border-l-4 border-blue-400'
                                     }`}>
-                                        <div dangerouslySetInnerHTML={{ __html: conversion.description || 'No description' }} />
+                                        <RichTextViewer content={conversion.description || t('No description')} />
                                         
                                         {/* Conversion Attachments */}
                                         {conversion.attachments && Array.isArray(conversion.attachments) && conversion.attachments.length > 0 && (

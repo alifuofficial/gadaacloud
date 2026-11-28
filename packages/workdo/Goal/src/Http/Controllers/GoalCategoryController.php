@@ -74,7 +74,7 @@ class GoalCategoryController extends Controller
             $category = new GoalCategory();
             $category->category_name = $validated['category_name'];
             $category->category_code = $validated['category_code'];
-            $category->description = $validated['description'] ?? null;
+            $category->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $category->is_active = $validated['is_active'];
             $category->creator_id = Auth::id();
             $category->created_by = creatorId();
@@ -99,7 +99,7 @@ class GoalCategoryController extends Controller
         DB::transaction(function () use ($category, $validated) {
             $category->category_name = $validated['category_name'];
             $category->category_code = $validated['category_code'];
-            $category->description = $validated['description'] ?? null;
+            $category->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
             $category->is_active = $validated['is_active'];
             $category->save();
         });

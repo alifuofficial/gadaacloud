@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, DollarSign, Briefcase, Star } from 'lucide-react';
 import FrontendLayout from '../../Components/Frontend/FrontendLayout';
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, stripHtml } from '@/utils/helpers';
 import { useFormFields } from '@/hooks/useFormFields';
 
 interface Job {
@@ -97,7 +97,7 @@ export default function JobListings({ jobs, jobCategories, jobLocations, jobType
             const matchesSearch = activeSearchTerm === '' ||
                 job.title.toLowerCase().includes(searchLower) ||
                 job.location?.toLowerCase().includes(searchLower) ||
-                job.description?.toLowerCase().includes(searchLower) ||
+                stripHtml(job.description || '').toLowerCase().includes(searchLower) ||
                 job.skills.some(skill => skill.toLowerCase().includes(searchLower));
 
             // Find matching location by ID

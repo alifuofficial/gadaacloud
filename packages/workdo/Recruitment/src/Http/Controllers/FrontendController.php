@@ -671,7 +671,7 @@ class FrontendController extends Controller
             $customQuestionResponses = [];
             foreach ($request->all() as $key => $value) {
                 if (str_starts_with($key, 'custom_question_')) {
-                    $customQuestionResponses[$key] = $value;
+                    $customQuestionResponses[$key] = is_string($value) ? \App\Support\HtmlSanitizer::sanitize($value) : $value;
                 }
             }
 
@@ -695,8 +695,8 @@ class FrontendController extends Controller
                 'current_salary' => $request->currentSalary,
                 'expected_salary' => $request->expectedSalary,
                 'notice_period' => $request->noticePeriod,
-                'skills' => $request->skills,
-                'education' => $request->education,
+                'skills' => \App\Support\HtmlSanitizer::sanitize($request->skills),
+                'education' => \App\Support\HtmlSanitizer::sanitize($request->education),
                 'portfolio_url' => $request->portfolioUrl,
                 'linkedin_url' => $request->linkedinUrl,
                 'profile_path' => $profilePhotoPath,

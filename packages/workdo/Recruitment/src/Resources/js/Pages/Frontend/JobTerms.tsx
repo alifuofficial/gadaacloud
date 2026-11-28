@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import FrontendLayout from '../../Components/Frontend/FrontendLayout';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 import { useFormFields } from '@/hooks/useFormFields';
 
 interface Job {
@@ -37,11 +39,8 @@ export default function JobTerms({ job }: JobTermsProps) {
 
                 <Card className="shadow-sm">
                     <CardContent className="p-8">
-                        {job.terms_condition ? (
-                            <div
-                                className="prose prose-lg max-w-none text-gray-700 leading-relaxed"
-                                dangerouslySetInnerHTML={{ __html: job.terms_condition }}
-                            />
+                        {!isRichTextEmpty(job.terms_condition) ? (
+                            <RichTextViewer content={job.terms_condition} />
                         ) : (
                             <div className="text-center py-12">
                                 <p className="text-gray-500 text-lg">{t('No terms and conditions specified for this position.')}</p>

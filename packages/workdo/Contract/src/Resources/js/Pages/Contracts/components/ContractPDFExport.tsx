@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/helpers';
+import DOMPurify from 'dompurify';
+import { formatCurrency, formatDate, formatDateTime, isRichTextEmpty } from '@/utils/helpers';
 import { Contract } from '../types';
 
 interface ContractPDFExportProps {
@@ -54,11 +55,11 @@ export default function ContractPDFExport({ contract, variant = "outline", size 
                         </div>
                     </div>
                 </div>
-                ${contract.description ? `
+                ${!isRichTextEmpty(contract.description) ? `
                     <div style="margin-bottom: 32px;">
                         <h3 style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 16px;">${t('Terms and Conditions')}</h3>
-                        <div style="border-left: 4px solid #d1d5db; padding-left: 16px;">
-                            <p style="color: #374151; line-height: 1.6; white-space: pre-wrap;">${contract.description}</p>
+                        <div style="border-left: 4px solid #d1d5db; padding-left: 16px; color: #374151; line-height: 1.6;">
+                            ${DOMPurify.sanitize(contract.description || '')}
                         </div>
                     </div>
                 ` : ''}

@@ -119,7 +119,7 @@ class ProjectTaskController extends Controller
                 $task->predecessor_id = $validated['predecessor_id'] ?? null;
                 $task->dependency_type = $validated['dependency_type'] ?? 'finish_to_start';
                 $task->is_critical = !empty($validated['is_critical']);
-                $task->description = $validated['description'] ?? null;
+                $task->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 if (isset($validated['stage_id']) && is_numeric($validated['stage_id'])) {
                     $task->stage_id = (int) $validated['stage_id'];
                 } else {
@@ -331,7 +331,7 @@ class ProjectTaskController extends Controller
                 $task->title = $validated['title'];
                 $task->priority = $validated['priority'] ?? 'Medium';
                 $task->assigned_to = isset($validated['assigned_to']) ? (is_array($validated['assigned_to']) ? json_encode($validated['assigned_to']) : $validated['assigned_to']) : null;
-                $task->description = $validated['description'] ?? null;
+                $task->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $task->duration = $validated['duration'] ?? null;
                 if (isset($validated['start_date'])) $task->start_date = $validated['start_date'];
                 if (isset($validated['due_date'])) $task->due_date = $validated['due_date'];
@@ -478,12 +478,17 @@ class ProjectTaskController extends Controller
     {
         if (Auth::user()->can('create-project-task-comments')) {
             $request->validate([
-                'comment' => 'required|string|max:1000'
+                'comment' => 'required|string|max:20000'
             ]);
+
+            $sanitizedComment = \App\Support\HtmlSanitizer::sanitize($request->comment);
+            if ($sanitizedComment === null || $sanitizedComment === '') {
+                return response()->json(['error' => __('Comment cannot be empty.')], 422);
+            }
 
             $comment = TaskComment::create([
                 'task_id' => $task->id,
-                'comment' => $request->comment,
+                'comment' => $sanitizedComment,
                 'user_id' => Auth::id()
             ]);
 

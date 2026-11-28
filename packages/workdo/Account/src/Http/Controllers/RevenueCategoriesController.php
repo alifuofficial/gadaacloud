@@ -62,7 +62,7 @@ class RevenueCategoriesController extends Controller
         $revenuecategories = new RevenueCategories();
         $revenuecategories->category_name = $validated['category_name'];
         $revenuecategories->category_code = $validated['category_code'];
-        $revenuecategories->description = $validated['description'] ?? null;
+        $revenuecategories->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $revenuecategories->gl_account_id = $validated['gl_account_id'];
         $revenuecategories->is_active = $request->boolean('is_active', true);
         $revenuecategories->creator_id = Auth::id();
@@ -89,7 +89,7 @@ class RevenueCategoriesController extends Controller
 
         $revenuecategories->category_name = $validated['category_name'];
         $revenuecategories->category_code = $validated['category_code'];
-        $revenuecategories->description = $validated['description'] ?? null;
+        $revenuecategories->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $revenuecategories->gl_account_id = $validated['gl_account_id'];
         $revenuecategories->is_active = $request->boolean('is_active', true);
         $revenuecategories->save();

@@ -104,6 +104,11 @@ class ContractController extends Controller
     {
         if (Auth::user()->can('create-contracts')) {
             $validated = $request->validated();
+            foreach (['description', 'notes'] as $richField) {
+                if (array_key_exists($richField, $validated)) {
+                    $validated[$richField] = \App\Support\HtmlSanitizer::sanitize($validated[$richField]);
+                }
+            }
 
             $contract = DB::transaction(function () use ($validated) {
                 $contract = new Contract();
@@ -132,6 +137,11 @@ class ContractController extends Controller
             $contract = $this->findTenantContract($id);
 
             $validated = $request->validated();
+            foreach (['description', 'notes'] as $richField) {
+                if (array_key_exists($richField, $validated)) {
+                    $validated[$richField] = \App\Support\HtmlSanitizer::sanitize($validated[$richField]);
+                }
+            }
 
             DB::transaction(function () use ($contract, $validated) {
                 $contract->fill($validated);

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar as CalendarIcon, Clock, Users, List, Kanban } from 'lucide-react';
 import CalendarView from '@/components/calendar-view';
-import { formatDate, formatTime } from '@/utils/helpers';
+import { formatDate, formatTime, stripHtml } from '@/utils/helpers';
 
 interface CalendarEvent {
   id: number | string;
@@ -120,7 +120,9 @@ export default function Calendar() {
                         </div>
                       </div>
 
-                      <p className="text-sm text-gray-600 mb-3">{event.description}</p>
+                      {event.description && stripHtml(event.description) && (
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-3">{stripHtml(event.description)}</p>
+                      )}
                     </div>
                   ))}
                 </div>

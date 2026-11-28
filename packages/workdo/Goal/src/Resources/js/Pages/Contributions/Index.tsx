@@ -22,7 +22,8 @@ import CreateContribution from './Create';
 import EditContribution from './Edit';
 import NoRecordsFound from '@/components/no-records-found';
 import { GoalContribution, ContributionsIndexProps, ContributionFilters, ContributionModalState } from './types';
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, isRichTextEmpty, stripHtml } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -150,7 +151,7 @@ export default function Index() {
             key: 'notes',
             header: t('Notes'),
             sortable: false,
-            render: (value: string) => value || '-'
+            render: (value: string) => stripHtml(value || '') || '-'
         },
         ...(auth.user?.permissions?.some((p: string) => ['edit-goal-contributions', 'delete-goal-contributions'].includes(p)) ? [{
             key: 'actions',
@@ -367,10 +368,10 @@ export default function Index() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    {contribution.notes && (
+                                                    {!isRichTextEmpty(contribution.notes) && (
                                                         <div>
                                                             <p className="text-xs font-medium text-gray-600 mb-1">{t('Notes')}</p>
-                                                            <p className="text-xs text-gray-900">{contribution.notes}</p>
+                                                            <RichTextViewer content={contribution.notes} compact />
                                                         </div>
                                                     )}
                                                 </div>

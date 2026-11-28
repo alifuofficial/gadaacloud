@@ -129,7 +129,7 @@ class ApprovalController extends Controller
                 'workflow_step_id'    => $step->id,
                 'user_id'             => $user->id,
                 'action'              => 'approve',
-                'comment'             => $request->comment,
+                'comment'             => \App\Support\HtmlSanitizer::sanitize($request->comment),
                 'created_by'          => $req->created_by,
             ]);
 
@@ -179,7 +179,7 @@ class ApprovalController extends Controller
                 'workflow_step_id'    => $step->id,
                 'user_id'             => $user->id,
                 'action'              => 'reject',
-                'comment'             => $request->comment,
+                'comment'             => \App\Support\HtmlSanitizer::sanitize($request->comment),
                 'created_by'          => $req->created_by,
             ]);
 

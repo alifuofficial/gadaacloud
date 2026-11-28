@@ -16,10 +16,10 @@ class HelpdeskReplyController extends Controller
         if(Auth::user()->can('create-helpdesk-replies')){
             $validated = $request->validated();
 
-            $cleanMessage = trim(str_replace('&nbsp;', '', strip_tags($validated['message'])));
+            $sanitizedMessage = \App\Support\HtmlSanitizer::sanitize($validated['message']);
             $hasAttachments = !empty($validated['attachments']);
 
-            if(empty($cleanMessage) && !$hasAttachments){
+            if($sanitizedMessage === null && !$hasAttachments){
                 return response()->json([
                     'success' => false,
                     'message' => __('Reply message cannot be empty.')
@@ -28,7 +28,7 @@ class HelpdeskReplyController extends Controller
 
             $reply = new HelpdeskReply();
             $reply->ticket_id = $ticket->id;
-            $reply->message = $validated['message'];
+            $reply->message = $sanitizedMessage ?? '';
 
             // Handle multiple attachments
             if (isset($validated['attachments']) && $validated['attachments']) {

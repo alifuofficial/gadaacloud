@@ -205,7 +205,7 @@ class BalanceSheetController extends Controller
                 $newNote->balance_sheet_id = $balanceSheet->id;
                 $newNote->note_number = $nextNoteNumber;
                 $newNote->note_title = $validated['note_title'];
-                $newNote->note_content = $validated['note_content'];
+                $newNote->note_content = \App\Support\HtmlSanitizer::sanitize($validated['note_content']) ?? '';
                 $newNote->creator_id = Auth::id();
                 $newNote->created_by = creatorId();
                 $newNote->save();

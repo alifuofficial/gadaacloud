@@ -74,7 +74,7 @@ class AnnouncementController extends Controller
 
             $announcement = new Announcement();
             $announcement->title = $validated['title'];
-            $announcement->description = $validated['description'];
+            $announcement->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $announcement->start_date = $validated['start_date'];
             $announcement->end_date = $validated['end_date'];
             $announcement->priority = $validated['priority'];
@@ -113,7 +113,7 @@ class AnnouncementController extends Controller
 
 
             $announcement->title = $validated['title'];
-            $announcement->description = $validated['description'];
+            $announcement->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $announcement->start_date = $validated['start_date'];
             $announcement->end_date = $validated['end_date'];
             $announcement->priority = $validated['priority'];

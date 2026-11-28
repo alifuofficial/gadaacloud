@@ -2,6 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { CheckSquare } from 'lucide-react';
 import { OnboardingChecklist } from './types';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
+import { isRichTextEmpty } from '@/utils/helpers';
 
 interface ViewProps {
     onboardingchecklist: OnboardingChecklist;
@@ -34,7 +36,11 @@ export default function View({ onboardingchecklist }: ViewProps) {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500 mb-1">{t('Description')}</p>
-                            <p className="text-gray-700 leading-relaxed">{onboardingchecklist.description || t('No description provided')}</p>
+                            {!isRichTextEmpty(onboardingchecklist.description) ? (
+                                <RichTextViewer content={onboardingchecklist.description} compact />
+                            ) : (
+                                <p className="text-gray-700 leading-relaxed">{t('No description provided')}</p>
+                            )}
                         </div>
                     </div>
                 </div>

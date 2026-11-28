@@ -296,7 +296,7 @@ class DealController extends Controller
                 $deal->ethiopian_fiscal_year = $validated['ethiopian_fiscal_year'] ?? $deal->ethiopian_fiscal_year;
                 $deal->sources     = isset($validated['sources']) && !empty($validated['sources']) ? array_filter($validated['sources']) : null;
                 $deal->products    = isset($validated['products']) && !empty($validated['products']) ? array_filter($validated['products']) : null;
-                $deal->notes       = $validated['notes'] ?? '';
+                $deal->notes       = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null) ?? '';
                 $deal->save();
 
                 // Sync clients
@@ -530,12 +530,13 @@ class DealController extends Controller
         if (Auth::user()->can('edit-deals')) {
             $usr = Auth::user();
             $validated = $request->validated();
+            $sanitizedDescription = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
 
             $deal_email = DealEmail::create([
                 'deal_id' => $deal->id,
                 'to' => $validated['to'],
                 'subject' => $validated['subject'],
-                'description' => $validated['description'],
+                'description' => $sanitizedDescription,
             ]);
             DealAddEmail::dispatch($request, $deal, $deal_email);
 
@@ -553,7 +554,7 @@ class DealController extends Controller
                 $emailData = [
                     'deal_name' => $deal->name,
                     'deal_email_subject' => $validated['subject'],
-                    'deal_email_description' => $validated['description'],
+                    'deal_email_description' => $sanitizedDescription,
                 ];
 
                 // Send Email
@@ -578,7 +579,7 @@ class DealController extends Controller
 
             DealDiscussion::create([
                 'deal_id' => $deal->id,
-                'comment' => $validated['message'],
+                'comment' => \App\Support\HtmlSanitizer::sanitize($validated['message']) ?? '',
                 'creator_id' => Auth::id(),
                 'created_by' => creatorId(),
             ]);
@@ -655,7 +656,7 @@ class DealController extends Controller
             $call->call_type   = $request->call_type;
             $call->duration    = $request->duration;
             $call->user_id     = $request->assignee;
-            $call->description = $request->description;
+            $call->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $call->call_result = $request->call_result;
             $call->save();
             DealAddCall::dispatch($request, $deal);
@@ -681,7 +682,7 @@ class DealController extends Controller
             $call->call_type   = $request->call_type;
             $call->duration    = $request->duration;
             $call->user_id     = $request->assignee;
-            $call->description = $request->description;
+            $call->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $call->call_result = $request->call_result;
             $call->save();
             DealCallUpdate::dispatch($request, $call);

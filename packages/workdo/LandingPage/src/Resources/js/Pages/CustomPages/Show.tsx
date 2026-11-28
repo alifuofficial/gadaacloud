@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import CookieConsent from "@/components/cookie-consent";
 import { getAdminSetting, getImagePath } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 
 interface CustomPage {
@@ -68,12 +69,7 @@ export default function Show({ page, landingPageSettings }: ShowProps) {
                         </h1>
                     </div>
                     
-                    <div className="prose prose-lg max-w-none">
-                        <div 
-                            dangerouslySetInnerHTML={{ __html: page.content }}
-                            className="text-gray-700 leading-relaxed"
-                        />
-                    </div>
+                    <RichTextViewer content={page.content} />
                 </div>
             </section>
             

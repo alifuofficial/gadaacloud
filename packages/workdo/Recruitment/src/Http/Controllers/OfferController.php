@@ -204,13 +204,13 @@ class OfferController extends Controller
                 $offer->salary = $validated['salary'];
                 $offer->bonus = $validated['bonus'];
                 $offer->equity = $validated['equity'];
-                $offer->benefits = $validated['benefits'];
+                $offer->benefits = \App\Support\HtmlSanitizer::sanitize($validated['benefits'] ?? null);
                 $offer->start_date = $validated['start_date'];
                 $offer->expiration_date = $validated['expiration_date'];
                 $offer->offer_letter_path = $validated['offer_letter_path'];
                 $offer->status = $validated['status'];
                 $offer->response_date = $validated['response_date'];
-                $offer->decline_reason = $validated['decline_reason'];
+                $offer->decline_reason = \App\Support\HtmlSanitizer::sanitize($validated['decline_reason'] ?? null);
 
                 $offer->creator_id = Auth::id();
                 $offer->created_by = creatorId();
@@ -243,13 +243,15 @@ class OfferController extends Controller
                 $offer->salary = $validated['salary'];
                 $offer->bonus = $validated['bonus'];
                 $offer->equity = $validated['equity'];
-                $offer->benefits = $validated['benefits'];
+                $offer->benefits = \App\Support\HtmlSanitizer::sanitize($validated['benefits'] ?? null);
                 $offer->start_date = $validated['start_date'];
                 $offer->expiration_date = $validated['expiration_date'];
                 $offer->offer_letter_path = $validated['offer_letter_path'] ?? $offer->offer_letter_path;
                 $offer->status = $validated['status'] ?? $offer->status;
                 $offer->response_date = $validated['response_date'] ?? $offer->response_date;
-                $offer->decline_reason = $validated['decline_reason'] ?? $offer->decline_reason;
+                $offer->decline_reason = array_key_exists('decline_reason', $validated)
+                    ? \App\Support\HtmlSanitizer::sanitize($validated['decline_reason'])
+                    : $offer->decline_reason;
 
                 $offer->save();
 

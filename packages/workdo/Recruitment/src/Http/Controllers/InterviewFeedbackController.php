@@ -143,9 +143,9 @@ class InterviewFeedbackController extends Controller
                 $validated['cultural_fit_rating']
             ]);
             $interviewfeedback->overall_rating = !empty($ratings) ? round(array_sum($ratings) / count($ratings), 1) : 0;
-            $interviewfeedback->strengths = $validated['strengths'];
-            $interviewfeedback->weaknesses = $validated['weaknesses'];
-            $interviewfeedback->comments = $validated['comments'];
+            $interviewfeedback->strengths = isset($validated['strengths']) ? (\App\Support\HtmlSanitizer::sanitize($validated['strengths']) ?? '') : null;
+            $interviewfeedback->weaknesses = isset($validated['weaknesses']) ? (\App\Support\HtmlSanitizer::sanitize($validated['weaknesses']) ?? '') : null;
+            $interviewfeedback->comments = isset($validated['comments']) ? (\App\Support\HtmlSanitizer::sanitize($validated['comments']) ?? '') : null;
             $interviewfeedback->recommendation = $validated['recommendation'];
             $interviewfeedback->interview_id = $validated['interview_id'];
             $interviewfeedback->interviewer_ids = $validated['interviewer_ids'] ?? [];
@@ -186,9 +186,9 @@ class InterviewFeedbackController extends Controller
                 $validated['cultural_fit_rating']
             ]);
             $interviewfeedback->overall_rating = !empty($ratings) ? round(array_sum($ratings) / count($ratings), 1) : 0;
-            $interviewfeedback->strengths = $validated['strengths'];
-            $interviewfeedback->weaknesses = $validated['weaknesses'];
-            $interviewfeedback->comments = $validated['comments'];
+            $interviewfeedback->strengths = isset($validated['strengths']) ? (\App\Support\HtmlSanitizer::sanitize($validated['strengths']) ?? '') : null;
+            $interviewfeedback->weaknesses = isset($validated['weaknesses']) ? (\App\Support\HtmlSanitizer::sanitize($validated['weaknesses']) ?? '') : null;
+            $interviewfeedback->comments = isset($validated['comments']) ? (\App\Support\HtmlSanitizer::sanitize($validated['comments']) ?? '') : null;
             $interviewfeedback->recommendation = $validated['recommendation'];
             $interviewfeedback->interview_id = $validated['interview_id'];
             $interviewfeedback->interviewer_ids = $validated['interviewer_ids'] ?? [];

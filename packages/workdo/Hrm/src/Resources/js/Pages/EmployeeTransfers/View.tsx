@@ -4,7 +4,8 @@ import { ArrowRight, User, Building, Users, Calendar, FileText, Download } from 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmployeeTransfer } from './types';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     employeetransfer: EmployeeTransfer;
@@ -142,7 +143,11 @@ export default function View({ employeetransfer }: ViewProps) {
                                 <FileText className="h-4 w-4" />
                                 {t('Reason')}
                             </label>
-                            <p className="mt-1">{employeetransfer.reason || '-'}</p>
+                            {!isRichTextEmpty(employeetransfer.reason) ? (
+                                <RichTextViewer content={employeetransfer.reason} compact className="mt-1" />
+                            ) : (
+                                <p className="mt-1">-</p>
+                            )}
                         </div>
                         
                         {employeetransfer.document && (

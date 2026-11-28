@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { EthiopianFiscalPresets } from "@/components/ethiopian-fiscal-presets";
@@ -157,7 +157,13 @@ export default function Create({ onSuccess, hrmContext }: CreateProps) {
 
                 <div>
                     <Label htmlFor="description">{t('Description')}</Label>
-                    <Textarea id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} rows={2} />
+                    <RichTextEditor
+                        id="description"
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
+                    />
                     <InputError message={errors.description} />
                 </div>
 

@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StickyNote, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchInput } from '@/components/ui/search-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDateTime, getImagePath } from '@/utils/helpers';
+import { formatDateTime, getImagePath, isRichTextEmpty, stripHtml } from '@/utils/helpers';
 
 interface NotesTabProps {
     contract: any;
@@ -115,15 +116,16 @@ export default function NotesTab({ contract, setDeleteConfig }: NotesTabProps) {
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="text-sm font-medium mb-2 text-green-900">{auth.user?.name}</p>
-                                    <Textarea
-                                        value={createNoteText}
-                                        onChange={(e) => setCreateNoteText(e.target.value)}
+                                    <RichTextEditor
+                                        variant="compact"
+                                        minHeight="110px"
+                                        content={createNoteText}
+                                        onChange={setCreateNoteText}
                                         placeholder={t('Write your note...')}
-                                        rows={4}
-                                        className="resize-none mb-3 bg-white border-green-200 focus:border-green-300"
+                                        className="mb-3 bg-white"
                                     />
                                     <div className="flex justify-end">
-                                        <Button onClick={handleCreateNoteSubmit} disabled={!createNoteText.trim()} size="sm">
+                                        <Button onClick={handleCreateNoteSubmit} disabled={isRichTextEmpty(createNoteText)} size="sm">
                                             {t('Send')}
                                         </Button>
                                     </div>
@@ -134,7 +136,7 @@ export default function NotesTab({ contract, setDeleteConfig }: NotesTabProps) {
 
                     {(() => {
                         const filteredNotes = contract.notes ? contract.notes.filter((note: any) =>
-                            note.note.toLowerCase().includes(noteSearch.toLowerCase()) ||
+                            stripHtml(note.note || '').toLowerCase().includes(noteSearch.toLowerCase()) ||
                             note.user?.name.toLowerCase().includes(noteSearch.toLowerCase())
                         ) : [];
 
@@ -197,7 +199,7 @@ export default function NotesTab({ contract, setDeleteConfig }: NotesTabProps) {
                                                         )}
                                                     </div>
                                                     <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                                        <p className="text-sm text-gray-700">{note.note}</p>
+                                                        <RichTextViewer content={note.note} compact />
                                                     </div>
                                                 </div>
                                             </div>
@@ -293,12 +295,12 @@ export default function NotesTab({ contract, setDeleteConfig }: NotesTabProps) {
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-gray-900 mb-2">{auth.user?.name}</p>
-                                    <Textarea
-                                        value={noteText}
-                                        onChange={(e) => setNoteText(e.target.value)}
+                                    <RichTextEditor
+                                        variant="compact"
+                                        minHeight="120px"
+                                        content={noteText}
+                                        onChange={setNoteText}
                                         placeholder={t('Write your note...')}
-                                        rows={4}
-                                        className="resize-none border-gray-200 focus:border-green-300 focus:ring-green-200"
                                     />
                                 </div>
                             </div>
@@ -311,7 +313,7 @@ export default function NotesTab({ contract, setDeleteConfig }: NotesTabProps) {
                             }}>
                                 {t('Cancel')}
                             </Button>
-                            <Button onClick={handleNoteSubmit} disabled={!noteText.trim()}>
+                            <Button onClick={handleNoteSubmit} disabled={isRichTextEmpty(noteText)}>
                                 {t('Update')}
                             </Button>
                         </DialogFooter>

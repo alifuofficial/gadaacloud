@@ -40,7 +40,7 @@ class LoanController extends Controller
                 $loan->amount = $validated['amount'];
                 $loan->start_date = $validated['start_date'];
                 $loan->end_date = $validated['end_date'];
-                $loan->reason = $validated['reason'];
+                $loan->reason = isset($validated['reason']) ? (\App\Support\HtmlSanitizer::sanitize($validated['reason']) ?? '') : null;
                 $loan->creator_id = Auth::id();
                 $loan->created_by = creatorId();
                 $loan->save();
@@ -78,7 +78,7 @@ class LoanController extends Controller
             $loan->amount = $validated['amount'];
             $loan->start_date = $validated['start_date'];
             $loan->end_date = $validated['end_date'];
-            $loan->reason = $validated['reason'];
+            $loan->reason = isset($validated['reason']) ? (\App\Support\HtmlSanitizer::sanitize($validated['reason']) ?? '') : null;
             $loan->save();
 
             UpdateLoan::dispatch($request, $loan);

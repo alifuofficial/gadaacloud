@@ -64,7 +64,7 @@ class LeaveTypeController extends Controller
 
             $leavetype = new LeaveType();
             $leavetype->name = $validated['name'];
-            $leavetype->description = $validated['description'];
+            $leavetype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $leavetype->max_days_per_year = $validated['max_days_per_year'];
             $leavetype->is_paid = $validated['is_paid'];
             $leavetype->color = $validated['color'];
@@ -90,7 +90,7 @@ class LeaveTypeController extends Controller
             $validated['is_paid'] = $request->boolean('is_paid', false);
 
             $leavetype->name = $validated['name'];
-            $leavetype->description = $validated['description'];
+            $leavetype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $leavetype->max_days_per_year = $validated['max_days_per_year'];
             $leavetype->is_paid = $validated['is_paid'];
             $leavetype->color = $validated['color'];

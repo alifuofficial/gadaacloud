@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NoRecordsFound from '@/components/no-records-found';
 import { CreditCard as CreditCardIcon, CheckCircle, Circle, Upload, Sparkles, Scale } from "lucide-react";
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, stripHtml } from '@/utils/helpers';
 import { usePageButtons } from '@/hooks/usePageButtons';
 import axios from 'axios';
 
@@ -212,7 +212,7 @@ export default function Index() {
             sortable: false,
             render: (value: string, row: BankTransaction) => (
                 <div>
-                    <div>{value}</div>
+                    <div>{stripHtml(value)}</div>
                     {row.matched_type && (
                         <Badge variant="outline" className="mt-1 text-xs">
                             {row.matched_type} #{row.matched_id}

@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { FileText, Calendar, User, Clock, CheckCircle, MessageSquare, Tag } from 'lucide-react';
 import { LeaveApplication } from './types';
-import { formatDate, formatDateTime } from '@/utils/helpers';
+import { formatDate, formatDateTime, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     leaveapplication: LeaveApplication;
@@ -111,14 +112,14 @@ export default function View({ leaveapplication }: ViewProps) {
                     </div>
                 </div>
                 
-                {leaveapplication.reason && (
+                {!isRichTextEmpty(leaveapplication.reason) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Reason')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{leaveapplication.reason}</p>
+                            <RichTextViewer content={leaveapplication.reason} compact />
                         </div>
                     </div>
                 )}
@@ -129,7 +130,11 @@ export default function View({ leaveapplication }: ViewProps) {
                         {t('Approver Comment')}
                     </label>
                     <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm">{leaveapplication.approver_comment || '-'}</p>
+                        {!isRichTextEmpty(leaveapplication.approver_comment) ? (
+                            <RichTextViewer content={leaveapplication.approver_comment} compact />
+                        ) : (
+                            <p className="text-sm">-</p>
+                        )}
                     </div>
                 </div>
             </div>

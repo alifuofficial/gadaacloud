@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -518,24 +518,26 @@ export default function EditCandidate({ candidate, onSuccess }: EditCandidatePro
 
                 <div>
                     <Label htmlFor="skills">{t('Skills')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="skills"
-                        value={data.skills}
-                        onChange={(e) => setData('skills', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.skills}
+                        onChange={(value) => setData('skills', value)}
                         placeholder={t('Enter Skills')}
-                        rows={3}
                     />
                     <InputError message={errors.skills} />
                 </div>
 
                 <div>
                     <Label htmlFor="education">{t('Education')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="education"
-                        value={data.education}
-                        onChange={(e) => setData('education', e.target.value)}
+                        variant="compact"
+                        minHeight="100px"
+                        content={data.education}
+                        onChange={(value) => setData('education', value)}
                         placeholder={t('Enter Education')}
-                        rows={3}
                     />
                     <InputError message={errors.education} />
                 </div>
@@ -652,12 +654,13 @@ export default function EditCandidate({ candidate, onSuccess }: EditCandidatePro
                                     />
                                 )}
                                 {question.type === 'textarea' && (
-                                    <Textarea
+                                    <RichTextEditor
                                         id={`custom_question_${question.id}`}
-                                        value={data[`custom_question_${question.id}`] || ''}
-                                        onChange={(e) => setData(`custom_question_${question.id}`, e.target.value)}
+                                        variant="minimal"
+                                        minHeight="90px"
+                                        content={data[`custom_question_${question.id}`] || ''}
+                                        onChange={(value) => setData(`custom_question_${question.id}`, value)}
                                         placeholder={t('Enter your answer')}
-                                        rows={3}
                                     />
                                 )}
                                 {question.type === 'select' && (

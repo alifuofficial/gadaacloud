@@ -73,7 +73,7 @@ class AcknowledgmentController extends Controller
             $acknowledgment = new Acknowledgment();
             $acknowledgment->employee_id = $validated['employee_id'];
             $acknowledgment->document_id = $validated['document_id'];
-            $acknowledgment->acknowledgment_note = $validated['acknowledgment_note'] ?? null;
+            $acknowledgment->acknowledgment_note = \App\Support\HtmlSanitizer::sanitize($validated['acknowledgment_note'] ?? null);
             $acknowledgment->assigned_by = Auth::id();
             $acknowledgment->creator_id = Auth::id();
             $acknowledgment->created_by = creatorId();
@@ -96,7 +96,7 @@ class AcknowledgmentController extends Controller
 
             $acknowledgment->employee_id = $validated['employee_id'];
             $acknowledgment->document_id = $validated['document_id'];
-            $acknowledgment->acknowledgment_note = $validated['acknowledgment_note'] ?? null;
+            $acknowledgment->acknowledgment_note = \App\Support\HtmlSanitizer::sanitize($validated['acknowledgment_note'] ?? null);
 
             $acknowledgment->save();
 

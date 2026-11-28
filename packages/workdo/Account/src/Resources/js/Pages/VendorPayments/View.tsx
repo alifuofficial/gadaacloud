@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { VendorPaymentViewProps } from './types';
 import { formatDate, formatCurrency } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 export default function View({ payment }: VendorPaymentViewProps) {
     const { t } = useTranslation();
@@ -84,7 +85,9 @@ export default function View({ payment }: VendorPaymentViewProps) {
                         {payment.notes && (
                             <div className="mt-4">
                                 <span className="font-semibold">{t('Notes')}</span>
-                                <p className="mt-1 p-3 bg-gray-50 rounded text-sm">{payment.notes}</p>
+                                <div className="mt-1 p-3 bg-gray-50 rounded">
+                                    <RichTextViewer content={payment.notes} compact />
+                                </div>
                             </div>
                         )}
                     </CardContent>

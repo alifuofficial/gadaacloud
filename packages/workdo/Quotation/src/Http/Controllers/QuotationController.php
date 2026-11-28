@@ -124,7 +124,7 @@ class QuotationController extends Controller
                 $quotation->customer_id     = $request->customer_id;
                 $quotation->warehouse_id    = $request->warehouse_id;
                 $quotation->payment_terms   = $request->payment_terms;
-                $quotation->notes           = $request->notes;
+                $quotation->notes           = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $quotation->subtotal        = $totals['subtotal'];
                 $quotation->tax_amount      = $totals['tax_amount'];
                 $quotation->discount_amount = $totals['discount_amount'];
@@ -210,7 +210,7 @@ class QuotationController extends Controller
                 $quotation->customer_id     = $request->customer_id;
                 $quotation->warehouse_id    = $request->warehouse_id;
                 $quotation->payment_terms   = $request->payment_terms;
-                $quotation->notes           = $request->notes;
+                $quotation->notes           = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $quotation->subtotal        = $totals['subtotal'];
                 $quotation->tax_amount      = $totals['tax_amount'];
                 $quotation->discount_amount = $totals['discount_amount'];
@@ -494,7 +494,7 @@ class QuotationController extends Controller
                 $invoice->paid_amount     = 0;
                 $invoice->status          = 'draft';
                 $invoice->payment_terms   = $quotation->payment_terms;
-                $invoice->notes           = $quotation->notes;
+                $invoice->notes           = \App\Support\HtmlSanitizer::sanitize($quotation->notes);
                 $invoice->creator_id      = Auth::id();
                 $invoice->created_by      = creatorId();
                 $invoice->save();

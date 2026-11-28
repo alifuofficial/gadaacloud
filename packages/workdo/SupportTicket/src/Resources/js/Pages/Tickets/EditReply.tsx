@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import MediaPicker from '@/components/MediaPicker';
 import { Edit, Send, Download, Paperclip, ChevronDown, ChevronUp, User, Calendar, Tag, AlertCircle, MessageSquare, StickyNote } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -515,7 +516,7 @@ export default function EditReply({ ticket, categories, staff, clients, vendors,
               </div>
             </CardHeader>
             <CardContent>
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: ticket.description }} />
+              <RichTextViewer content={ticket.description} />
               
               {ticket.attachments && ticket.attachments.length > 0 && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -583,7 +584,7 @@ export default function EditReply({ ticket, categories, staff, clients, vendors,
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: conversion.description }} />
+                <RichTextViewer content={conversion.description} />
                 
                 {conversion.attachments && conversion.attachments.length > 0 && (
                   <div className={`mt-4 p-4 rounded-lg border ${

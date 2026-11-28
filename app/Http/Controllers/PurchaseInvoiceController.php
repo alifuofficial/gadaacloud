@@ -167,7 +167,7 @@ class PurchaseInvoiceController extends Controller
                     $invoice->vendor_id = $request->vendor_id;
                     $invoice->warehouse_id = $request->warehouse_id;
                     $invoice->payment_terms = $request->payment_terms;
-                    $invoice->notes = $request->notes;
+                    $invoice->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                     $invoice->subtotal = $totals['subtotal'];
                     $invoice->tax_amount = $totals['tax_amount'];
                     $invoice->discount_amount = $totals['discount_amount'];
@@ -280,7 +280,7 @@ class PurchaseInvoiceController extends Controller
                 $purchaseInvoice->vendor_id = $request->vendor_id;
                 $purchaseInvoice->warehouse_id = $request->warehouse_id;
                 $purchaseInvoice->payment_terms = $request->payment_terms;
-                $purchaseInvoice->notes = $request->notes;
+                $purchaseInvoice->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $purchaseInvoice->subtotal = $totals['subtotal'];
                 $purchaseInvoice->tax_amount = $totals['tax_amount'];
                 $purchaseInvoice->discount_amount = $totals['discount_amount'];

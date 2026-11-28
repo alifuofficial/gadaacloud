@@ -74,7 +74,7 @@ class ComplaintController extends Controller
             $complaint->against_employee_id = $validated['against_employee_id'] === 'other' ? null : $validated['against_employee_id'];
             $complaint->complaint_type_id = $validated['complaint_type_id'];
             $complaint->subject = $validated['subject'];
-            $complaint->description = $validated['description'];
+            $complaint->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $complaint->complaint_date = $validated['complaint_date'];
             $complaint->document = $validated['document'];
             $complaint->status = 'Pending';
@@ -99,7 +99,7 @@ class ComplaintController extends Controller
             $complaint->against_employee_id = $validated['against_employee_id'] === 'other' ? null : $validated['against_employee_id'];
             $complaint->complaint_type_id = $validated['complaint_type_id'];
             $complaint->subject = $validated['subject'];
-            $complaint->description = $validated['description'];
+            $complaint->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null) ?? '';
             $complaint->complaint_date = $validated['complaint_date'];
             $complaint->document = $validated['document'];
             $complaint->save();

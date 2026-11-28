@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { stripHtml } from '@/utils/helpers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Trash2, MessageSquare } from 'lucide-react';
 import NoRecordsFound from '@/components/no-records-found';
@@ -38,7 +39,7 @@ export default function Index() {
 
     const columns = [
         { key: 'name', header: t('Name') },
-        { key: 'description', header: t('Description'), render: (v: string) => v || '-' },
+        { key: 'description', header: t('Description'), render: (v: string) => stripHtml(v || '') || '-' },
         { key: 'feedbacks_count', header: t('Submissions'), render: (v: any) => v ?? 0 },
         {
             key: 'status',
@@ -79,7 +80,7 @@ export default function Index() {
                     <DialogHeader><DialogTitle>{editing ? t('Edit Feedback Type') : t('Create Feedback Type')}</DialogTitle></DialogHeader>
                     <form onSubmit={submit} className="space-y-4">
                         <div><Label required>{t('Name')}</Label><Input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} required /></div>
-                        <div><Label>{t('Description')}</Label><Textarea value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} rows={2} /></div>
+                        <div><Label>{t('Description')}</Label><RichTextEditor variant="compact" minHeight="90px" content={form.data.description} onChange={(value) => form.setData('description', value)} /></div>
                         <div>
                             <Label>{t('Status')}</Label>
                             <Select value={form.data.status} onValueChange={(v) => form.setData('status', v)}>

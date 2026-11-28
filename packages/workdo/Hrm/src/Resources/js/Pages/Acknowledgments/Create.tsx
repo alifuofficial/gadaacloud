@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DateTimeRangePicker } from '@/components/ui/datetime-range-picker';
 import { CreateAcknowledgmentProps, CreateAcknowledgmentFormData } from './types';
 import { usePage } from '@inertiajs/react';
@@ -78,13 +78,13 @@ export default function Create({ onSuccess }: CreateAcknowledgmentProps) {
                 
                 <div>
                     <Label htmlFor="acknowledgment_note" required>{t('Acknowledgment Note')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="acknowledgment_note"
-                        value={data.acknowledgment_note}
-                        onChange={(e) => setData('acknowledgment_note', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.acknowledgment_note}
+                        onChange={(value) => setData('acknowledgment_note', value)}
                         placeholder={t('Enter Acknowledgment Note')}
-                        rows={3}
-                        required
                     />
                     <InputError message={errors.acknowledgment_note} />
                 </div>

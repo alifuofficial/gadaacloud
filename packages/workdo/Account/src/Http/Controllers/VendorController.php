@@ -80,7 +80,7 @@ class VendorController extends Controller
             $vendor->billing_address = $validated['billing_address'];
             $vendor->shipping_address = $validated['same_as_billing'] ? $validated['billing_address'] : $validated['shipping_address'];
             $vendor->same_as_billing = $validated['same_as_billing'] ?? false;
-            $vendor->notes = $validated['notes'] ?? null;
+            $vendor->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null);
             $vendor->creator_id = Auth::id();
             $vendor->created_by = creatorId();
             $vendor->save();
@@ -106,7 +106,7 @@ class VendorController extends Controller
             $vendor->billing_address = $validated['billing_address'];
             $vendor->shipping_address = $validated['same_as_billing'] ? $validated['billing_address'] : $validated['shipping_address'];
             $vendor->same_as_billing = $validated['same_as_billing'] ?? false;
-            $vendor->notes = $validated['notes'] ?? null;
+            $vendor->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null);
             $vendor->save();
 
             UpdateVendor::dispatch($request, $vendor);

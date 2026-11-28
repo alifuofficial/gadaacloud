@@ -104,7 +104,7 @@ class ChatterController extends Controller
                 'model_type' => $modelType,
                 'model_id'   => $id,
                 'user_id'    => $user->id,
-                'message'    => $request->message,
+                'message'    => \App\Support\HtmlSanitizer::sanitize($request->message) ?? '',
                 'type'       => $request->type,
             ]);
 
@@ -180,7 +180,7 @@ class ChatterController extends Controller
             'title'         => $request->title,
             'due_date'      => $request->due_date,
             'status'        => 'pending',
-            'notes'         => $request->notes,
+            'notes'         => \App\Support\HtmlSanitizer::sanitize($request->notes),
         ]);
 
         $assigneeUser = User::find($assigneeId);
@@ -227,7 +227,7 @@ class ChatterController extends Controller
             ->firstOrFail();
 
         $newStatus = $activity->status === 'completed' ? 'pending' : 'completed';
-        $feedback  = $request->feedback;
+        $feedback  = \App\Support\HtmlSanitizer::sanitize($request->feedback);
 
         $activity->status       = $newStatus;
         $activity->feedback     = $feedback;
@@ -235,7 +235,8 @@ class ChatterController extends Controller
         $activity->save();
 
         if ($newStatus === 'completed') {
-            $feedbackStr = $feedback ? "\n*Feedback:* {$feedback}" : '';
+            $plainFeedback = \App\Support\HtmlSanitizer::toPlainText($feedback);
+            $feedbackStr = $plainFeedback !== '' ? "\n*Feedback:* {$plainFeedback}" : '';
             ChatterMessage::create([
                 'created_by' => $companyId,
                 'model_type' => $activity->model_type,

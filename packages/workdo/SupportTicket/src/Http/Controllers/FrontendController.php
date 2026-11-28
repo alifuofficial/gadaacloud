@@ -243,7 +243,7 @@ class FrontendController extends Controller
             $ticket->email = $request->email;
             $ticket->category = $request->category;
             $ticket->subject = $request->subject;
-            $ticket->description = $request->description;
+            $ticket->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $ticket->status = $request->status ?? 'In Progress';
             $ticket->account_type = 'custom';
             $ticket->attachments = json_encode($attachments);
@@ -457,7 +457,7 @@ class FrontendController extends Controller
             $contact->last_name = $request->lastName;
             $contact->email = $request->email;
             $contact->subject = $request->subject;
-            $contact->message = $request->message;
+            $contact->message = \App\Support\HtmlSanitizer::sanitize($request->message) ?? '';
             $contact->creator_id = $user_id;
             $contact->created_by = $user_id;
             $contact->save();
@@ -622,7 +622,7 @@ class FrontendController extends Controller
         // Create conversation
         $conversion = new Conversion();
         $conversion->ticket_id = $ticket->id;
-        $conversion->message = $request->description;
+        $conversion->message = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
         $conversion->sender_type = 'user';
         $conversion->sender_name = $ticket->name;
         $conversion->attachments = json_encode($attachments);

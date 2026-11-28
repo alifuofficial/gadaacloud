@@ -25,7 +25,7 @@ class ContractRenewalController extends Controller
                     'end_date' => $request->end_date,
                     'value' => $request->value,
                     'status' => $request->status,
-                    'notes' => $request->notes,
+                    'notes' => \App\Support\HtmlSanitizer::sanitize($request->notes),
                     'creator_id' => Auth::id(),
                     'created_by' => creatorId(),
                 ]);
@@ -46,7 +46,7 @@ class ContractRenewalController extends Controller
                     'end_date' => $request->end_date,
                     'value' => $request->value,
                     'status' => $request->status,
-                    'notes' => $request->notes,
+                    'notes' => \App\Support\HtmlSanitizer::sanitize($request->notes),
                 ]);
             });
 

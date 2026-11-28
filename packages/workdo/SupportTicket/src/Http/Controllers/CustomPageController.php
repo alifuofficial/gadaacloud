@@ -46,8 +46,8 @@ class CustomPageController extends Controller
             $customPage = new SupportTicketCustomPage();
             $customPage->title = $request->title;
             $customPage->slug = $request->slug ?: Str::slug($request->title);
-            $customPage->contents = $request->contents;
-            $customPage->description = $request->description;
+            $customPage->contents = \App\Support\HtmlSanitizer::sanitize($request->contents) ?? '';
+            $customPage->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $customPage->enable_page_footer = $request->enable_page_footer ?? 'off';
             $customPage->creator_id = Auth::id();
             $customPage->created_by = creatorId();
@@ -70,8 +70,8 @@ class CustomPageController extends Controller
 
             $supportTicketCustomPage->title = $request->title;
             $supportTicketCustomPage->slug = $request->slug ?: Str::slug($request->title);
-            $supportTicketCustomPage->contents = $request->contents;
-            $supportTicketCustomPage->description = $request->description;
+            $supportTicketCustomPage->contents = \App\Support\HtmlSanitizer::sanitize($request->contents) ?? '';
+            $supportTicketCustomPage->description = \App\Support\HtmlSanitizer::sanitize($request->description);
             $supportTicketCustomPage->enable_page_footer = $request->enable_page_footer ?? 'off';
             $supportTicketCustomPage->save();
 

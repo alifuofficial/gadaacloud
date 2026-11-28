@@ -8,6 +8,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import ChatMessage from '../components/ChatMessage';
 import ReplyForm from '../components/ReplyForm';
 import { formatDate } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { ShowHelpdeskTicketProps, HelpdeskReply } from './types';
 
 export default function Show() {
@@ -111,7 +112,7 @@ export default function Show() {
                                     {getPriorityBadge(ticket.priority)}
                                 </div>
                             </div>
-                            <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: ticket.description }} />
+                            <RichTextViewer content={ticket.description} />
                         </div>
 
                         <div className="lg:w-80 space-y-4">

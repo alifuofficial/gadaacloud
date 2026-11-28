@@ -141,6 +141,10 @@ class TimesheetController extends Controller
                     $validated['user_id'] = Auth::id();
                 }
 
+                if (array_key_exists('notes', $validated)) {
+                    $validated['notes'] = \App\Support\HtmlSanitizer::sanitize($validated['notes']);
+                }
+
                 $timesheet = DB::transaction(function () use ($validated) {
                     $timesheet = new Timesheet();
                     $timesheet->fill($validated);
@@ -170,7 +174,10 @@ class TimesheetController extends Controller
         if (Auth::user()->can('edit-timesheet') && $this->canAccessTimesheet($timesheet)) {
             try {
                 $validated = $request->validated();
-                
+                if (array_key_exists('notes', $validated)) {
+                    $validated['notes'] = \App\Support\HtmlSanitizer::sanitize($validated['notes']);
+                }
+
                 // Validate remaining hours for clock_in_out type
                 if ($validated['type'] === 'clock_in_out' && module_is_active('Hrm')) {
                     $remainingHours = $this->getRemainingHours($validated['user_id'] ?? $timesheet->user_id, $validated['date'], $timesheet->id);

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DatePicker } from '@/components/ui/date-picker';
 import { EditCandidateAssessmentProps, EditCandidateAssessmentFormData } from './types';
 import { usePage } from '@inertiajs/react';
@@ -176,12 +176,13 @@ export default function EditCandidateAssessment({ candidateassessment, onSuccess
 
                 <div>
                     <Label htmlFor="comments">{t('Comments')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="comments"
-                        value={data.comments}
-                        onChange={(e) => setData('comments', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.comments}
+                        onChange={(value) => setData('comments', value)}
                         placeholder={t('Enter Comments')}
-                        rows={3}
                     />
                     <InputError message={errors.comments} />
                 </div>

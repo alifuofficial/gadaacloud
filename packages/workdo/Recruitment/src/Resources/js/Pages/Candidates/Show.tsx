@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { Users, Mail, Phone, Building, Briefcase, Calendar, DollarSign, Clock, FileText, MapPin, Download, Hash } from 'lucide-react';
 import { Candidate, CandidateShowProps } from './types';
-import { formatDate, formatCurrency, getImagePath } from '@/utils/helpers';
+import { formatDate, formatCurrency, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 export default function Show() {
     const { t } = useTranslation();
@@ -256,7 +257,13 @@ export default function Show() {
                                             <label className="text-sm font-medium text-muted-foreground">
                                                 {questionText}
                                             </label>
-                                            <p className="font-medium bg-gray-50 p-3 rounded-md">{answer as string || '-'}</p>
+                                            <div className="bg-gray-50 p-3 rounded-md">
+                                                {!isRichTextEmpty(answer as string) ? (
+                                                    <RichTextViewer content={answer as string} compact />
+                                                ) : (
+                                                    <span>-</span>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -276,7 +283,7 @@ export default function Show() {
                         </CardHeader>
                         <CardContent>
                             <div className="bg-gray-50 p-4 rounded-md">
-                                <p className="whitespace-pre-wrap">{candidate.notes}</p>
+                                <RichTextViewer content={candidate.notes} compact />
                             </div>
                         </CardContent>
                     </Card>

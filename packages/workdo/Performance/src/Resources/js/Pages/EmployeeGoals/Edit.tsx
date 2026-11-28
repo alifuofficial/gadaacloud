@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import InputError from "@/components/ui/input-error";
+import { isRichTextEmpty } from "@/utils/helpers";
 
 interface EditProps {
     goal: any;
@@ -28,7 +29,7 @@ export default function Edit({
     kpiSources = [{ value: 'manual', label: 'Manual Tracking' }],
 }: EditProps) {
     const { t } = useTranslation();
-    const { data, setData, put, processing, errors, transform } = useForm({
+    const { data, setData, put, processing, errors, transform, setError, clearErrors } = useForm({
         employee_id: goal.employee_id?.toString() || '',
         goal_type_id: goal.goal_type_id?.toString() || '',
         review_cycle_id: goal.review_cycle_id ? goal.review_cycle_id.toString() : 'none',
@@ -47,6 +48,10 @@ export default function Edit({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRichTextEmpty(data.description)) {
+            setError('description', t('The description field is required.'));
+            return;
+        }
         transform((form) => ({
             ...form,
             review_cycle_id: form.review_cycle_id === 'none' ? '' : form.review_cycle_id,
@@ -99,7 +104,16 @@ export default function Edit({
 
                 <div>
                     <Label htmlFor="description" required>{t('Description')}</Label>
-                    <Textarea id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} rows={2} required />
+                    <RichTextEditor
+                        id="description"
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.description}
+                        onChange={(value) => {
+                            setData('description', value);
+                            if (!isRichTextEmpty(value)) clearErrors('description');
+                        }}
+                    />
                     <InputError message={errors.description} />
                 </div>
 

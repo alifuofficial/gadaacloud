@@ -58,7 +58,7 @@ class FaqController extends Controller
         if (Auth::user()->can('create-faq')) {
             $faq = new Faq();
             $faq->title = $request->title;
-            $faq->description = $request->description;
+            $faq->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $faq->creator_id = Auth::id();
             $faq->created_by = creatorId();
             $faq->save();
@@ -73,7 +73,7 @@ class FaqController extends Controller
     {
         if (Auth::user()->can('edit-faq')) {
             $supportTicketFaq->title = $request->title;
-            $supportTicketFaq->description = $request->description;
+            $supportTicketFaq->description = \App\Support\HtmlSanitizer::sanitize($request->description) ?? '';
             $supportTicketFaq->save();
 
             return back()->with('success', __('The FAQ details are updated successfully.'));

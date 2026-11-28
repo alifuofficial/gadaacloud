@@ -13,7 +13,8 @@ import { SearchInput } from '@/components/ui/search-input';
 import { PerPageSelector } from '@/components/ui/per-page-selector';
 import { Pagination } from '@/components/ui/pagination';
 import { Trash2, Mail, User, Calendar, Eye } from 'lucide-react';
-import { formatDateTime } from '@/utils/helpers';
+import { formatDateTime, stripHtml } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface Contact {
     id: number;
@@ -105,7 +106,7 @@ export default function Index({ contacts }: ContactIndexProps) {
             key: 'message',
             header: t('Message'),
             render: (value: string) => {
-                const text = value?.replace(/<[^>]*>/g, '') || '';
+                const text = stripHtml(value);
                 return text.length > 50 ? text.substring(0, 50) + '...' : text;
             }
         },
@@ -300,9 +301,11 @@ export default function Index({ contacts }: ContactIndexProps) {
                                         <CardContent className="p-4">
                                             <h3 className="font-semibold text-sm mb-3 text-gray-800">{t('Message Content')}</h3>
                                             <div className="bg-gray-50 rounded-lg p-4 border min-h-[200px]">
-                                                <p className="text-gray-900 leading-relaxed whitespace-pre-wrap text-sm">
-                                                    {selectedContact.message || 'No message content'}
-                                                </p>
+                                                <RichTextViewer
+                                                    content={selectedContact.message}
+                                                    compact
+                                                    fallback={<span className="text-sm text-gray-500">{t('No message content')}</span>}
+                                                />
                                             </div>
                                         </CardContent>
                                     </Card>

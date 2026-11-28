@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InputError from "@/components/ui/input-error";
 import { EditHelpdeskCategoryProps, EditHelpdeskCategoryFormData } from './types';
@@ -47,12 +47,13 @@ export default function Edit({ category, onSuccess }: EditHelpdeskCategoryProps)
 
                 <div>
                     <Label htmlFor="edit_description">{t('Description')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="edit_description"
-                        value={data.description || ''}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.description || ''}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter category description')}
-                        rows={3}
                     />
                     <InputError message={errors.description} />
                 </div>

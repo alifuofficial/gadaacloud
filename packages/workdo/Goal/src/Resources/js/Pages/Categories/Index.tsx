@@ -22,7 +22,7 @@ import EditCategory from './Edit';
 
 import NoRecordsFound from '@/components/no-records-found';
 import { Category, CategoriesIndexProps, CategoryFilters, CategoryModalState } from './types';
-import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath } from '@/utils/helpers';
+import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath, stripHtml } from '@/utils/helpers';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -105,7 +105,7 @@ export default function Index() {
             key: 'description',
             header: t('Description'),
             sortable: false,
-            render: (value: string) => value || '-'
+            render: (value: string) => stripHtml(value || '') || '-'
         },
         {
             key: 'is_active',

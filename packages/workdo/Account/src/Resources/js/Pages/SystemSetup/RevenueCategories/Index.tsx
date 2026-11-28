@@ -17,7 +17,7 @@ import EditRevenueCategories from './Edit';
 import NoRecordsFound from '@/components/no-records-found';
 import { RevenueCategories, RevenueCategoriesIndexProps, RevenueCategoriesModalState } from './types';
 import SystemSetupSidebar from "../SystemSetupSidebar";
-import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath } from '@/utils/helpers';
+import { formatDate, formatTime, formatDateTime, formatCurrency, getImagePath, stripHtml } from '@/utils/helpers';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -62,7 +62,8 @@ export default function Index() {
         {
             key: 'description',
             header: t('Description'),
-            sortable: false
+            sortable: false,
+            render: (value: string) => stripHtml(value) || '-'
         },
         {
             key: 'is_active',

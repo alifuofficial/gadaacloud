@@ -21,7 +21,7 @@ class StoreEmployeeTransferRequest extends FormRequest
             'to_department_id' => ['required', HrmControllerHelpers::tenantExists('departments', 'id')],
             'to_designation_id' => ['required', HrmControllerHelpers::tenantExists('designations', 'id')],
             'effective_date' => 'required|date|after_or_equal:today',
-            'reason' => 'required|string|max:500',
+            'reason' => 'required|string|max:20000',
             'document' => 'nullable|string'
         ];
     }

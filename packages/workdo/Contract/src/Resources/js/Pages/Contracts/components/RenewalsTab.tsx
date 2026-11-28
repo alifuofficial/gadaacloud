@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +16,7 @@ import InputError from '@/components/ui/input-error';
 import { RefreshCw, Plus, Grid, List, ChevronLeft, ChevronRight, Calendar, DollarSign, User, Eye, Edit, Trash2 } from 'lucide-react';
 import { SearchInput } from '@/components/ui/search-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/helpers';
+import { formatCurrency, formatDate, formatDateTime, isRichTextEmpty, stripHtml } from '@/utils/helpers';
 
 const getRenewalStatusColor = (status: any) => {
     const statusValue = status?.toString().toLowerCase();
@@ -351,9 +352,9 @@ export default function RenewalsTab({ contract, setDeleteConfig }: RenewalsTabPr
                                                 </div>
 
                                                 {/* Notes Preview */}
-                                                {renewal.notes && (
+                                                {renewal.notes && stripHtml(renewal.notes) && (
                                                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
-                                                        <p className="text-xs text-amber-700 line-clamp-2 leading-relaxed">{renewal.notes}</p>
+                                                        <p className="text-xs text-amber-700 line-clamp-2 leading-relaxed">{stripHtml(renewal.notes)}</p>
                                                     </div>
                                                 )}
 
@@ -640,12 +641,13 @@ export default function RenewalsTab({ contract, setDeleteConfig }: RenewalsTabPr
                         </div>
                         <div>
                             <Label htmlFor="notes">{t('Notes')}</Label>
-                            <Textarea
+                            <RichTextEditor
                                 id="notes"
-                                value={renewalData.notes}
-                                onChange={(e) => setRenewalData({ ...renewalData, notes: e.target.value })}
+                                variant="compact"
+                                minHeight="100px"
+                                content={renewalData.notes}
+                                onChange={(value) => setRenewalData({ ...renewalData, notes: value })}
                                 placeholder={t('Enter Notes')}
-                                rows={3}
                             />
                             <InputError message={renewalErrors.notes} />
                         </div>
@@ -715,11 +717,11 @@ export default function RenewalsTab({ contract, setDeleteConfig }: RenewalsTabPr
                                 <Label className="text-sm font-medium text-gray-700">{t('Created At')}</Label>
                                 <p className="text-sm mt-1">{formatDateTime(getSelectedRenewal().created_at)}</p>
                             </div>
-                            {getSelectedRenewal().notes && (
+                            {!isRichTextEmpty(getSelectedRenewal().notes) && (
                                 <div>
                                     <Label className="text-sm font-medium text-gray-700">{t('Notes')}</Label>
                                     <div className="mt-1 bg-gray-50 rounded-lg p-3">
-                                        <p className="text-sm text-gray-700">{getSelectedRenewal().notes}</p>
+                                        <RichTextViewer content={getSelectedRenewal().notes} compact />
                                     </div>
                                 </div>
                             )}

@@ -211,7 +211,7 @@ class LeaveApplicationController extends Controller
                 $leaveapplication->start_date = $validated['start_date'];
                 $leaveapplication->end_date = $validated['end_date'];
                 $leaveapplication->total_days = $totalDays;
-                $leaveapplication->reason = $validated['reason'];
+                $leaveapplication->reason = \App\Support\HtmlSanitizer::sanitize($validated['reason'] ?? null) ?? '';
                 $leaveapplication->attachment = $validated['attachment'] ?? null;
                 $leaveapplication->status = 'pending';
                 $leaveapplication->employee_id = $validated['employee_id'];
@@ -308,7 +308,7 @@ class LeaveApplicationController extends Controller
                 $leaveapplication->start_date = $validated['start_date'];
                 $leaveapplication->end_date = $validated['end_date'];
                 $leaveapplication->total_days = $totalDays;
-                $leaveapplication->reason = $validated['reason'];
+                $leaveapplication->reason = \App\Support\HtmlSanitizer::sanitize($validated['reason'] ?? null) ?? '';
                 $leaveapplication->attachment = $validated['attachment'] ?? null;
 
                 $leaveapplication->save();
@@ -352,7 +352,7 @@ class LeaveApplicationController extends Controller
 
             DB::transaction(function () use ($request, $leaveapplication) {
                 $leaveapplication->status = $request->status;
-                $leaveapplication->approver_comment = $request->approver_comment;
+                $leaveapplication->approver_comment = \App\Support\HtmlSanitizer::sanitize($request->approver_comment);
 
                 if ($request->status === 'approved') {
                     $leaveapplication->approved_by = Auth::id();

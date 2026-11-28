@@ -70,7 +70,7 @@ class TerminationController extends Controller
             $termination->notice_date = $validated['notice_date'];
             $termination->termination_date = $validated['termination_date'];
             $termination->reason = $validated['reason'];
-            $termination->description = $validated['description'];
+            $termination->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $termination->document = $validated['document'];
             $termination->employee_id = $validated['employee_id'];
             $termination->termination_type_id = $validated['termination_type_id'];
@@ -98,7 +98,7 @@ class TerminationController extends Controller
             $termination->notice_date = $validated['notice_date'];
             $termination->termination_date = $validated['termination_date'];
             $termination->reason = $validated['reason'];
-            $termination->description = $validated['description'];
+            $termination->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $termination->document = $validated['document'];
             $termination->employee_id = $validated['employee_id'];
             $termination->termination_type_id = $validated['termination_type_id'];

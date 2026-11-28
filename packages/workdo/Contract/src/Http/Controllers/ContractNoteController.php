@@ -18,13 +18,18 @@ class ContractNoteController extends Controller
     {
         if (Auth::user()->can('create-contract-notes') && $this->assertBelongsToTenant($contract)) {
             $request->validate([
-                'note' => 'required|string|max:1000',
+                'note' => 'required|string|max:20000',
             ]);
 
-            DB::transaction(function () use ($contract, $request) {
+            $cleanNote = \App\Support\HtmlSanitizer::sanitize($request->note);
+            if ($cleanNote === null) {
+                return back()->withErrors(['note' => __('The note field is required.')]);
+            }
+
+            DB::transaction(function () use ($contract, $cleanNote) {
                 ContractNote::create([
                     'contract_id' => $contract->id,
-                    'note' => $request->note,
+                    'note' => $cleanNote,
                     'user_id' => Auth::id(),
                     'creator_id' => Auth::id(),
                     'created_by' => creatorId(),
@@ -41,12 +46,17 @@ class ContractNoteController extends Controller
     {
         if (Auth::user()->can('edit-contract-notes') && $this->assertBelongsToTenant($note)) {
             $request->validate([
-                'note' => 'required|string|max:1000',
+                'note' => 'required|string|max:20000',
             ]);
 
-            DB::transaction(function () use ($note, $request) {
+            $cleanNote = \App\Support\HtmlSanitizer::sanitize($request->note);
+            if ($cleanNote === null) {
+                return back()->withErrors(['note' => __('The note field is required.')]);
+            }
+
+            DB::transaction(function () use ($note, $cleanNote) {
                 $note->update([
-                    'note' => $request->note,
+                    'note' => $cleanNote,
                     'is_edited' => true,
                 ]);
             });

@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Edit, Trash2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchInput } from '@/components/ui/search-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDateTime, getImagePath } from '@/utils/helpers';
+import { formatDateTime, getImagePath, isRichTextEmpty, stripHtml } from '@/utils/helpers';
 
 interface CommentsTabProps {
     contract: any;
@@ -115,15 +116,16 @@ export default function CommentsTab({ contract, setDeleteConfig }: CommentsTabPr
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="text-sm font-medium mb-2 text-blue-900">{auth.user?.name}</p>
-                                    <Textarea
-                                        value={createCommentText}
-                                        onChange={(e) => setCreateCommentText(e.target.value)}
+                                    <RichTextEditor
+                                        variant="compact"
+                                        minHeight="100px"
+                                        content={createCommentText}
+                                        onChange={setCreateCommentText}
                                         placeholder={t('Write your comment...')}
-                                        rows={3}
-                                        className="resize-none mb-3 bg-white border-blue-200 focus:border-blue-300"
+                                        className="mb-3 bg-white"
                                     />
                                     <div className="flex justify-end">
-                                        <Button onClick={handleCreateCommentSubmit} disabled={!createCommentText.trim()} size="sm">
+                                        <Button onClick={handleCreateCommentSubmit} disabled={isRichTextEmpty(createCommentText)} size="sm">
                                             {t('Send')}
                                         </Button>
                                     </div>
@@ -134,7 +136,7 @@ export default function CommentsTab({ contract, setDeleteConfig }: CommentsTabPr
 
                     {(() => {
                         const filteredComments = contract.comments ? contract.comments.filter((comment: any) =>
-                            comment.comment.toLowerCase().includes(commentSearch.toLowerCase()) ||
+                            stripHtml(comment.comment || '').toLowerCase().includes(commentSearch.toLowerCase()) ||
                             comment.user?.name.toLowerCase().includes(commentSearch.toLowerCase())
                         ) : [];
 
@@ -197,7 +199,7 @@ export default function CommentsTab({ contract, setDeleteConfig }: CommentsTabPr
                                                         )}
                                                     </div>
                                                     <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                                        <p className="text-sm text-gray-700">{comment.comment}</p>
+                                                        <RichTextViewer content={comment.comment} compact />
                                                     </div>
                                                 </div>
                                             </div>
@@ -294,12 +296,12 @@ export default function CommentsTab({ contract, setDeleteConfig }: CommentsTabPr
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-gray-900 mb-2">{auth.user?.name}</p>
-                                    <Textarea
-                                        value={commentText}
-                                        onChange={(e) => setCommentText(e.target.value)}
+                                    <RichTextEditor
+                                        variant="compact"
+                                        minHeight="110px"
+                                        content={commentText}
+                                        onChange={setCommentText}
                                         placeholder={t('Write your comment...')}
-                                        rows={3}
-                                        className="resize-none border-gray-200 focus:border-blue-300 focus:ring-blue-200"
                                     />
                                 </div>
                             </div>
@@ -312,7 +314,7 @@ export default function CommentsTab({ contract, setDeleteConfig }: CommentsTabPr
                             }}>
                                 {t('Cancel')}
                             </Button>
-                            <Button onClick={handleCommentSubmit} disabled={!commentText.trim()}>
+                            <Button onClick={handleCommentSubmit} disabled={isRichTextEmpty(commentText)}>
                                 {t('Update')}
                             </Button>
                         </DialogFooter>

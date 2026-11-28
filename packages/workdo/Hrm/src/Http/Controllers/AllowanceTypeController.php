@@ -49,7 +49,7 @@ class AllowanceTypeController extends Controller
 
             $allowancetype = new AllowanceType();
             $allowancetype->name = $validated['name'];
-            $allowancetype->description = $validated['description'];
+            $allowancetype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $allowancetype->creator_id = Auth::id();
             $allowancetype->created_by = creatorId();
@@ -71,7 +71,7 @@ class AllowanceTypeController extends Controller
 
 
             $allowancetype->name = $validated['name'];
-            $allowancetype->description = $validated['description'];
+            $allowancetype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $allowancetype->save();
 

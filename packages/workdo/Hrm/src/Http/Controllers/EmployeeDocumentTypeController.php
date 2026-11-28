@@ -46,7 +46,7 @@ class EmployeeDocumentTypeController extends Controller
 
             $employeedocumenttype = new EmployeeDocumentType();
             $employeedocumenttype->document_name = $validated['document_name'];
-            $employeedocumenttype->description = $validated['description'];
+            $employeedocumenttype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $employeedocumenttype->is_required = $validated['is_required'];
 
             $employeedocumenttype->creator_id = Auth::id();
@@ -67,7 +67,7 @@ class EmployeeDocumentTypeController extends Controller
             $validated['is_required'] = $request->boolean('is_required', false);
 
             $employeedocumenttype->document_name = $validated['document_name'];
-            $employeedocumenttype->description = $validated['description'];
+            $employeedocumenttype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $employeedocumenttype->is_required = $validated['is_required'];
 
             $employeedocumenttype->save();

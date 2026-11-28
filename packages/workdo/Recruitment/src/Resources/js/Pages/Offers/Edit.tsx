@@ -7,7 +7,7 @@ import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { DatePicker } from '@/components/ui/date-picker';
 import { EditOfferProps, EditOfferFormData } from './types';
 import { usePage } from '@inertiajs/react';
@@ -194,12 +194,13 @@ export default function EditOffer({ offer, onSuccess }: EditOfferProps) {
 
                 <div>
                     <Label htmlFor="benefits">{t('Benefits')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="benefits"
-                        value={data.benefits}
-                        onChange={(e) => setData('benefits', e.target.value)}
+                        variant="full"
+                        minHeight="140px"
+                        content={data.benefits}
+                        onChange={(value) => setData('benefits', value)}
                         placeholder={t('Enter Benefits')}
-                        rows={3}
                     />
                     <InputError message={errors.benefits} />
                 </div>

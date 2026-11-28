@@ -3,7 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
 import { usePageButtons } from '@/hooks/usePageButtons';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, stripHtml } from '@/utils/helpers';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
@@ -166,11 +166,14 @@ export default function Index() {
         {
             key: 'description',
             header: t('Description'),
-            render: (value: string) => value ? (
-                <div className="p-4 align-middle text-foreground">
-                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{value}</p>
-                </div>
-            ) : '-'
+            render: (value: string) => {
+                const plain = stripHtml(value || '');
+                return plain ? (
+                    <div className="p-4 align-middle text-foreground">
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{plain}</p>
+                    </div>
+                ) : '-';
+            }
         },
         {
             key: 'status',
@@ -430,7 +433,7 @@ export default function Index() {
                                                 <div className="p-4 flex-1 min-h-0">
                                                     <div className="mb-4">
                                                         <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wide">{t('Description')}</p>
-                                                        <p className="font-medium text-xs line-clamp-3">{cycle.description || '-'}</p>
+                                                        <p className="font-medium text-xs line-clamp-3">{stripHtml(cycle.description || '') || '-'}</p>
                                                     </div>
 
                                                     <div className="text-xs min-w-0">

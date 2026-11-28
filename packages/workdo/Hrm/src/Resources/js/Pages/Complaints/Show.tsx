@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User, Calendar, FileText, MessageSquareWarning, CheckCircle } from 'lucide-react';
 import { Complaint } from './types';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ShowComplaintProps {
     complaint: Complaint;
@@ -112,14 +113,14 @@ export default function Show({ complaint, onClose }: ShowComplaintProps) {
                     </div>
                 )}
                 
-                {complaint.description && (
+                {!isRichTextEmpty(complaint.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{complaint.description}</p>
+                            <RichTextViewer content={complaint.description} compact />
                         </div>
                     </div>
                 )}

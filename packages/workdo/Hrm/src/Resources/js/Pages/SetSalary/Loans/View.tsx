@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { DollarSign, FileText, Calendar, Tag, User, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface Loan {
     id: number;
@@ -109,14 +110,14 @@ export default function View({ loan }: ViewLoanProps) {
                     </div>
                 </div>
                 
-                {loan.reason && (
+                {!isRichTextEmpty(loan.reason) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Reason')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{loan.reason}</p>
+                            <RichTextViewer content={loan.reason} compact />
                         </div>
                     </div>
                 )}

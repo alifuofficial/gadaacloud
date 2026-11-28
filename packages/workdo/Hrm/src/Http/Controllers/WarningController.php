@@ -69,7 +69,7 @@ class WarningController extends Controller
             $warning->subject = $validated['subject'];
             $warning->severity = $validated['severity'];
             $warning->warning_date = $validated['warning_date'];
-            $warning->description = $validated['description'];
+            $warning->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $warning->document = $validated['document'];
             $warning->employee_id = $validated['employee_id'];
             $warning->warning_by = $validated['warning_by'];
@@ -97,7 +97,7 @@ class WarningController extends Controller
             $warning->subject = $validated['subject'];
             $warning->severity = $validated['severity'];
             $warning->warning_date = $validated['warning_date'];
-            $warning->description = $validated['description'];
+            $warning->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $warning->document = $validated['document'];
             $warning->employee_id = $validated['employee_id'];
             $warning->warning_by = $validated['warning_by'];
@@ -134,7 +134,7 @@ class WarningController extends Controller
             ]);
 
             $warning->status = $validated['warning_status'];
-            $warning->employee_response = $validated['employee_response'];
+            $warning->employee_response = \App\Support\HtmlSanitizer::sanitize($validated['employee_response'] ?? null);
             $warning->save();
 
             return redirect()->back()->with('success', __('Warning response updated successfully.'));

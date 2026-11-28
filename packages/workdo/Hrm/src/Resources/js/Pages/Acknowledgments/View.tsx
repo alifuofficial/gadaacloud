@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { FileCheck, User, FileText, Calendar, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Acknowledgment } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     acknowledgment: Acknowledgment;
@@ -80,14 +81,14 @@ export default function View({ acknowledgment }: ViewProps) {
                     </div>
                 </div>
                 
-                {acknowledgment.acknowledgment_note && (
+                {!isRichTextEmpty(acknowledgment.acknowledgment_note) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Acknowledgment Note')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{acknowledgment.acknowledgment_note}</p>
+                            <RichTextViewer content={acknowledgment.acknowledgment_note} compact />
                         </div>
                     </div>
                 )}

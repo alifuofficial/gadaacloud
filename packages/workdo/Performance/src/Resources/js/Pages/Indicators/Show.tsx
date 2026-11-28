@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { TrendingUp } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface PerformanceIndicator {
     id: number;
@@ -91,10 +92,10 @@ export default function Show({ indicator }: ShowProps) {
                     </div>
                 </div>
 
-                {indicator.description && (
+                {!isRichTextEmpty(indicator.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500">{t('Description')}</label>
-                        <p className="mt-1 text-sm text-gray-900">{indicator.description}</p>
+                        <RichTextViewer content={indicator.description} compact className="mt-1" />
                     </div>
                 )}
             </div>

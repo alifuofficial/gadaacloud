@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, FileText, User, Clock, MapPin, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Event } from './types';
-import { formatDate, formatTime } from '@/utils/helpers';
+import { formatDate, formatTime, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     event: Event;
@@ -130,14 +131,14 @@ export default function View({ event }: ViewProps) {
                     </div>
                 </div>
                 
-                {event.description && (
+                {!isRichTextEmpty(event.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{event.description}</p>
+                            <RichTextViewer content={event.description} />
                         </div>
                     </div>
                 )}

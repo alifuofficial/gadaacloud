@@ -4,13 +4,13 @@ import { Deal } from '../types';
 import { formatDate, formatDateTime, formatCurrency, getImagePath } from '@/utils/helpers';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { InputError } from '@/components/ui/input-error';
-import { Textarea } from '@/components/ui/textarea';
 import { useForm, usePage } from '@inertiajs/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, Mail, Phone, GitBranch, Layers, CheckSquare, Globe, Package, DollarSign, User } from 'lucide-react';
@@ -305,9 +305,7 @@ export default function General({ deal, onStatusChange }: GeneralProps) {
                                         </div>
                                         <div className="bg-white rounded-lg p-3 border border-gray-100">
                                             <h4 className="font-semibold text-gray-800 mb-2 text-sm">{email.subject}</h4>
-                                            <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                {cleanText}
-                                            </div>
+                                            <RichTextViewer content={email.description} compact />
                                         </div>
                                     </div>
                                 );
@@ -356,7 +354,7 @@ export default function General({ deal, onStatusChange }: GeneralProps) {
                                         <span className="text-xs font-medium text-gray-700">{discussion.creator?.name}</span>
                                         <span className="text-xs text-gray-400 ml-auto">{formatDateTime(discussion.created_at)}</span>
                                     </div>
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{discussion.comment}</p>
+                                    <RichTextViewer content={discussion.comment} compact />
                                 </div>
                             ))
                         ) : (
@@ -433,12 +431,13 @@ export default function General({ deal, onStatusChange }: GeneralProps) {
                     <form onSubmit={handleDiscussionSubmit} className="space-y-4">
                         <div>
                             <Label htmlFor="message" required>{t('Message')}</Label>
-                            <Textarea
+                            <RichTextEditor
                                 id="message"
-                                value={discussionForm.message}
-                                onChange={(e) => setDiscussionData('message', e.target.value)}
+                                variant="minimal"
+                                minHeight="100px"
+                                content={discussionForm.message}
+                                onChange={(content) => setDiscussionData('message', content)}
                                 placeholder={t('Enter your message')}
-                                rows={3}
                             />
                             <InputError message={discussionErrors.message} />
                         </div>

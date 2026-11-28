@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelectEnhanced } from '@/components/ui/multi-select-enhanced';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -211,13 +212,12 @@ export default function Edit({ onSuccess, task, project, milestones, teamMembers
                             {descriptionAI.map(field => <div key={field.id}>{field.component}</div>)}
                         </div>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                         id="description"
-                        rows={3}
-                        value={data.description}
-                        onChange={(e) => updateData('description', e.target.value)}
+                        variant="full"
+                        content={data.description}
+                        onChange={(value) => updateData('description', value)}
                         placeholder={t('Enter task description')}
-                        required
                     />
                 </div>
 

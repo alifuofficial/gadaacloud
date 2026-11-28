@@ -3,6 +3,7 @@ import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate, formatCurrency } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface Expense {
     id: number;
@@ -97,7 +98,9 @@ export default function Show({ expense }: ShowExpenseProps) {
                         {expense.description && (
                             <div className="text-sm mt-4">
                                 <span className="font-semibold">{t('Description')}</span>
-                                <p className="mt-1 p-3 bg-gray-50 rounded text-sm">{expense.description}</p>
+                                <div className="mt-1 p-3 bg-gray-50 rounded">
+                                    <RichTextViewer content={expense.description} compact />
+                                </div>
                             </div>
                         )}
                     </CardContent>

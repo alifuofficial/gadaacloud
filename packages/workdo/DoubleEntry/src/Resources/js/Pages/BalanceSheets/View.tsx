@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, FileText, Printer, Plus, GitCompare, LayoutGrid, Columns, Trash2, Calendar } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -522,7 +522,9 @@ export default function View() {
                                                     <h4 className="font-medium">
                                                         {t('Note')} {note.note_number}: {note.note_title}
                                                     </h4>
-                                                    <p className="text-gray-700 mt-2">{note.note_content}</p>
+                                                    <div className="mt-2">
+                                                        <RichTextViewer content={note.note_content} compact />
+                                                    </div>
                                                 </div>
                                                 {auth.user?.permissions?.includes('delete-balance-sheet-notes') && (
                                                     <Tooltip delayDuration={0}>

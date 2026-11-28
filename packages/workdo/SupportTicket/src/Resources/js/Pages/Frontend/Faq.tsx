@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import SupportTicketLayout from './Layouts/SupportTicketLayout';
 import { getImagePath } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +112,7 @@ export default function Faq({ faqs, settings, brandSettings, titleSections, ctaS
                             
                             {openFaq === index && (
                                 <CardContent className="p-5 bg-gray-50 border-t">
-                                    <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: faq.description }} />
+                                    <RichTextViewer content={faq.description} />
                                 </CardContent>
                             )}
                         </Card>

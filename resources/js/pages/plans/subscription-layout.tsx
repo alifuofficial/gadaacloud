@@ -9,6 +9,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatAdminCurrency, formatStorage, formatDate, getPackageFavicon, getPackageAlias, getSubscriptionDetails } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import ModuleIcon from '@/components/ui/module-icon';
 
 interface Plan {
@@ -393,7 +394,11 @@ function SubscriptionLayout({ plan, allModules, pricingPeriod, onSubscribe, bank
                                     <CardContent className="space-y-4">
                                         {bankTransferInstructions && (
                                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                                <div className="text-sm text-blue-800 dark:text-blue-200" dangerouslySetInnerHTML={{ __html: bankTransferInstructions.replace(/\n/g, '<br/>') }} />
+                                                <RichTextViewer
+                                                    content={bankTransferInstructions}
+                                                    compact
+                                                    className="text-blue-800 dark:text-blue-200"
+                                                />
                                             </div>
                                         )}
 

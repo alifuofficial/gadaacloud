@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import InputError from '@/components/ui/input-error';
 import { Upload, X, Download } from 'lucide-react';
@@ -278,13 +278,13 @@ export default function Edit() {
             {/* Description */}
             <div>
               <Label htmlFor="description" required>{t('Description')}</Label>
-              <Textarea
+              <RichTextEditor
                 id="description"
-                value={data.description}
-                onChange={(e) => setData('description', e.target.value)}
+                variant="full"
+                minHeight="180px"
+                content={data.description}
+                onChange={(value) => setData('description', value)}
                 placeholder={t('Enter ticket description')}
-                rows={4}
-                required
               />
               <InputError message={errors.description} />
             </div>
@@ -367,12 +367,13 @@ export default function Edit() {
             {/* Note */}
             <div>
               <Label htmlFor="note">{t('Internal Note')}</Label>
-              <Textarea
+              <RichTextEditor
                 id="note"
-                value={data.note}
-                onChange={(e) => setData('note', e.target.value)}
+                variant="compact"
+                minHeight="110px"
+                content={data.note}
+                onChange={(value) => setData('note', value)}
                 placeholder={t('Add internal note (optional)')}
-                rows={3}
               />
               <InputError message={errors.note} />
             </div>

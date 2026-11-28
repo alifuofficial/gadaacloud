@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -223,12 +223,13 @@ export default function EditGoal({ goal, onSuccess }: EditGoalProps) {
 
                 <div>
                     <Label htmlFor="goal_description">{t('Description')}</Label>
-                    <Textarea
+                    <RichTextEditor
                         id="goal_description"
-                        value={data.goal_description}
-                        onChange={(e) => setData('goal_description', e.target.value)}
+                        variant="compact"
+                        minHeight="120px"
+                        content={data.goal_description}
+                        onChange={(value) => setData('goal_description', value)}
                         placeholder={t('Enter Description')}
-                        rows={3}
                     />
                     <InputError message={errors.goal_description} />
                 </div>

@@ -62,7 +62,7 @@ class ExpenseCategoriesController extends Controller
         $expensecategories = new ExpenseCategories();
         $expensecategories->category_name = $validated['category_name'];
         $expensecategories->category_code = $validated['category_code'];
-        $expensecategories->description = $validated['description'] ?? null;
+        $expensecategories->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $expensecategories->gl_account_id = $validated['gl_account_id'];
         $expensecategories->is_active = $request->boolean('is_active', true);
         $expensecategories->creator_id = Auth::id();
@@ -89,7 +89,7 @@ class ExpenseCategoriesController extends Controller
 
         $expensecategories->category_name = $validated['category_name'];
         $expensecategories->category_code = $validated['category_code'];
-        $expensecategories->description = $validated['description'] ?? null;
+        $expensecategories->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $expensecategories->gl_account_id = $validated['gl_account_id'];
         $expensecategories->is_active = $request->boolean('is_active', true);
         $expensecategories->save();

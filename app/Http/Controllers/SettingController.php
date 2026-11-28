@@ -674,16 +674,19 @@ class SettingController extends Controller
         {
             $request->validate([
                 'settings.bankTransferEnabled' => 'required|string|in:on,off',
-                'settings.instructions' => 'nullable|string|max:2000',
+                'settings.instructions' => 'nullable|string|max:20000',
             ], [
                 'settings.bankTransferEnabled.required' => __('Bank transfer setting is required.'),
                 'settings.bankTransferEnabled.string' => __('Bank transfer setting must be a valid string.'),
                 'settings.bankTransferEnabled.in' => __('Bank transfer setting must be on or off.'),
                 'settings.instructions.string' => __('Instructions must be a valid string.'),
-                'settings.instructions.max' => __('Instructions must not exceed 2000 characters.'),
+                'settings.instructions.max' => __('Instructions must not exceed 20000 characters.'),
             ]);
 
             $settings = $request->input('settings');
+            if (isset($settings['instructions'])) {
+                $settings['instructions'] = \App\Support\HtmlSanitizer::sanitize($settings['instructions']) ?? '';
+            }
 
             foreach ($settings as $key => $value) {
                 setSetting($key, $value, null, false);

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, ArrowLeft, GitCommit, Shield, User, ChevronUp, ChevronDown, SlidersHorizontal, AlertCircle } from 'lucide-react';
 
@@ -257,12 +257,13 @@ export default function CreateEdit({ roles, users, targetModels, workflow }: Cre
 
                             <div className="space-y-2">
                                 <Label htmlFor="description">{t('Description')}</Label>
-                                <Textarea
+                                <RichTextEditor
                                     id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
+                                    variant="compact"
+                                    minHeight="110px"
+                                    content={description}
+                                    onChange={setDescription}
                                     placeholder={t('Explain the scope of this approval process...')}
-                                    rows={3}
                                 />
                             </div>
                         </CardContent>

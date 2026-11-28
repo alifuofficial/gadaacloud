@@ -5,12 +5,13 @@ import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Star, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
 
 export default function Index() {
     const { t } = useTranslation();
@@ -132,9 +133,9 @@ export default function Index() {
                                         </div>
                                         <span className="text-xs text-gray-500 font-medium">{feedback.rating}/5</span>
                                     </div>
-                                    {feedback.comments && (
+                                    {!isRichTextEmpty(feedback.comments) && (
                                         <div className="bg-gray-50 rounded p-3 border-l-2 border-primary">
-                                            <p className="text-sm text-gray-700 line-clamp-3">{feedback.comments}</p>
+                                            <RichTextViewer content={feedback.comments} compact />
                                         </div>
                                     )}
                                 </div>
@@ -159,12 +160,13 @@ export default function Index() {
 
                         <div>
                             <Label htmlFor="comments">{t('Comments')}</Label>
-                            <Textarea
+                            <RichTextEditor
                                 id="comments"
-                                value={data.comments}
-                                onChange={(e) => setData('comments', e.target.value)}
+                                variant="compact"
+                                minHeight="110px"
+                                content={data.comments}
+                                onChange={(value) => setData('comments', value)}
                                 placeholder={t('Enter your feedback comments')}
-                                rows={3}
                             />
                             <InputError message={errors.comments} />
                         </div>

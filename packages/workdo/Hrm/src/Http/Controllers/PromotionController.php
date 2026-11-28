@@ -83,7 +83,7 @@ class PromotionController extends Controller
             $promotion->current_department_id = $validated['current_department_id'];
             $promotion->current_designation_id = $validated['current_designation_id'];
             $promotion->effective_date = $validated['effective_date'];
-            $promotion->reason = $validated['reason'];
+            $promotion->reason = isset($validated['reason']) ? (\App\Support\HtmlSanitizer::sanitize($validated['reason']) ?? '') : null;
             $promotion->document = $validated['document'];
             $promotion->status = 'pending';
 
@@ -123,7 +123,7 @@ class PromotionController extends Controller
             $promotion->current_department_id = $validated['current_department_id'];
             $promotion->current_designation_id = $validated['current_designation_id'];
             $promotion->effective_date = $validated['effective_date'];
-            $promotion->reason = $validated['reason'];
+            $promotion->reason = isset($validated['reason']) ? (\App\Support\HtmlSanitizer::sanitize($validated['reason']) ?? '') : null;
             $promotion->document = $validated['document'];
             $promotion->status = $validated['status'] ?? 'pending';
 

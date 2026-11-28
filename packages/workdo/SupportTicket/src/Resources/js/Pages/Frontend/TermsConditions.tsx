@@ -1,5 +1,6 @@
 import SupportTicketLayout from './Layouts/SupportTicketLayout';
 import { Card, CardContent } from "@/components/ui/card";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { useTranslation } from 'react-i18next';
 
 interface TermsConditionsProps {
@@ -43,10 +44,7 @@ export default function TermsConditions({ settings, termsConditions, brandSettin
                     <CardContent className="p-8">
                         <h1 className="text-3xl font-bold mb-6 text-gray-800">{t('Terms & Conditions')}</h1>
                         
-                        <div 
-                            className="prose max-w-none space-y-6"
-                            dangerouslySetInnerHTML={{ __html: content }}
-                        />
+                        <RichTextViewer content={content} />
                     </CardContent>
                 </Card>
             </div>

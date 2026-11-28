@@ -16,7 +16,7 @@ import { Plus, Edit, Trash2, Upload, Download } from 'lucide-react';
 import Create from './Create';
 import EditFAQ from './Edit';
 import ImportDialog from './ImportDialog';
-import { formatDateTime } from '@/utils/helpers';
+import { formatDateTime, stripHtml } from '@/utils/helpers';
 
 interface FAQ {
   id: number;
@@ -107,7 +107,7 @@ export default function Index({ faqs }: Props) {
       key: 'description',
       header: t('Description'),
       render: (value: string) => {
-        const text = value?.replace(/<[^>]*>/g, '') || '';
+        const text = stripHtml(value);
         return text.length > 100 ? text.substring(0, 100) + '...' : text;
       }
     },

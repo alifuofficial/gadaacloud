@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Switch } from '@/components/ui/switch';
 import { CreditCard, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -101,17 +102,15 @@ export default function BankTransferSettings({ userSettings = {}, auth }: BankTr
                             {/* Bank Transfer Instructions */}
                             <div className="space-y-3">
                                 <Label htmlFor="instructions">{t('Bank Transfer Instructions')}</Label>
-                                <Textarea
+                                <RichTextEditor
                                     id="instructions"
-                                    value={bankSettings.instructions}
-                                    onChange={(e) => handleSettingsChange('instructions', e.target.value)}
-                                    placeholder={t('Enter bank transfer instructions. Use <br/> for line breaks.')}
-                                    rows={8}
+                                    variant="compact"
+                                    minHeight="180px"
+                                    content={bankSettings.instructions}
+                                    onChange={(value) => handleSettingsChange('instructions', value)}
+                                    placeholder={t('Enter bank transfer instructions...')}
                                     disabled={!canEdit}
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    {t('These instructions will be shown to customers. You can use <br/> tags for line breaks.')}
-                                </p>
                             </div>
 
                             {/* Preview Section */}
@@ -119,10 +118,7 @@ export default function BankTransferSettings({ userSettings = {}, auth }: BankTr
                                 <h4 className="font-medium mb-3">{t('Customer Preview')}</h4>
                                 <div className="text-sm">
                                     {bankSettings.instructions ? (
-                                        <div 
-                                            className="whitespace-pre-wrap"
-                                            dangerouslySetInnerHTML={{ __html: bankSettings.instructions.replace(/<br\/>/g, '<br/>') }}
-                                        />
+                                        <RichTextViewer content={bankSettings.instructions} compact />
                                     ) : (
                                         <p className="text-muted-foreground italic">{t('No instructions provided')}</p>
                                     )}

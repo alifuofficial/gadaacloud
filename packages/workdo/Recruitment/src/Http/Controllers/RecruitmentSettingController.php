@@ -360,7 +360,7 @@ class RecruitmentSettingController extends Controller
             foreach ($templates as $lang => $content) {
                 OfferLetter::updateOrCreate(
                     ['lang' => $lang, 'created_by' => creatorId()],
-                    ['content' => $content, 'creator_id' => Auth::id(), 'updated_at' => now()]
+                    ['content' => \App\Support\HtmlSanitizer::sanitize((string) $content) ?? '', 'creator_id' => Auth::id(), 'updated_at' => now()]
                 );
             }
 

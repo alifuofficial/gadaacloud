@@ -208,7 +208,9 @@
         @if($transfer->notes || $transfer->discrepancy_reason)
         <div class="card" style="margin-bottom: 20px;">
             <h3>NOTES & REMARKS (ማስታወሻ)</h3>
-            @if($transfer->notes)<p><strong>Transfer Notes:</strong> {{ $transfer->notes }}</p>@endif
+            @if($transfer->notes && !\App\Support\HtmlSanitizer::isVisuallyEmptyHtml($transfer->notes))
+                <div><strong>Transfer Notes:</strong> <div style="margin-top: 4px; font-size: 13px; color: #334155;">{!! \App\Support\HtmlSanitizer::sanitize($transfer->notes) !!}</div></div>
+            @endif
             @if($transfer->discrepancy_reason)<p style="color: #dc2626;"><strong>Discrepancy / Damage Reason:</strong> {{ $transfer->discrepancy_reason }}</p>@endif
         </div>
         @endif

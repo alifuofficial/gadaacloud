@@ -48,7 +48,7 @@ class GoalTypeController extends Controller
         $validated = $request->validated();
         $goalType = new PerformanceGoalType();
         $goalType->name = $validated['name'];
-        $goalType->description = $validated['description'] ?? null;
+        $goalType->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $goalType->status = $validated['status'] ?? 'active';
         $goalType->creator_id = Auth::id();
         $goalType->created_by = creatorId();
@@ -67,7 +67,7 @@ class GoalTypeController extends Controller
 
         $validated = $request->validated();
         $goalType->name = $validated['name'];
-        $goalType->description = $validated['description'] ?? null;
+        $goalType->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $goalType->status = $validated['status'] ?? 'active';
         $goalType->save();
 

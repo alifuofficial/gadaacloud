@@ -89,7 +89,7 @@ class TransferController extends Controller
                 $transfer->driver_phone = $request->driver_phone;
                 $transfer->vehicle_plate_number = $request->vehicle_plate_number;
                 $transfer->dispatched_at = now();
-                $transfer->notes = $request->notes;
+                $transfer->notes = \App\Support\HtmlSanitizer::sanitize($request->notes);
                 $transfer->creator_id = Auth::id();
                 $transfer->created_by = creatorId();
                 $transfer->save();

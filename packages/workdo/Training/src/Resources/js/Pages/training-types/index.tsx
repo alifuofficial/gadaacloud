@@ -5,6 +5,7 @@ import { useDeleteHandler } from '@/hooks/useDeleteHandler';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PerPageSelector } from '@/components/ui/per-page-selector';
+import { stripHtml } from '@/utils/helpers';
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
@@ -112,10 +113,11 @@ export default function Index() {
             key: 'description',
             header: t('Description'),
             render: (value: string) => {
-                if (!value) return '-';
+                const plain = stripHtml(value || '');
+                if (!plain) return '-';
                 return (
-                    <span className="text-sm text-gray-600 truncate max-w-40" title={value}>
-                        {value.length > 50 ? `${value.substring(0, 50)}...` : value}
+                    <span className="text-sm text-gray-600 truncate max-w-40" title={plain}>
+                        {plain.length > 50 ? `${plain.substring(0, 50)}...` : plain}
                     </span>
                 );
             }

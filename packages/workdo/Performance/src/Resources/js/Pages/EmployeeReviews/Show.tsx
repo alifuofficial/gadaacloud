@@ -3,11 +3,12 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { useForm, usePage } from '@inertiajs/react';
 import { Star, FileText, Lock, CheckCircle2, Award, AlertTriangle, TrendingUp, DollarSign } from "lucide-react";
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
@@ -258,31 +259,31 @@ export default function Show({
                     </div>
                 )}
 
-                {/* Safe Feedback Rendering (No raw dangerouslySetInnerHTML XSS) */}
+                {/* Safe Feedback Rendering via DOMPurify-sanitized RichTextViewer */}
                 {(employeeReview?.pros || employeeReview?.cons || employeeReview?.self_pros || employeeReview?.self_cons) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {employeeReview?.pros && (
+                        {!isRichTextEmpty(employeeReview?.pros) && (
                             <div className="p-3 bg-green-50 rounded border-l-4 border-green-500">
                                 <div className="text-xs font-semibold text-green-800 mb-1">{t('Manager Strengths / Pros')}</div>
-                                <p className="text-sm text-gray-800 whitespace-pre-wrap">{toSafePlainText(employeeReview.pros)}</p>
+                                <RichTextViewer content={employeeReview.pros} compact />
                             </div>
                         )}
-                        {employeeReview?.cons && (
+                        {!isRichTextEmpty(employeeReview?.cons) && (
                             <div className="p-3 bg-amber-50 rounded border-l-4 border-amber-500">
                                 <div className="text-xs font-semibold text-amber-800 mb-1">{t('Manager Growth Areas / Cons')}</div>
-                                <p className="text-sm text-gray-800 whitespace-pre-wrap">{toSafePlainText(employeeReview.cons)}</p>
+                                <RichTextViewer content={employeeReview.cons} compact />
                             </div>
                         )}
-                        {employeeReview?.self_pros && (
+                        {!isRichTextEmpty(employeeReview?.self_pros) && (
                             <div className="p-3 bg-indigo-50 rounded border-l-4 border-indigo-400">
                                 <div className="text-xs font-semibold text-indigo-800 mb-1">{t('Employee Self-Assessment Highlights')}</div>
-                                <p className="text-sm text-gray-800 whitespace-pre-wrap">{toSafePlainText(employeeReview.self_pros)}</p>
+                                <RichTextViewer content={employeeReview.self_pros} compact />
                             </div>
                         )}
-                        {employeeReview?.self_cons && (
+                        {!isRichTextEmpty(employeeReview?.self_cons) && (
                             <div className="p-3 bg-slate-50 rounded border-l-4 border-slate-400">
                                 <div className="text-xs font-semibold text-slate-700 mb-1">{t('Employee Self-Identified Support Needs')}</div>
-                                <p className="text-sm text-gray-800 whitespace-pre-wrap">{toSafePlainText(employeeReview.self_cons)}</p>
+                                <RichTextViewer content={employeeReview.self_cons} compact />
                             </div>
                         )}
                     </div>
@@ -315,7 +316,7 @@ export default function Show({
                                         </span>
                                         <span>{fb.rating ? `${fb.rating}/5 ★` : ''}</span>
                                     </div>
-                                    <p className="text-gray-800 whitespace-pre-wrap">{toSafePlainText(fb.content)}</p>
+                                    <RichTextViewer content={fb.content} compact />
                                 </div>
                             ))}
                         </div>
@@ -329,11 +330,12 @@ export default function Show({
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
                             {t('Employee Acknowledgment Sign-Off')}
                         </div>
-                        <Textarea
-                            value={ackForm.data.employee_acknowledgment_notes}
-                            onChange={(e) => ackForm.setData('employee_acknowledgment_notes', e.target.value)}
+                        <RichTextEditor
+                            variant="compact"
+                            minHeight="90px"
+                            content={ackForm.data.employee_acknowledgment_notes}
+                            onChange={(value) => ackForm.setData('employee_acknowledgment_notes', value)}
                             placeholder={t('Optional acknowledgment remarks...')}
-                            rows={2}
                         />
                         <Button type="submit" size="sm" disabled={ackForm.processing}>
                             {t('Acknowledge Appraisal')}

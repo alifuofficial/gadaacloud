@@ -79,7 +79,7 @@ class TrainingController extends Controller
             $training = DB::transaction(function () use ($validated) {
                 $training                   = new Training();
                 $training->title            = $validated['title'];
-                $training->description      = $validated['description'] ?? null;
+                $training->description      = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $training->training_type_id = $validated['training_type_id'];
                 $training->trainer_id       = $validated['trainer_id'];
                 $training->branch_id        = $validated['branch_id'];
@@ -118,7 +118,7 @@ class TrainingController extends Controller
 
             DB::transaction(function () use ($training, $validated) {
                 $training->title            = $validated['title'];
-                $training->description      = $validated['description'] ?? null;
+                $training->description      = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $training->training_type_id = $validated['training_type_id'];
                 $training->trainer_id       = $validated['trainer_id'];
                 $training->branch_id        = $validated['branch_id'];

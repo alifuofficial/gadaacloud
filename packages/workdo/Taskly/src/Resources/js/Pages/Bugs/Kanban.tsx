@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Plus, Calendar, Edit, Trash2, MoreVertical, Users, List, Eye, User } from 'lucide-react';
-import { getImagePath } from '@/utils/helpers';
+import { getImagePath, stripHtml } from '@/utils/helpers';
 import KanbanBoard, { KanbanTask, KanbanColumn } from '@/components/kanban-board';
 import Create from './Create';
 import EditBug from './Edit';
@@ -190,8 +190,8 @@ export default function BugKanban() {
                     </div>
                 </div>
 
-                {task.description && (
-                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+                {task.description && stripHtml(task.description) && (
+                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{stripHtml(task.description)}</p>
                 )}
 
                 <div className="flex items-center justify-between mt-3">

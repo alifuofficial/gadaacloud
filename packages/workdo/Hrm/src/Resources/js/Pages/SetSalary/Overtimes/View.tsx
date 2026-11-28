@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Clock, FileText, Calendar, Tag, User, AlertCircle, Hash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface Overtime {
     id: number;
@@ -112,14 +113,14 @@ export default function View({ overtime }: ViewOvertimeProps) {
                     </div>
                 </div>
                 
-                {overtime.notes && (
+                {!isRichTextEmpty(overtime.notes) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Notes')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{overtime.notes}</p>
+                            <RichTextViewer content={overtime.notes} compact />
                         </div>
                     </div>
                 )}

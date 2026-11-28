@@ -61,7 +61,7 @@ class CompetencyController extends Controller
             'department_id' => $validated['department_id'] ?? null,
             'designation_id' => $validated['designation_id'] ?? null,
             'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
+            'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
             'weight' => $validated['weight'] ?? 0,
             'status' => $validated['status'] ?? 'active',
             'creator_id' => Auth::id(),
@@ -85,7 +85,7 @@ class CompetencyController extends Controller
             'department_id' => $validated['department_id'] ?? null,
             'designation_id' => $validated['designation_id'] ?? null,
             'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
+            'description' => \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null),
             'weight' => $validated['weight'] ?? 0,
             'status' => $validated['status'] ?? 'active',
         ]);

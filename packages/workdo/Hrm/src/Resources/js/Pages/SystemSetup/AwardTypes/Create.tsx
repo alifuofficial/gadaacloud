@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/ui/input-error';
 import { Input } from '@/components/ui/input';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 import { CreateAwardTypeProps, AwardTypeFormData } from './types';
 
@@ -45,13 +46,13 @@ export default function Create({ onSuccess }: CreateAwardTypeProps) {
                 
                 <div>
                     <Label htmlFor="description">{t('Description')}</Label>
-                    <Input
+                    <RichTextEditor
                         id="description"
-                        type="text"
-                        value={data.description}
-                        onChange={(e) => setData('description', e.target.value)}
+                        variant="compact"
+                        minHeight="110px"
+                        content={data.description}
+                        onChange={(value) => setData('description', value)}
                         placeholder={t('Enter Description')}
-                        
                     />
                     <InputError message={errors.description} />
                 </div>

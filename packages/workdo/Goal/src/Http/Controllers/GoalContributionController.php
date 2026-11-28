@@ -113,7 +113,7 @@ class GoalContributionController extends Controller
             $contribution->contribution_type = $validated['contribution_type'];
             $contribution->reference_type = $validated['reference_type'] ?? 'manual';
             $contribution->reference_id = $validated['reference_id'] ?? null;
-            $contribution->notes = $validated['notes'] ?? '';
+            $contribution->notes = \App\Support\HtmlSanitizer::sanitize($validated['notes'] ?? null) ?? '';
             $contribution->save();
 
             if ($oldGoalId !== $newGoalId) {

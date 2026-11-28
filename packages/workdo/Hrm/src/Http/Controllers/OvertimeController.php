@@ -30,7 +30,7 @@ class OvertimeController extends Controller
                 $overtime->rate = $validated['rate'];
                 $overtime->start_date = $validated['start_date'];
                 $overtime->end_date = $validated['end_date'];
-                $overtime->notes = $validated['notes'];
+                $overtime->notes = isset($validated['notes']) ? (\App\Support\HtmlSanitizer::sanitize($validated['notes']) ?? '') : null;
                 $overtime->status = $validated['status'];
                 $overtime->creator_id = Auth::id();
                 $overtime->created_by = creatorId();
@@ -59,7 +59,7 @@ class OvertimeController extends Controller
             $overtime->rate = $validated['rate'];
             $overtime->start_date = $validated['start_date'];
             $overtime->end_date = $validated['end_date'];
-            $overtime->notes = $validated['notes'];
+            $overtime->notes = isset($validated['notes']) ? (\App\Support\HtmlSanitizer::sanitize($validated['notes']) ?? '') : null;
             $overtime->status = $validated['status'];
             $overtime->save();
 

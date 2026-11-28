@@ -65,7 +65,7 @@ class TrainingTaskController extends Controller
                 $task              = new TrainingTask();
                 $task->training_id = $training->id;
                 $task->title       = $validated['title'];
-                $task->description = $validated['description'] ?? null;
+                $task->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $task->due_date    = $validated['due_date'];
                 $task->assigned_to = $validated['assigned_to'];
                 $task->creator_id  = Auth::id();
@@ -94,7 +94,7 @@ class TrainingTaskController extends Controller
 
             DB::transaction(function () use ($task, $validated) {
                 $task->title       = $validated['title'];
-                $task->description = $validated['description'] ?? null;
+                $task->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $task->due_date    = $validated['due_date'];
                 $task->assigned_to = $validated['assigned_to'];
                 $task->save();

@@ -13,8 +13,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown } from 'lucide-react';
 import { FileText, Calendar, User, DollarSign, Edit, Paperclip, MessageSquare, StickyNote, RefreshCw, PenTool, Eye, CheckCircle, Save, X } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Contract, ContractShowProps } from './types';
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/helpers';
+import { formatCurrency, formatDate, formatDateTime, isRichTextEmpty } from '@/utils/helpers';
 
 const getContractStatusColor = (status: any) => {
     const statusValue = status?.toString().toLowerCase();
@@ -472,8 +473,8 @@ export default function Show() {
                                             />
                                         ) : (
                                             <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
-                                                {contract.description ? (
-                                                    <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: contract.description }} />
+                                                {!isRichTextEmpty(contract.description) ? (
+                                                    <RichTextViewer content={contract.description} compact />
                                                 ) : (
                                                     <p className="text-sm text-gray-500 italic">{t('No description provided')}</p>
                                                 )}

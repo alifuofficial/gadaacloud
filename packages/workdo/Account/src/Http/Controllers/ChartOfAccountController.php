@@ -97,7 +97,7 @@ class ChartOfAccountController extends Controller
         $chartofaccount->opening_balance = $validated['opening_balance'];
         $chartofaccount->current_balance = $validated['current_balance'];
         $chartofaccount->is_active = $request->boolean('is_active', false);
-        $chartofaccount->description = $validated['description'] ?? null;
+        $chartofaccount->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $chartofaccount->account_type_id = $validated['account_type_id'];
         $chartofaccount->creator_id = Auth::id();
         $chartofaccount->created_by = $companyId;
@@ -149,7 +149,7 @@ class ChartOfAccountController extends Controller
         }
 
         $chartofaccount->is_active = $request->boolean('is_active', false);
-        $chartofaccount->description = $validated['description'] ?? null;
+        $chartofaccount->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $chartofaccount->account_type_id = $validated['account_type_id'];
         $chartofaccount->save();
 

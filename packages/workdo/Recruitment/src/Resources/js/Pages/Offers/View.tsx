@@ -2,8 +2,9 @@ import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/compon
 import { useTranslation } from 'react-i18next';
 import { FileText, CheckCircle, X } from 'lucide-react';
 import { Offer } from './types';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
 import { Button } from '@/components/ui/button';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { usePage, router } from '@inertiajs/react';
 
 
@@ -165,10 +166,10 @@ export default function View({ offer, onClose }: ViewProps) {
                 )}
 
                 {/* Benefits */}
-                {offer.benefits && (
+                {!isRichTextEmpty(offer.benefits) && (
                     <div className="bg-yellow-50 rounded-lg p-4">
                         <h3 className="font-semibold text-gray-900 mb-3">{t('Benefits')}</h3>
-                        <p className="text-gray-700 leading-relaxed">{offer.benefits}</p>
+                        <RichTextViewer content={offer.benefits} compact />
                     </div>
                 )}
 

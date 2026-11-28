@@ -1,5 +1,6 @@
 import SupportTicketLayout from './Layouts/SupportTicketLayout';
 import { Card, CardContent } from "@/components/ui/card";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import { useTranslation } from 'react-i18next';
 
 interface CustomPageProps {
@@ -25,10 +26,7 @@ export default function CustomPage({ settings, customPage, brandSettings }: Cust
                     <CardContent className="p-8">
                         <h1 className="text-3xl font-bold mb-6 text-gray-800">{customPage.title}</h1>
                         
-                        <div 
-                            className="prose max-w-none space-y-6"
-                            dangerouslySetInnerHTML={{ __html: customPage.contents }}
-                        />
+                        <RichTextViewer content={customPage.contents} />
                     </CardContent>
                 </Card>
             </div>

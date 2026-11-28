@@ -139,7 +139,7 @@ class ProjectController extends Controller
                 $project->business_case = $validated['business_case'] ?? null;
                 $project->target_roi_savings = $validated['target_roi_savings'] ?? null;
                 $project->currency_code = $validated['currency_code'] ?? (company_setting('taskly_default_currency') ?: 'ETB');
-                $project->description   = $validated['description'] ?? null;
+                $project->description   = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $project->budget        = $validated['budget'] ?? 0;
                 $project->estimated_hrs = $validated['estimated_hrs'] ?? 0;
                 $project->start_date    = $validated['start_date'];
@@ -365,7 +365,7 @@ class ProjectController extends Controller
                 if (array_key_exists('business_case', $validated)) $project->business_case = $validated['business_case'];
                 if (array_key_exists('target_roi_savings', $validated)) $project->target_roi_savings = $validated['target_roi_savings'];
                 if (isset($validated['currency_code'])) $project->currency_code = $validated['currency_code'];
-                $project->description   = $validated['description'] ?? null;
+                $project->description   = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
                 $project->budget        = $validated['budget'] ?? 0;
                 if (isset($validated['estimated_hrs'])) $project->estimated_hrs = $validated['estimated_hrs'];
                 $project->start_date    = $validated['start_date'];

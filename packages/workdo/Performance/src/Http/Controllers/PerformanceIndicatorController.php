@@ -79,7 +79,7 @@ class PerformanceIndicatorController extends Controller
         $indicator->department_id = $validated['department_id'] ?? null;
         $indicator->designation_id = $validated['designation_id'] ?? null;
         $indicator->name = $validated['name'];
-        $indicator->description = $validated['description'] ?? null;
+        $indicator->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $indicator->measurement_unit = $validated['measurement_unit'];
         $indicator->target_value = $validated['target_value'] ?? null;
         $indicator->weight = $validated['weight'] ?? 0;
@@ -109,7 +109,7 @@ class PerformanceIndicatorController extends Controller
         $indicator->department_id = $validated['department_id'] ?? null;
         $indicator->designation_id = $validated['designation_id'] ?? null;
         $indicator->name = $validated['name'];
-        $indicator->description = $validated['description'] ?? null;
+        $indicator->description = \App\Support\HtmlSanitizer::sanitize($validated['description'] ?? null);
         $indicator->measurement_unit = $validated['measurement_unit'];
         $indicator->target_value = $validated['target_value'] ?? null;
         $indicator->weight = $validated['weight'] ?? 0;

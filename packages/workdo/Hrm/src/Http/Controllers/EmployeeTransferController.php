@@ -82,7 +82,7 @@ class EmployeeTransferController extends Controller
             $employeetransfer = new EmployeeTransfer();
             $employeetransfer->transfer_date = $validated['transfer_date'] ?? null;
             $employeetransfer->effective_date = $validated['effective_date'];
-            $employeetransfer->reason = $validated['reason'] ?? null;
+            $employeetransfer->reason = \App\Support\HtmlSanitizer::sanitize($validated['reason'] ?? null);
             $employeetransfer->document = $validated['document'] ?? null;
             $employeetransfer->employee_id = $validated['employee_id'];
 
@@ -118,7 +118,7 @@ class EmployeeTransferController extends Controller
 
             $employeetransfer->transfer_date = $validated['transfer_date'] ?? null;
             $employeetransfer->effective_date = $validated['effective_date'];
-            $employeetransfer->reason = $validated['reason'] ?? null;
+            $employeetransfer->reason = \App\Support\HtmlSanitizer::sanitize($validated['reason'] ?? null);
             $employeetransfer->document = $validated['document'] ?? null;
             $employeetransfer->to_branch_id = $validated['to_branch_id'];
             $employeetransfer->to_department_id = $validated['to_department_id'];

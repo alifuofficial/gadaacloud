@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 import SupportTicketLayout from './Layouts/SupportTicketLayout';
 import { getImagePath } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
@@ -222,10 +223,7 @@ export default function KnowledgeArticle({ article, relatedArticles, settings, b
 
                             {/* Article Content */}
                             <div className="mb-10">
-                                <div 
-                                    className="prose prose-gray max-w-none prose-headings:text-gray-800 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-800"
-                                    dangerouslySetInnerHTML={{ __html: article.description }}
-                                />
+                                <RichTextViewer content={article.description} />
                             </div>
 
 

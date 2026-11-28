@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Package, Image, ArrowDownUp } from "lucide-react";
 import { formatCurrency, formatDateTime, getImagePath } from "@/utils/helpers";
 import { ImageSlider } from "@/components/ui/image-slider";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
 
 interface ShowItemPageProps {
     item: {
@@ -277,8 +278,8 @@ export default function Show() {
                                 </div>
                                 {item.description && (
                                     <div className="bg-gray-50 p-4 rounded-lg mt-4">
-                                        <label className="text-lg font-semibold text-gray-800 mb-3">{t('Description')}</label>
-                                        <p className="text-gray-700 leading-relaxed">{item.description}</p>
+                                        <label className="text-lg font-semibold text-gray-800 mb-3 block">{t('Description')}</label>
+                                        <RichTextViewer content={item.description} />
                                     </div>
                                 )}
                             </div>

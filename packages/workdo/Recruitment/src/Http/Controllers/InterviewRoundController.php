@@ -77,7 +77,7 @@ class InterviewRoundController extends Controller
             $interviewround = new InterviewRound();
             $interviewround->name = $validated['name'];
             $interviewround->sequence_number = $validated['sequence_number'];
-            $interviewround->description = $validated['description'];
+            $interviewround->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $interviewround->status = $validated['status'];
             $interviewround->job_id = $validated['job_id'];
 
@@ -100,7 +100,7 @@ class InterviewRoundController extends Controller
 
             $interviewround->name = $validated['name'];
             $interviewround->sequence_number = $validated['sequence_number'];
-            $interviewround->description = $validated['description'];
+            $interviewround->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
             $interviewround->status = $validated['status'];
             $interviewround->job_id = $validated['job_id'];
 

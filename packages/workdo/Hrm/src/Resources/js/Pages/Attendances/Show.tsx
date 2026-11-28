@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Clock, User, Calendar, Timer, FileText, CheckCircle } from 'lucide-react';
 import { Attendance } from './types';
-    import { formatDate, formatTime, formatDateTime, getCurrencySymbol } from '@/utils/helpers';
+    import { formatDate, formatTime, formatDateTime, getCurrencySymbol, isRichTextEmpty } from '@/utils/helpers';
+    import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewAttendanceProps {
     attendance: Attendance;
@@ -129,14 +130,14 @@ export default function View({ attendance, onSuccess }: ViewAttendanceProps) {
                     </div>
                 </div>
                 
-                {attendance.notes && (
+                {!isRichTextEmpty(attendance.notes) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Notes')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{attendance.notes}</p>
+                            <RichTextViewer content={attendance.notes} compact />
                         </div>
                     </div>
                 )}

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Document } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { usePage } from '@inertiajs/react';
 
 interface ViewProps {
@@ -75,11 +76,11 @@ export default function View({ document }: ViewProps) {
                     </div>
                 </div>
                 
-                {document.description && (
+                {!isRichTextEmpty(document.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500">{t('Description')}</label>
                         <div className="mt-2 p-4 bg-gray-50 rounded-lg">
-                            <p className="text-base whitespace-pre-wrap">{document.description}</p>
+                            <RichTextViewer content={document.description} />
                         </div>
                     </div>
                 )}

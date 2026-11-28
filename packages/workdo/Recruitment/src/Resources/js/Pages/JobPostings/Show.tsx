@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { Megaphone, Calendar, MapPin, Building2, DollarSign, Clock, Users, FileText, CheckCircle, Star } from 'lucide-react';
 import { JobPosting, JobPostingShowProps } from './types';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 export default function Show() {
     const { t } = useTranslation();
@@ -79,7 +80,7 @@ export default function Show() {
                     {/* Left Column - Details */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Job Description */}
-                        {jobposting.description && (
+                        {!isRichTextEmpty(jobposting.description) && (
                             <Card>
                                 <CardHeader>
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -88,13 +89,13 @@ export default function Show() {
                                     </h3>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: jobposting.description }} />
+                                    <RichTextViewer content={jobposting.description} />
                                 </CardContent>
                             </Card>
                         )}
 
                         {/* Requirements */}
-                        {jobposting.requirements && (
+                        {!isRichTextEmpty(jobposting.requirements) && (
                             <Card>
                                 <CardHeader>
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -103,13 +104,13 @@ export default function Show() {
                                     </h3>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: jobposting.requirements }} />
+                                    <RichTextViewer content={jobposting.requirements} />
                                 </CardContent>
                             </Card>
                         )}
 
                         {/* Benefits */}
-                        {jobposting.benefits && (
+                        {!isRichTextEmpty(jobposting.benefits) && (
                             <Card>
                                 <CardHeader>
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -118,7 +119,7 @@ export default function Show() {
                                     </h3>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: jobposting.benefits }} />
+                                    <RichTextViewer content={jobposting.benefits} />
                                 </CardContent>
                             </Card>
                         )}
@@ -153,7 +154,7 @@ export default function Show() {
                         )}
 
                         {/* Terms & Conditions */}
-                        {jobposting.terms_condition && (
+                        {!isRichTextEmpty(jobposting.terms_condition) && (
                             <Card>
                                 <CardHeader>
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -162,7 +163,7 @@ export default function Show() {
                                     </h3>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: jobposting.terms_condition }} />
+                                    <RichTextViewer content={jobposting.terms_condition} />
                                 </CardContent>
                             </Card>
                         )}

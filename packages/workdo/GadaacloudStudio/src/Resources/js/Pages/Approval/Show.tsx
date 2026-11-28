@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -307,7 +309,9 @@ export default function Show({ request: req, users }: ShowProps) {
                                         <span className="text-xs text-gray-400">{t('at step')}: <em>{log.step_name}</em></span>
                                     </div>
                                     {log.comment && (
-                                        <p className="mt-1 text-sm text-gray-600 italic bg-gray-50 p-2 rounded-lg">"{log.comment}"</p>
+                                        <div className="mt-1 bg-gray-50 p-2 rounded-lg">
+                                            <RichTextViewer content={log.comment} compact />
+                                        </div>
                                     )}
                                     <p className="text-[11px] text-gray-400 mt-1">{log.date}</p>
                                 </div>
@@ -330,14 +334,16 @@ export default function Show({ request: req, users }: ShowProps) {
                                 <Label htmlFor="action_comment" className="text-xs font-semibold text-gray-600">
                                     {t('Comment (Optional)')}
                                 </Label>
-                                <Textarea
-                                    id="action_comment"
-                                    value={comment}
-                                    onChange={e => setComment(e.target.value)}
-                                    placeholder={t('Add your review notes or feedback...')}
-                                    rows={3}
-                                    className="mt-1.5"
-                                />
+                                <div className="mt-1.5">
+                                    <RichTextEditor
+                                        id="action_comment"
+                                        variant="minimal"
+                                        minHeight="100px"
+                                        content={comment}
+                                        onChange={setComment}
+                                        placeholder={t('Add your review notes or feedback...')}
+                                    />
+                                </div>
                             </div>
                             <div className="flex items-center justify-end gap-3">
                                 <Button

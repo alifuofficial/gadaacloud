@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import FrontendLayout from '../../Components/Frontend/FrontendLayout';
 import { MapPin, Clock, DollarSign, Briefcase, Star, ArrowLeft, Bookmark, Users, Calendar } from 'lucide-react';
-import { formatDate, formatCurrency } from '@/utils/helpers';
+import { formatDate, formatCurrency, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { useFormFields } from '@/hooks/useFormFields';
 
 
@@ -170,40 +171,31 @@ export default function JobDetails({ job, companyInfo }: JobDetailsProps) {
                         </Card>
 
                         {/* Job Description */}
-                            {job.description && (
+                        {!isRichTextEmpty(job.description) && (
                             <Card className="mb-8">
                                 <CardContent className="p-8">
                                     <h2 className="text-2xl font-bold text-gray-900 mb-6"> {t('Job Description')} </h2>
-                                    <div
-                                        className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-h3:text-xl prose-h4:text-lg prose-ul:list-disc prose-li:mb-2"
-                                        dangerouslySetInnerHTML={{ __html: job.description }}
-                                    />
+                                    <RichTextViewer content={job.description} />
                                 </CardContent>
                             </Card>
                         )}
 
                         {/* Job Requirements */}
-                        {job.requirements && (
+                        {!isRichTextEmpty(job.requirements) && (
                             <Card className="mb-8">
                                 <CardContent className="p-8">
                                     <h2 className="text-2xl font-bold text-gray-900 mb-6"> {t('Job Requirements')} </h2>
-                                    <div
-                                        className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-h3:text-xl prose-h4:text-lg prose-ul:list-disc prose-li:mb-2"
-                                        dangerouslySetInnerHTML={{ __html: job.requirements }}
-                                    />
+                                    <RichTextViewer content={job.requirements} />
                                 </CardContent>
                             </Card>
                         )}
 
                         {/* Benefits */}
-                        {job.benefits && (
+                        {!isRichTextEmpty(job.benefits) && (
                             <Card className="mb-8">
                                 <CardContent className="p-8">
                                     <h2 className="text-2xl font-bold text-gray-900 mb-6"> {t('Benefits')} </h2>
-                                    <div
-                                        className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-h3:text-xl prose-h4:text-lg prose-ul:list-disc prose-li:mb-2"
-                                        dangerouslySetInnerHTML={{ __html: job.benefits }}
-                                    />
+                                    <RichTextViewer content={job.benefits} />
                                 </CardContent>
                             </Card>
                         )}

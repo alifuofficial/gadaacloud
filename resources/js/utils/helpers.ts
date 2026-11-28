@@ -580,6 +580,48 @@ interface SubscriptionDetail {
   seeder_run?: boolean;
 }
 
+/**
+ * Detect whether a rich-text HTML string contains no meaningful text or media.
+ */
+const isRichTextEmpty = (value?: string | null): boolean => {
+  if (!value) return true;
+  if (/<img\b|<hr\b|<table\b/i.test(value)) return false;
+  const plain = value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+  return plain.length === 0;
+};
+
+/**
+ * Strip HTML tags into clean single-line/compact plain text for tables, Kanban previews, and search.
+ */
+const stripHtml = (value?: string | null, maxLength?: number): string => {
+  if (!value) return '';
+  const withBreaks = value
+    .replace(/<\/(p|div|li|tr|h[1-6]|blockquote|pre)>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ');
+  const noTags = withBreaks.replace(/<[^>]*>/g, '');
+  let decoded = noTags;
+  if (typeof document !== 'undefined') {
+    const el = document.createElement('textarea');
+    el.innerHTML = noTags;
+    decoded = el.value;
+  } else {
+    decoded = noTags
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"');
+  }
+  const clean = decoded.replace(/\s+/g, ' ').trim();
+  if (maxLength && maxLength > 0 && clean.length > maxLength) {
+    return clean.slice(0, maxLength).trimEnd() + '...';
+  }
+  return clean;
+};
+
 const getSubscriptionDetails = (userId?: number, pageProps?: any): SubscriptionDetail => {
   const data: SubscriptionDetail = {
     status: false
@@ -640,5 +682,7 @@ export {
     convertFileToBase64,
     getBase64FileExtension,
     downloadFile,
-    getSubscriptionDetails
+    getSubscriptionDetails,
+    stripHtml,
+    isRichTextEmpty
 };

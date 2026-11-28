@@ -2,7 +2,8 @@ import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog
 import { useTranslation } from 'react-i18next';
 import { Calendar, Tag, FileText, Globe } from 'lucide-react';
 import { Holiday } from './types';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 interface ViewProps {
     holiday: Holiday;
@@ -104,14 +105,14 @@ export default function View({ holiday }: ViewProps) {
                     </div>
                 </div>
                 
-                {holiday.description && (
+                {!isRichTextEmpty(holiday.description) && (
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <FileText className="h-4 w-4" />
                             {t('Description')}
                         </label>
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm">{holiday.description}</p>
+                            <RichTextViewer content={holiday.description} compact />
                         </div>
                     </div>
                 )}

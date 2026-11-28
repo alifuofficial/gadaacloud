@@ -4,7 +4,8 @@ import { ArrowRight, User, Building, Users, Calendar, FileText } from 'lucide-re
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Promotion } from './types';
-import { formatDate, getImagePath } from '@/utils/helpers';
+import { formatDate, getImagePath, isRichTextEmpty } from '@/utils/helpers';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 
 const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -135,10 +136,10 @@ export default function View({ promotion }: ViewProps) {
                         </div>
                     </div>
                     
-                    {promotion.reason && (
+                    {!isRichTextEmpty(promotion.reason) && (
                         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                             <p className="text-sm font-medium text-gray-600 mb-2">{t('Reason for Promotion')}</p>
-                            <p className="text-gray-800">{promotion.reason}</p>
+                            <RichTextViewer content={promotion.reason} compact />
                         </div>
                     )}
                     

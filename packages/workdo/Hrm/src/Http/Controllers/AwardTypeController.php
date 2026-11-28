@@ -50,7 +50,7 @@ class AwardTypeController extends Controller
 
             $awardtype = new AwardType();
             $awardtype->name = $validated['name'];
-            $awardtype->description = $validated['description'];
+            $awardtype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $awardtype->creator_id = Auth::id();
             $awardtype->created_by = creatorId();
@@ -73,7 +73,7 @@ class AwardTypeController extends Controller
 
 
             $awardtype->name = $validated['name'];
-            $awardtype->description = $validated['description'];
+            $awardtype->description = isset($validated['description']) ? (\App\Support\HtmlSanitizer::sanitize($validated['description']) ?? '') : null;
 
             $awardtype->save();
 

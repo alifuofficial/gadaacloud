@@ -3,8 +3,9 @@ import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { SalesInvoice } from './types';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
-import { formatCurrency, formatDate } from '@/utils/helpers';
+import { formatCurrency, formatDate, isRichTextEmpty } from '@/utils/helpers';
 import { getStatusBadgeClasses } from './utils';
+import { RichTextViewer } from '@/components/ui/rich-text-viewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { FileText, Download } from 'lucide-react';
@@ -180,10 +181,10 @@ export default function View() {
                             </div>
                         </div>
 
-                        {invoice.notes && (
+                        {!isRichTextEmpty(invoice.notes) && (
                             <div className="mt-4 pt-4 border-t">
-                                <span className="font-medium text-sm">{t('Notes')}:</span>
-                                <span className="text-sm text-muted-foreground ml-2">{invoice.notes}</span>
+                                <span className="font-medium text-sm block mb-1">{t('Notes')}:</span>
+                                <RichTextViewer content={invoice.notes} compact />
                             </div>
                         )}
 
@@ -222,8 +223,8 @@ export default function View() {
                                                 {item.product?.sku && (
                                                     <div className="text-sm text-muted-foreground">SKU: {item.product.sku}</div>
                                                 )}
-                                                {item.product?.description && (
-                                                    <div className="text-sm text-muted-foreground mt-1">{item.product.description}</div>
+                                                {!isRichTextEmpty(item.product?.description) && (
+                                                    <RichTextViewer content={item.product?.description} compact className="mt-1 text-muted-foreground" />
                                                 )}
                                             </td>
                                             {invoice.type === 'product' && (
